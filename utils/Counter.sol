@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.0;
 
-contract IDUtil {
-    uint counter;
+contract Counter {
+    uint private counter;
 
     constructor() {
         counter = 1;
     }
 
-    function getId() public returns (uint) {
+    function getCounter() internal returns (uint) {
         return counter++;
     }
 }
