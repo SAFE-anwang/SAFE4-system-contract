@@ -4,37 +4,24 @@ pragma solidity ^0.8.0;
 import "../interfaces/INode.sol";
 
 contract Node is INode {
-    event SafeLock(address _addr, uint _amount, string _err);
-    event SafeWithdraw(address _addr, uint _amount, string _err);
-
     // self-lock with specified locked height
-    function lock(AccountManager _am, uint _lockHeight) public payable override {
-        uint id = _am.deposit(_lockHeight);
-        if(id == 0) {
-            emit SafeLock(msg.sender, msg.value, "lock successfully");
+    function lock(AccountManager _am, uint _lockDay, uint _blockspace) public payable override {
+        bytes20 lockID = _am.deposit(msg.sender, msg.value, _lockDay, _blockspace);
+        if(lockID == 0) {
+            emit SafeLock(msg.sender, msg.value, _lockDay, "lock successfully");
         } else {
-            emit SafeLock(msg.sender, msg.value, "lock failed, please check");
+            emit SafeLock(msg.sender, msg.value, _lockDay, "lock failed, please check");
         }
-    }
-
-    // self-lock with specified locked day, unlocked height is calculated by block space
-    function lock(AccountManager _am, uint _day, uint _blockspace) public payable override {
-        lock(_am, _day * 86400 / _blockspace);
     }
 
     // send locked safe to address by locked height
-    function sendLock(AccountManager _am, address _to, uint _lockHeight) public payable override {
-        uint id = _am.deposit(_lockHeight);
-        if(id == 0) {
-            emit SafeLock(_to, msg.value, "lock successfully");
+    function sendLock(AccountManager _am, address _to, uint _lockDay, uint _blockspace) public payable override {
+        bytes20 lockID = _am.deposit(_to, msg.value, _lockDay, _blockspace);
+        if(lockID == 0) {
+            emit SafeLock(_to, msg.value, _lockDay, "send lock successfully");
         } else {
-            emit SafeLock(_to, msg.value, "lock failed, please check");
+            emit SafeLock(_to, msg.value, _lockDay, "send lock failed, please check");
         }
-    }
-
-    // send locked safe to address by locked month, unlocked height is calculated by block space
-    function sendLock(AccountManager _am, address _to, uint _day, uint _blockspace) public payable override {
-        sendLock(_am, _to, _day * 86400 / _blockspace);
     }
 
     // withdraw
@@ -56,15 +43,15 @@ contract Node is INode {
         }
     }
 
-    function getTotalAmount(AccountManager _am) public view override returns (uint, uint[] memory) {
+    function getTotalAmount(AccountManager _am) public view override returns (uint, bytes20[] memory) {
         return _am.getTotalAmount();
     }
 
-    function getAvailableAmount(AccountManager _am) public view override returns (uint, uint[] memory) {
+    function getAvailableAmount(AccountManager _am) public view override returns (uint, bytes20[] memory) {
         return _am.getAvailableAmount();
     }
 
-    function getLockAmount(AccountManager _am) public view override returns (uint, uint[] memory) {
+    function getLockAmount(AccountManager _am) public view override returns (uint, bytes20[] memory) {
         return _am.getLockAmount();
     }
 
