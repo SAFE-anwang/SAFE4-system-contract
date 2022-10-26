@@ -2,124 +2,199 @@
 pragma solidity ^0.8.0;
 
 contract SMNVote {
-    struct ProxyInfo {
+    struct VoteDetail {
         address addr;
-        address proxyAddr;
-        uint amount;
-        uint time;
+        uint num;
     }
 
-    mapping(address => address) internal addr2smn; // address to super masternode
-    mapping(address => address[]) internal smn2addrs; // supermode to address list
+    mapping(address => VoteDetail[]) internal voter2smns; // voters to supermasternode
+    mapping(address => uint) smn2num; // supermasternode to total vote number
+    mapping(address => VoteDetail[]) internal smn2voters; // supermasternode to voter list
+
+    struct ProxyInfo {
+        address addr;
+        uint num;
+        bool used;
+    }
 
     mapping(address => ProxyInfo) internal addr2proxy; // approval to masternode
     mapping(address => ProxyInfo[]) internal proxy2addrs; // masternode to address list
 
-    function existVoter(address _smnAddr, address _voterAddr) internal view returns (bool) {
-        address[] memory addrs = smn2addrs[_smnAddr];
-        for(uint i = 0; i < addrs.length; i++) {
-            if(_voterAddr == addrs[i]) {
-                return true;
+    // vote for supermasternode
+    function vote(address _voterAddr, address _smnAddr, uint _num) public {
+        VoteDetail[] storage smnDetails = voter2smns[_voterAddr];
+        bool exist = false;
+        uint pos = 0;
+        (exist, pos) = existSMN(_voterAddr, _smnAddr);
+        if(exist) {
+            smnDetails[pos].num += _num;
+        } else {
+            smnDetails.push(VoteDetail(_smnAddr, _num));
+        }
+
+        VoteDetail[] storage voterDetails = smn2voters[_voterAddr];
+        (exist, pos) = existVoter(_smnAddr, _voterAddr);
+        if(exist) {
+            voterDetails[pos].num += _num;
+        } else {
+            voterDetails.push(VoteDetail(_smnAddr, _num));
+        }
+        smn2num[_smnAddr] += _num;
+    }
+
+    // remove all vote num
+    function removeVote(address _voterAddr, address _smnAddr) public {
+        bool exist = false;
+        uint pos = 0;
+
+        (exist, pos) = existSMN(_voterAddr, _smnAddr);
+        if(exist) {
+            VoteDetail[] storage smnDetails = voter2smns[_voterAddr];
+            smnDetails[pos] = smnDetails[smnDetails.length - 1];
+            smnDetails.pop();
+        }
+
+        (exist, pos) = existVoter(_smnAddr, _voterAddr);
+        if(exist) {
+            VoteDetail[] storage voterDetails = smn2voters[_smnAddr];
+            voterDetails[pos] = voterDetails[voterDetails.length - 1];
+            voterDetails.pop();
+        }
+    }
+
+    // remove specify vote num
+    function removeVote(address _voterAddr, address _smnAddr, uint _num) public {
+        bool exist = false;
+        uint pos = 0;
+
+        (exist, pos) = existSMN(_voterAddr, _smnAddr);
+        if(exist) {
+            VoteDetail[] storage smnDetails = voter2smns[_voterAddr];
+            // require(smnDetails[pos].num >= _num, "vote number is less than target removed number");
+            if(smnDetails[pos].num > _num) {
+                smnDetails[pos].num -= _num;
+            } else {
+                smnDetails[pos] = smnDetails[smnDetails.length - 1];
+                smnDetails.pop();
             }
         }
-        return false;
+
+        (exist, pos) = existVoter(_smnAddr, _voterAddr);
+        if(exist) {
+            VoteDetail[] storage voterDetails = smn2voters[_smnAddr];
+            // require(voterDetails[pos].num >= _num, "vote number is leass than target removed number");
+            if(voterDetails[pos].num > _num) {
+                voterDetails[pos].num -= _num;
+            } else {
+                voterDetails[pos] = voterDetails[voterDetails.length - 1];
+                voterDetails.pop();
+            }
+        }
     }
 
-    // vote for super masternode
-    function vote(address _smnAddr) public {
-        if(existVoter(_smnAddr, msg.sender)) {
+    // approval to masternode
+    function approval(address _voterAddr, address _proxyAddr, uint _num) public {
+        require(_proxyAddr != _voterAddr, "proxy address can't be voter");
+        if(_proxyAddr == address(0)) { // remove approval
+            removeApproval(_voterAddr);
             return;
         }
-        addr2smn[msg.sender] = _smnAddr;
-        smn2addrs[_smnAddr].push(msg.sender);
+
+        ProxyInfo storage info = addr2proxy[_voterAddr];
+        if(info.addr == address(0)) {
+            info.addr = _proxyAddr;
+            info.num = _num;
+        } else {
+            if(info.addr != _proxyAddr) { // new proxy
+                removeApproval(_voterAddr);
+                addr2proxy[_voterAddr] = ProxyInfo(_proxyAddr, _num, false);
+            } else { // old proxy, append approval
+                if(info.used) {
+                    info.num = _num;
+                } else {
+                    info.num += _num;
+                }
+            }
+        }
+
+        ProxyInfo[] storage infos = proxy2addrs[_proxyAddr];
+        for(uint i = 0; i < infos.length; i++) {
+            if(infos[i].addr == _voterAddr) {
+                if(infos[i].used) {
+                    infos[i].num = _num;
+                }
+                return;
+            }
+        }
+        infos.push(ProxyInfo(_voterAddr, _num, false));
     }
 
-    // remove vote
-    function removeVote() public {
-        if(addr2smn[msg.sender] == address(0)) {
-            return;
-        }
-        address[] storage addrs = smn2addrs[addr2smn[msg.sender]];
+    // clear approval
+    function removeApproval(address _voterAddr) internal {
+        address proxyAddr = addr2proxy[_voterAddr].addr;
+        delete addr2proxy[_voterAddr];
+
+        ProxyInfo[] storage infos = proxy2addrs[proxyAddr];
         uint i = 0;
         bool exist = false;
-        for(i = 0; i < addrs.length; i++) {
-            if(addrs[i] == msg.sender) {
+        for(i = 0; i < infos.length; i++) {
+            if(infos[i].addr == _voterAddr) {
                 exist = true;
                 break;
             }
         }
         if(exist) {
-            for(uint k = i; k < addrs.length - 1; k++) {
-                addrs[k] = addrs[k + 1];
-            }
-            delete addrs[addrs.length - 1];
-        }
-
-        delete addr2smn[msg.sender];
-    }
-
-    // approval to masternode
-    function approval(address _proxyAddr) public {
-        require(_proxyAddr != msg.sender, "proxy address can't be yourself");
-        if(_proxyAddr == address(0)) { // remove approval
-            if(addr2proxy[msg.sender].time == 0) {
-                return;
-            }
-            ProxyInfo[] storage infos = proxy2addrs[addr2proxy[msg.sender].proxyAddr];
-            uint i = 0;
-            bool exist = false;
-            for(i = 0; i < infos.length; i++) {
-                if(infos[i].addr == msg.sender) {
-                    exist = true;
-                    break;
-                }
-            }
-            if(exist) {
-                for(uint k = i; k < infos.length - 1; k++) {
-                    infos[k] = infos[k + 1];
-                }
-                delete infos[infos.length - 1];
-            }
-            delete addr2proxy[msg.sender];
-        } else { // add approval
-            ProxyInfo storage info = addr2proxy[msg.sender];
-            if(info.time != 0) {
-                // clear proxy
-                approval(address(0));
-            }
-            info.addr = msg.sender;
-            info.proxyAddr = _proxyAddr;
-            info.amount = 10;
-            info.time = block.timestamp;
-            proxy2addrs[_proxyAddr].push(info);
+            infos[i] = infos[infos.length - 1];
+            infos.pop();
         }
     }
 
-    function proxyVote(address _smnAddr) public {
-        ProxyInfo[] memory infos = proxy2addrs[msg.sender];
+    function proxyVote(address _smnAddr, address _proxyAddr) public {
+        ProxyInfo[] memory infos = proxy2addrs[_proxyAddr];
         for(uint i = 0; i < infos.length; i++) {
-            if(existVoter(_smnAddr, infos[i].addr)) {
+            if(infos[i].used) {
                 continue;
             }
-            addr2smn[infos[i].addr] = _smnAddr;
-            address[] storage temp = smn2addrs[_smnAddr];
-            temp.push(infos[i].addr);
+            vote(infos[i].addr, _smnAddr, infos[i].num);
+            infos[i].used = true;
+            addr2proxy[infos[i].addr].used = true;
         }
     }
 
-    function getProxy() public view returns (ProxyInfo memory) {
-        return addr2proxy[msg.sender];
+    function getProxy(address _voterAddr) public view returns (ProxyInfo memory) {
+        return addr2proxy[_voterAddr];
     }
 
-    function getApprovals() public view returns (ProxyInfo[] memory) {
-        return proxy2addrs[msg.sender];
+    function getApprovals(address _proxyAddr) public view returns (ProxyInfo[] memory) {
+        return proxy2addrs[_proxyAddr];
     }
 
-    function getSMN() public view returns (address) {
-        return addr2smn[msg.sender];
+    function getVotedSMN(address _voterAddr) public view returns (VoteDetail[] memory) {
+        return voter2smns[_voterAddr];
     }
 
-    function getVoters() public view returns (address[] memory) {
-        return smn2addrs[msg.sender];
+    function getVoters(address _smnAddr) public view returns (VoteDetail[] memory) {
+        return smn2voters[_smnAddr];
+    }
+
+    /**************************************** internal ****************************************/
+    function existSMN(address _voterAddr, address _smnAddr) internal view returns (bool, uint) {
+        VoteDetail[] memory details = voter2smns[_voterAddr];
+        for(uint i = 0; i < details.length; i++) {
+            if(details[i].addr == _smnAddr) {
+                return (true, i);
+            }
+        }
+        return (false, 0);
+    }
+
+    function existVoter(address _smnAddr, address _voterAddr) internal view returns (bool, uint) {
+        VoteDetail[] memory details = smn2voters[_smnAddr];
+        for(uint i = 0; i < details.length; i++) {
+            if(details[i].addr == _voterAddr) {
+                return (true, i);
+            }
+        }
+        return (false, 0);
     }
 }
