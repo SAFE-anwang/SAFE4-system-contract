@@ -3,13 +3,17 @@ pragma solidity ^0.8.0;
 
 import "./AccountRecord.sol";
 import "./AccountHistory.sol";
-import "../utils/Counter.sol";
+import "../SafeProperty.sol";
 import "../utils/SafeMath.sol";
 
-contract AccountManager is Counter {
+contract AccountManager {
     using SafeMath for uint;
+    using BytesUtil for bytes;
     using AccountRecord for AccountRecord.Data;
     using AccountHistory for AccountHistory.Data;
+
+    uint internal counter;
+    SafeProperty internal property;
 
     mapping(address => AccountRecord.Data[]) addr2records;
     mapping(bytes20 => uint) id2index;
@@ -23,6 +27,11 @@ contract AccountManager is Counter {
     uint TRANSFER_TYPE = 3;
     uint REWARD_TYPE = 4;
 
+    constructor(SafeProperty _property) {
+        counter = 1;
+        property = _property;
+    }
+
     // deposit
     function deposit(address _addr, uint _amount) public returns (bytes20) {
         require(_amount > 0, "invalid amount");
@@ -32,11 +41,10 @@ contract AccountManager is Counter {
     }
 
     // deposit with lock
-    function deposit(address _addr, uint _amount, uint _lockDay, uint _blockspace) public returns (bytes20) {
+    function deposit(address _addr, uint _amount, uint _lockDay) public returns (bytes20) {
         require(_amount > 0, "invalid amount");
         require(_lockDay > 0, "invalid lock day");
-        require(_blockspace > 0, "invalid block space");
-        bytes20 recordID = addRecord(_addr, _amount, _lockDay, block.number, block.number + _lockDay.mul(86400).div(_blockspace));
+        bytes20 recordID = addRecord(_addr, _amount, _lockDay, block.number, block.number + _lockDay.mul(86400).div(property.getProperty("block_space").value.toUint()));
         addHistory(_addr, recordID, _amount, DEPOSIT_TYPE);
         return recordID;
     }
@@ -203,8 +211,8 @@ contract AccountManager is Counter {
         return (amount, recordIDs);
     }
 
-    // get account
-    function getAccount() public view returns (AccountRecord.Data[] memory) {
+    // get account records
+    function getAccountRecords() public view returns (AccountRecord.Data[] memory) {
         return addr2records[msg.sender];
     }
 
@@ -221,7 +229,7 @@ contract AccountManager is Counter {
     // add record
     function addRecord(address _addr, uint _amount, uint _lockDay, uint _startHeight, uint _unlockHeight) internal returns (bytes20) {
         AccountRecord.Data memory record;
-        bytes20 recordID = ripemd160(abi.encodePacked(getCounter(), _addr, _amount, _lockDay, _startHeight, _unlockHeight));
+        bytes20 recordID = ripemd160(abi.encodePacked(counter++, _addr, _amount, _lockDay, _startHeight, _unlockHeight));
         record.create(recordID, _addr, _amount, _lockDay, _startHeight, _unlockHeight);
         AccountRecord.Data[] storage records = addr2records[_addr];
         records.push(record);
@@ -234,14 +242,6 @@ contract AccountManager is Counter {
     function delRecord(bytes20 _recordID) internal {
         AccountRecord.Data[] storage records = addr2records[msg.sender];
         uint pos = id2index[_recordID];
-        /*
-        for(uint i = pos; i < records.length; i++) {
-            records[i] = records[i + 1];
-            id2index[records[i].id] = i;
-        }
-        records.pop();
-        delete id2index[_recordID];
-        */
         records[pos] = records[records.length - 1];
         records.pop();
         id2index[records[pos].id] = pos;
@@ -283,4 +283,4 @@ contract AccountManager is Counter {
         if(i < _right)
             sortByAmount(_arr, i, _right);
     }
-}   
+}
