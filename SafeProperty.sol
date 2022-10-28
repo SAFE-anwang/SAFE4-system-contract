@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "./utils/BytesUtil.sol";
+
 contract SafeProperty {
     struct PropertyInfo {
         string name;
@@ -29,6 +31,15 @@ contract SafeProperty {
     event PropertyUpdateReject(string _name, bytes _newValue);
     event PropertyUpdateAgree(string _name, bytes _newValue);
     event PropertyUpdateVote(string _name, bytes _newValue, address _voters, uint _voteResult);
+
+    constructor() {
+        addProperty("block_space", BytesUtil.toBytes(30), "block space");
+        addProperty("mn_lock_amount", BytesUtil.toBytes(2000), "min masternode lock amount");
+        addProperty("mn_lock_month", BytesUtil.toBytes(6), "min masternode lock month");
+        addProperty("smn_lock_amount", BytesUtil.toBytes(20000), "min supermasternode lock amount");
+        addProperty("smn_lock_month", BytesUtil.toBytes(24), "min supermasternode lock month");
+        addProperty("smn_unverify_height", BytesUtil.toBytes(1051200), "supermasternode don't need verify util blockchain height more than it");
+    }
 
     function addProperty(string memory _name, bytes memory _value, string memory _description) public {
         require(!exist(_name), "existent property");
