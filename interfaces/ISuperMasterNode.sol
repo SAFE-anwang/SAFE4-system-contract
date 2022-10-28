@@ -9,15 +9,15 @@ interface ISuperMasterNode {
     event SMNRegiste(address _addr, string _ip, string _pubkey, string _msg);
     event SMNUnionRegiste(address _addr, string _ip, string _pubkey, string _msg);
     event SMNAppendRegiste(address _addr, bytes20 _lockID, string _msg);
-    
-    function registe(AccountManager _am, SafeProperty _property, uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) external payable;
-    function unionRegiste(AccountManager _am, SafeProperty _property, uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) external payable;
-    function appendRegiste(AccountManager _am, SafeProperty _property, uint _lockDay, address _addr) external payable;
-    function appendRegiste(AccountManager _am, SafeProperty _property, bytes20 _lockID, address _addr) external;
+
+    function registe(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) external payable;
+    function unionRegiste(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) external payable;
+    function appendRegiste(uint _lockDay, address _addr) external payable;
+    function appendRegiste(bytes20 _lockID, address _addr) external;
 
     function verify(address _addr) external;
 
-    function reward(AccountManager _am, address _addr, uint _amount) external;
+    function reward(address _addr, uint _amount) external;
 
     function applyUpdateProperty(SafeProperty _property, string memory _name, bytes memory _value, string memory _reason) external;
     function vote4UpdateProperty(SafeProperty _property, string memory _name, uint _result) external;

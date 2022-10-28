@@ -3,21 +3,31 @@ pragma solidity ^0.8.0;
 
 import "../node/Node.sol";
 import "../interfaces/ISuperMasterNode.sol";
-import "../utils/Counter.sol";
 import "../utils/Owner.sol";
 import "../utils/SafeMath.sol";
 import "../utils/BytesUtil.sol";
 
-contract SuperMasterNode is ISuperMasterNode, Node, Owner, Counter {
+contract SuperMasterNode is ISuperMasterNode, Owner {
     using SafeMath for uint;
+    using BytesUtil for bytes;
     using SuperMasterNodeInfo for SuperMasterNodeInfo.Data;
+
+    uint internal counter;
+    AccountManager internal am;
+    SafeProperty internal property;
 
     mapping(address => SuperMasterNodeInfo.Data) internal supermasternodes;
     mapping(address => SuperMasterNodeInfo.Data) internal unconfirmedSupermasternodes;
     mapping(bytes20 => address) internal id2address;
     bytes20[] internal ids;
 
-    function registe(AccountManager _am, SafeProperty _property, uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable override {
+    constructor(SafeProperty _property, AccountManager _am) {
+        counter = 1;
+        am = _am;
+        property = _property;
+    }
+
+    function registe(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable override {
         require(msg.value >= 20000, "supermasternode need lock 20000 SAFE at least");
         require(_lockDay >= 365, "supermasternode need lock 1 year at least");
         require(_addr != address(0), "invalid supermasternode address");
@@ -27,27 +37,26 @@ contract SuperMasterNode is ISuperMasterNode, Node, Owner, Counter {
         require(_creatorIncentive.add(_partnerIncentive).add(_voterIncentive) == 100, "invalid incentive plan");
         require(!exist(_addr), "existent supermasternode");
 
-        uint blockspace = BytesUtil.toUint(_property.getProperty("block_space").value);
-        bytes20 lockID = _am.deposit(msg.sender, msg.value, _lockDay, blockspace);
+        bytes20 lockID = am.deposit(msg.sender, msg.value, _lockDay);
         if(lockID == 0) {
             emit SMNRegiste(_addr, _ip, _pubkey, "registe supermasternode failed: lock failed");
+
             return;
         }
 
         bytes20 id = ripemd160(abi.encodePacked(getCounter(), msg.sender, _lockDay, _addr, _ip, _pubkey));
-        uint smn_unverify_height = BytesUtil.toUint(_property.getProperty("smn_unverify_height").value);
-        if(block.number > smn_unverify_height) { // don't need verify
+        if(block.number > property.getProperty("smn_unverify_height").value.toUint()) { // don't need verify
             supermasternodes[_addr].create(id, lockID, _ip, _pubkey, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
         } else { // need verify
             unconfirmedSupermasternodes[_addr].create(id, lockID, _ip, _pubkey, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
         }
         id2address[id] = _addr;
         ids.push(id);
-        _am.setUseHeight(lockID, block.number);
+        am.setUseHeight(lockID, block.number);
         emit SMNRegiste(_addr, _ip, _pubkey, "registe supermasternode successfully");
     }
 
-    function unionRegiste(AccountManager _am, SafeProperty _property, uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable override {
+    function unionRegiste(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable override {
         require(msg.value >= 4000, "union supermasternode need lock 4000 SAFE at least");
         require(_lockDay >= 730, "union supermasternode need lock 2 year at least");
         require(_addr != address(0), "invalid supermasternode address");
@@ -57,63 +66,59 @@ contract SuperMasterNode is ISuperMasterNode, Node, Owner, Counter {
         require(_creatorIncentive.add(_partnerIncentive).add(_voterIncentive) == 100, "invalid incentive plan");
         require(!exist(_addr), "existent supermasternode");
 
-        uint blockspace = BytesUtil.toUint(_property.getProperty("block_space").value);
-        bytes20 lockID = _am.deposit(msg.sender, msg.value, _lockDay, blockspace);
+        bytes20 lockID = am.deposit(msg.sender, msg.value, _lockDay);
         if(lockID == 0) {
             emit SMNRegiste(_addr, _ip, _pubkey, "registe union supermasternode failed: lock failed");
             return;
         }
 
         bytes20 id = ripemd160(abi.encodePacked(getCounter(), msg.sender, _lockDay, _addr, _ip, _pubkey));
-        uint smn_unverify_height = BytesUtil.toUint(_property.getProperty("smn_unverify_height").value);
-        if(block.number > smn_unverify_height) { // don't need verify
+        if(block.number > property.getProperty("smn_unverify_height").value.toUint()) { // don't need verify
             supermasternodes[_addr].create(id, lockID, _ip, _pubkey, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
         } else { // need verify
             unconfirmedSupermasternodes[_addr].create(id, lockID, _ip, _pubkey, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
         }
         id2address[id] = _addr;
         ids.push(id);
-        _am.setUseHeight(lockID, block.number);
+        am.setUseHeight(lockID, block.number);
         emit SMNRegiste(_addr, _ip, _pubkey, "registe union supermasternode successfully");
     }
 
-    function appendRegiste(AccountManager _am, SafeProperty _property, uint _lockDay, address _addr) public payable override {
+    function appendRegiste(uint _lockDay, address _addr) public payable override {
         require(msg.value >= 1000, "supermasternode need append lock 1000 SAFE at least");
         require(_lockDay >= 365, "supermasternode need lock 1 year at least");
         require(exist(_addr), "non-existent supermasternode");
 
-        uint blockspace = BytesUtil.toUint(_property.getProperty("block_space").value);
-        bytes20 lockID = _am.deposit(msg.sender, msg.value, _lockDay, blockspace);
+        bytes20 lockID = am.deposit(msg.sender, msg.value, _lockDay);
         if(lockID == 0) {
             emit SMNAppendRegiste(_addr, lockID, "append registe union supermasternode failed: lock failed");
             return;
         }
 
-        uint leaveHeight = block.number.add(uint(90 * 86400).div(blockspace));
+        uint leaveHeight = block.number.add(uint(90 * 86400).div(property.getProperty("block_space").value.toUint()));
         if(isConfirmed(_addr)) {
             supermasternodes[_addr].appendLock(lockID, msg.sender, msg.value, leaveHeight);
         } else {
             unconfirmedSupermasternodes[_addr].appendLock(lockID, msg.sender, msg.value, leaveHeight);
         }
-        _am.setUseHeight(lockID, block.number);
+        am.setUseHeight(lockID, block.number);
         emit SMNAppendRegiste(_addr, lockID, "append registe supermasternode successfully");
     }
 
-    function appendRegiste(AccountManager _am, SafeProperty _property, bytes20 _lockID, address _addr) public override {
-        AccountRecord.Data memory record = _am.getRecordByID(_lockID);
+    function appendRegiste(bytes20 _lockID, address _addr) public override {
+        AccountRecord.Data memory record = am.getRecordByID(_lockID);
         require(record.useHeight == 0, "lock id is used, can't append");
         require(record.addr == msg.sender, "lock address isn't caller");
         require(record.amount >= 1000, "lock amout need 1000 SAFE at least");
         require(record.lockDay >= 365, "lock day less 1 year");
 
-        uint blockspace = BytesUtil.toUint(_property.getProperty("block_space").value);
-        uint leaveHeight = block.number.add(uint(90 * 86400).div(blockspace));
+        uint leaveHeight = block.number.add(uint(90 * 86400).div(property.getProperty("block_space").value.toUint()));
         if(isConfirmed(_addr)) {
             supermasternodes[_addr].appendLock(_lockID, record.addr, record.amount, leaveHeight);
         } else {
             unconfirmedSupermasternodes[_addr].appendLock(_lockID, record.addr, record.amount, leaveHeight);
         }
-        _am.setUseHeight(_lockID, block.number);
+        am.setUseHeight(_lockID, block.number);
         emit SMNAppendRegiste(_addr, _lockID, "append registe supermasternode successfully");
     }
 
@@ -124,13 +129,13 @@ contract SuperMasterNode is ISuperMasterNode, Node, Owner, Counter {
         delete unconfirmedSupermasternodes[_addr];
     }
 
-    function reward(AccountManager _am, address _addr, uint _amount) public override {
+    function reward(address _addr, uint _amount) public override {
         SuperMasterNodeInfo.Data memory info = supermasternodes[_addr];
         uint creatorReward = _amount.mul(info.incentivePlan.creator).div(100);
         uint partnerReward = _amount.mul(info.incentivePlan.partner).div(100);
         uint voterReward = _amount.sub(creatorReward).sub(partnerReward);
         // reward to creator
-        _am.reward(info.creator, creatorReward);
+        am.reward(info.creator, creatorReward);
         // reward to partner
         uint total = 0;
         for(uint i = 0; i < info.founders.length; i++) {
@@ -138,14 +143,14 @@ contract SuperMasterNode is ISuperMasterNode, Node, Owner, Counter {
             if(total >= 20000) {
                 break;
             }
-            _am.reward(info.founders[i].addr, partnerReward.mul(info.founders[i].amount).div(20000 - info.founders[0].amount));
+            am.reward(info.founders[i].addr, partnerReward.mul(info.founders[i].amount).div(20000 - info.founders[0].amount));
         }
         // reward to voter
         for(uint i = 0; i < info.voters.length; i++) {
-            _am.reward(info.founders[i].addr, voterReward.mul(info.voters[i].amount).div(info.totalVoterAmount));
+            am.reward(info.founders[i].addr, voterReward.mul(info.voters[i].amount).div(info.totalVoterAmount));
         }
     }
-    
+
     function applyUpdateProperty(SafeProperty _property, string memory _name, bytes memory _value, string memory _reason) public override {
         _property.applyUpdateProperty(_name, _value, _reason);
     }
@@ -220,6 +225,10 @@ contract SuperMasterNode is ISuperMasterNode, Node, Owner, Counter {
     }
 
     /************************************************** internal **************************************************/
+    function getCounter() internal returns (uint) {
+        return counter++;
+    }
+
     function exist(address _addr) internal view returns (bool) {
         return isConfirmed(_addr) || isUnconfirmed(_addr);
     }
