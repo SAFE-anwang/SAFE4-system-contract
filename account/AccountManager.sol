@@ -86,11 +86,11 @@ contract AccountManager {
         return amount;
     }
 
-    function transfer(address _from, address _to, uint _amount) public {
-        transferLock(_from, _to, _amount, 0);
+    function transfer(address _from, address _to, uint _amount) public returns (bytes20) {
+        return transferLock(_from, _to, _amount, 0);
     }
 
-    function transferLock(address _from, address _to, uint _amount, uint _lockDay) public {
+    function transferLock(address _from, address _to, uint _amount, uint _lockDay) public returns (bytes20) {
         require(_from != address(0), "transfer from the zero address");
         require(_to != address(0), "transfer to the zero address");
         require(_amount > 0, "invalid amount");
@@ -134,6 +134,7 @@ contract AccountManager {
                 addHistory(_to, recordID, _amount, TRANSFER_LOCK_TYPE);
             }
         }
+        return recordID;
     }
 
     function reward(address _to, uint _amount) public returns (bytes20) {
