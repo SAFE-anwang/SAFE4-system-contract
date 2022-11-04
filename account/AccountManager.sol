@@ -23,9 +23,11 @@ contract AccountManager {
 
     uint UNKNOW_TYPE = 0;
     uint DEPOSIT_TYPE = 1;
-    uint WITHDRAW_TYPE = 2;
-    uint TRANSFER_TYPE = 3;
-    uint REWARD_TYPE = 4;
+    uint DEPOSIT_LOCK_TYPE = 2;
+    uint WITHDRAW_TYPE = 3;
+    uint TRANSFER_TYPE = 4;
+    uint TRANSFER_LOCK_TYPE = 5;
+    uint REWARD_TYPE = 6;
 
     constructor(SafeProperty _property) {
         counter = 1;
@@ -33,85 +35,69 @@ contract AccountManager {
     }
 
     // deposit
-    function deposit(address _addr, uint _amount) public returns (bytes20) {
-        require(_amount > 0, "invalid amount");
-        bytes20 recordID = addRecord(_addr, _amount, 0, 0, 0);
-        addHistory(_addr, recordID, _amount, DEPOSIT_TYPE);
-        return recordID;
+    function deposit(address _to, uint _amount) public returns (bytes20) {
+        return deposit(_to, _amount, 0);
     }
 
     // deposit with lock
-    function deposit(address _addr, uint _amount, uint _lockDay) public returns (bytes20) {
+    function deposit(address _to, uint _amount, uint _lockDay) public returns (bytes20) {
+        require(_to != address(0), "deposit to the zero address");
         require(_amount > 0, "invalid amount");
-        require(_lockDay > 0, "invalid lock day");
-        bytes20 recordID = addRecord(_addr, _amount, _lockDay, block.number, block.number + _lockDay.mul(86400).div(property.getProperty("block_space").value.toUint()));
-        addHistory(_addr, recordID, _amount, DEPOSIT_TYPE);
+        bytes20 recordID;
+        if(_lockDay == 0) {
+            recordID = addRecord(_to, _amount, 0, 0, 0);
+            if(recordID != 0) {
+                addHistory(_to, recordID, _amount, DEPOSIT_TYPE);
+            }
+        } else {
+            recordID = addRecord(_to, _amount, _lockDay, block.number, block.number + _lockDay.mul(86400).div(property.getProperty("block_space").value.toUint()));
+            if(recordID != 0) {
+                addHistory(_to, recordID, _amount, DEPOSIT_LOCK_TYPE);
+            }
+        }
         return recordID;
     }
 
     // withdraw all
-    function withdraw() public returns (uint) {
+    function withdraw(address _from) public returns (uint) {
+        require(_from != address(0), "withdraw from the zero address");
         uint amount = 0;
         bytes20[] memory recordIDs;
-        (amount, recordIDs) = getAvailableAmount();
+        (amount, recordIDs) = getAvailableAmount(_from);
         if(amount == 0) {
             return amount;
         }
-
-        payable(msg.sender).transfer(amount);
-
-        // update record & history
-        for(uint i = 0; i < recordIDs.length; i++) {
-            AccountRecord.Data memory record = getRecordByID(recordIDs[i]);
-            addHistory(msg.sender, recordIDs[i], record.amount, WITHDRAW_TYPE);
-            delRecord(recordIDs[i]);
-        }
-
+        withdraw(_from, recordIDs);
         return amount;
     }
 
     // withdraw by specify amount
-    function withdraw(uint _amount) public returns(uint) {
-        require(_amount > 0, "invalid amount");
+    function withdraw(address _from, bytes20[] memory _recordIDs) public returns(uint) {
+        require(_from != address(0), "withdraw from the zero address");
+        require(_recordIDs.length > 0, "invalid record id");
         uint amount = 0;
-        bytes20[] memory recordIDs;
-        (amount, recordIDs) = getAvailableAmount();
-        if(amount < _amount) {
-            return amount;
+        for(uint i = 0; i < _recordIDs.length; i++) {
+            AccountRecord.Data memory record = getRecordByID(_from, _recordIDs[i]);
+            amount += record.amount;
+            addHistory(_from, _recordIDs[i], record.amount, WITHDRAW_TYPE);
+            delRecord(_recordIDs[i]);
         }
-
-        payable(msg.sender).transfer(_amount);
-
-        // update record & history
-        AccountRecord.Data[] memory temp_records = new AccountRecord.Data[](recordIDs.length);
-        for(uint i = 0; i < recordIDs.length; i++) {
-            temp_records[i] = addr2records[msg.sender][id2index[recordIDs[i]]];
-        }
-        sortByAmount(temp_records, 0, temp_records.length - 1);
-        uint usedAmount = 0;
-        for(uint i = 0; i < temp_records.length; i++) {
-            usedAmount += temp_records[i].amount;
-            if(usedAmount <= _amount) {
-                delRecord(temp_records[i].id);
-                addHistory(msg.sender, temp_records[i].id, temp_records[i].amount, WITHDRAW_TYPE);
-                if(usedAmount == _amount) {
-                    break;
-                }
-            } else {
-                updateRecordAmount(temp_records[i].id, usedAmount - _amount);
-                addHistory(msg.sender, temp_records[i].id, temp_records[i].amount - usedAmount - _amount, WITHDRAW_TYPE);
-                break;
-            }
-        }
-
+        payable(_from).transfer(amount);
         return amount;
     }
 
-    function transfer(address _to, uint _amount) public {
+    function transfer(address _from, address _to, uint _amount) public {
+        transferLock(_from, _to, _amount, 0);
+    }
+
+    function transferLock(address _from, address _to, uint _amount, uint _lockDay) public {
+        require(_from != address(0), "transfer from the zero address");
+        require(_to != address(0), "transfer to the zero address");
         require(_amount > 0, "invalid amount");
+
         uint amount = 0;
         bytes20[] memory recordIDs;
-        (amount, recordIDs) = getAvailableAmount();
+        (amount, recordIDs) = getAvailableAmount(_from);
         require(amount >= _amount, "insufficient balance");
 
         // update record & history
@@ -136,20 +122,33 @@ contract AccountManager {
             }
         }
 
-        bytes20 recordID = addRecord(_to, _amount, 0, 0, 0);
-        addHistory(_to, recordID, _amount, TRANSFER_TYPE);
+        bytes20 recordID;
+        if(_lockDay == 0) {
+            recordID = addRecord(_to, _amount, 0, 0, 0);
+            if(recordID != 0) {
+                addHistory(_to, recordID, _amount, TRANSFER_TYPE);
+            }
+        } else {
+            recordID = addRecord(_to, _amount, _lockDay, block.number, block.number + _lockDay.mul(86400).div(property.getProperty("block_space").value.toUint()));
+            if(recordID != 0) {
+                addHistory(_to, recordID, _amount, TRANSFER_LOCK_TYPE);
+            }
+        }
     }
 
-    function reward(address _addr, uint _amount) public returns (bytes20) {
+    function reward(address _to, uint _amount) public returns (bytes20) {
+        require(_to != address(0), "reward to the zero address");
         require(_amount > 0, "invalid amount");
-        bytes20 recordID = addRecord(_addr, _amount, 0, 0, 0);
-        addHistory(_addr, recordID, _amount, REWARD_TYPE);
+        bytes20 recordID = addRecord(_to, _amount, 0, 0, 0);
+        if(recordID != 0) {
+            addHistory(_to, recordID, _amount, REWARD_TYPE);
+        }
         return recordID;
     }
 
     // get total amount
-    function getTotalAmount() public view returns (uint, bytes20[] memory) {
-        AccountRecord.Data[] memory records = addr2records[msg.sender];
+    function getTotalAmount(address _addr) public view returns (uint, bytes20[] memory) {
+        AccountRecord.Data[] memory records = addr2records[_addr];
         uint amount = 0;
         bytes20[] memory recordIDs = new bytes20[](records.length);
         for(uint i = 0; i < records.length; i++) {
@@ -160,9 +159,9 @@ contract AccountManager {
     }
 
     // get avaiable amount
-    function getAvailableAmount() public view returns (uint, bytes20[] memory) {
+    function getAvailableAmount(address _addr) public view returns (uint, bytes20[] memory) {
         uint curHeight = block.number;
-        AccountRecord.Data[] memory records = addr2records[msg.sender];
+        AccountRecord.Data[] memory records = addr2records[_addr];
 
         // get avaiable count
         uint count = 0;
@@ -186,9 +185,9 @@ contract AccountManager {
     }
 
     // get locked amount
-    function getLockAmount() public view returns (uint, bytes20[] memory) {
+    function getLockAmount(address _addr) public view returns (uint, bytes20[] memory) {
         uint curHeight = block.number;
-        AccountRecord.Data[] memory records = addr2records[msg.sender];
+        AccountRecord.Data[] memory records = addr2records[_addr];
 
         // get avaiable count
         uint count = 0;
@@ -212,8 +211,8 @@ contract AccountManager {
     }
 
     // get account records
-    function getAccountRecords() public view returns (AccountRecord.Data[] memory) {
-        return addr2records[msg.sender];
+    function getAccountRecords(address _addr) public view returns (AccountRecord.Data[] memory) {
+        return addr2records[_addr];
     }
 
     function setUseHeight(bytes20 _recordID, uint _height) public {
@@ -222,8 +221,8 @@ contract AccountManager {
 
     /************************************************** internal **************************************************/
     // get record by id
-    function getRecordByID(bytes20 _recordID) public view returns (AccountRecord.Data memory) {
-        return addr2records[msg.sender][id2index[_recordID]];
+    function getRecordByID(address _addr, bytes20 _recordID) public view returns (AccountRecord.Data memory) {
+        return addr2records[_addr][id2index[_recordID]];
     }
 
     // add record
