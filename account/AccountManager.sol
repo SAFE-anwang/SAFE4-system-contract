@@ -29,6 +29,10 @@ contract AccountManager {
     uint TRANSFER_LOCK_TYPE = 5;
     uint REWARD_TYPE = 6;
 
+    event SafeDeposit(address _addr, uint _amount, uint _lockDay, string _msg);
+    event SafeWithdraw(address _addr, uint _amount, string _msg);
+    event SafeTransfer(address _addr, address _to, uint _amount, uint _lockDay, string _msg);
+
     constructor(SafeProperty _property) {
         counter = 1;
         property = _property;
@@ -48,11 +52,17 @@ contract AccountManager {
             recordID = addRecord(_to, _amount, 0, 0, 0);
             if(recordID != 0) {
                 addHistory(_to, recordID, _amount, DEPOSIT_TYPE);
+                emit SafeDeposit(_to, _amount, _lockDay, "deposit successfully");
+            } else {
+                emit SafeDeposit(_to, _amount, _lockDay, "deposit failed");
             }
         } else {
             recordID = addRecord(_to, _amount, _lockDay, block.number, block.number + _lockDay.mul(86400).div(property.getProperty("block_space").value.toUint()));
             if(recordID != 0) {
                 addHistory(_to, recordID, _amount, DEPOSIT_LOCK_TYPE);
+                emit SafeDeposit(_to, _amount, _lockDay, "deposit with lock successfully");
+            } else {
+                emit SafeDeposit(_to, _amount, _lockDay, "deposit with lock failed");
             }
         }
         return recordID;
@@ -64,11 +74,7 @@ contract AccountManager {
         uint amount = 0;
         bytes20[] memory recordIDs;
         (amount, recordIDs) = getAvailableAmount(_from);
-        if(amount == 0) {
-            return amount;
-        }
-        withdraw(_from, recordIDs);
-        return amount;
+        return withdraw(_from, recordIDs);
     }
 
     // withdraw by specify amount
@@ -78,11 +84,19 @@ contract AccountManager {
         uint amount = 0;
         for(uint i = 0; i < _recordIDs.length; i++) {
             AccountRecord.Data memory record = getRecordByID(_from, _recordIDs[i]);
+            if(block.number < record.unlockHeight) {
+                continue;
+            }
             amount += record.amount;
             addHistory(_from, _recordIDs[i], record.amount, WITHDRAW_TYPE);
             delRecord(_recordIDs[i]);
         }
-        payable(_from).transfer(amount);
+        if(amount == 0) {
+            emit SafeWithdraw(_from, amount, "withdraw failed: insufficient available amount");
+        } else {
+            payable(_from).transfer(amount);
+            emit SafeWithdraw(_from, amount, "withdraw successfully");
+        }
         return amount;
     }
 
@@ -127,11 +141,17 @@ contract AccountManager {
             recordID = addRecord(_to, _amount, 0, 0, 0);
             if(recordID != 0) {
                 addHistory(_to, recordID, _amount, TRANSFER_TYPE);
+                emit SafeTransfer(_from, _to, amount, _lockDay, "transfer successfully");
+            } else {
+                emit SafeTransfer(_from, _to, amount, _lockDay, "transfer failed");
             }
         } else {
             recordID = addRecord(_to, _amount, _lockDay, block.number, block.number + _lockDay.mul(86400).div(property.getProperty("block_space").value.toUint()));
             if(recordID != 0) {
                 addHistory(_to, recordID, _amount, TRANSFER_LOCK_TYPE);
+                emit SafeTransfer(_from, _to, amount, _lockDay, "transfer with lock successfully");
+            } else {
+                emit SafeTransfer(_from, _to, amount, _lockDay, "transfer with lock failed");
             }
         }
         return recordID;
