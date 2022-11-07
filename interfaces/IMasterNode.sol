@@ -15,8 +15,8 @@ interface IMasterNode {
     function appendRegiste(uint _lockDay, address _addr) external payable;
     function appendRegiste(bytes20 _lockID, address _addr) external;
 
-    function applyProposal() external returns (uint);
-    function vote4proposal(uint _proposalID, uint _result) external;
+    function applyProposal() external returns (bytes20);
+    function vote4proposal(bytes20 _proposalID, uint _result) external;
 
     function changeAddress(address _addr, address _newAddr) external;
     function changeIP(address _addr, string memory _newIP) external;

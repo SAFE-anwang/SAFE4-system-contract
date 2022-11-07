@@ -99,11 +99,11 @@ contract MasterNode is IMasterNode {
         emit MNAppendRegiste(_addr, _lockID, "append registe masternode successfully");
     }
 
-    function applyProposal() public pure override returns (uint) {
+    function applyProposal() public pure override returns (bytes20) {
         return 0;
     }
 
-    function vote4proposal(uint _proposalID, uint _result) public override {
+    function vote4proposal(bytes20 _proposalID, uint _result) public override {
     }
 
     function changeAddress(address _addr, address _newAddr) public override {
