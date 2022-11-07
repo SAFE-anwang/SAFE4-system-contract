@@ -22,8 +22,8 @@ interface ISuperMasterNode {
     function applyUpdateProperty(SafeProperty _property, string memory _name, bytes memory _value, string memory _reason) external;
     function vote4UpdateProperty(SafeProperty _property, string memory _name, uint _result) external;
 
-    function uploadMasternodeState(uint[] memory _ids, uint8[] memory _states) external;
-    function uploadSuperMasternodeState(bytes20[] memory _ids, uint8[] memory _states) external;
+    function uploadMasterNodeState(uint[] memory _ids, uint8[] memory _states) external;
+    function uploadSuperMasterNodeState(bytes20[] memory _ids, uint8[] memory _states) external;
 
     function changeAddress(address _addr, address _newAddr) external;
     function changeIP(address _addr, string memory _newIP) external;

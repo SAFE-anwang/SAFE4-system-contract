@@ -138,7 +138,70 @@ contract SafeSys is Initializable, OwnableUpgradeable {
         mn.changeDescription(msg.sender, _newDescription);
     }
 
+    function getMNInfo(address _mnAddr) public view returns (MasterNodeInfo.Data memory) {
+        return mn.getInfo(_mnAddr);
+    }
+
     /**************************************** supermasternode ****************************************/
+    function registeSMN(uint _lockDay, address _smnAddr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable {
+        smn.registe(_lockDay, _smnAddr, _ip, _pubkey, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
+    }
+
+    function unionRegisteSMN(uint _lockDay, address _smnAddr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable {
+        smn.unionRegiste(_lockDay, _smnAddr, _ip, _pubkey, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
+    }
+
+    function appendRegisteSMN(uint _lockDay, address _smnAddr) public payable {
+        smn.appendRegiste(_lockDay, _smnAddr);
+    }
+
+    function appendRegisteSMN(bytes20 _lockID, address _smnAddr) public payable {
+        smn.appendRegiste(_lockID, _smnAddr);
+    }
+
+    function verifySMN(address _smnAddr) public onlyOwner {
+        smn.verify(_smnAddr);
+    }
+
+    function applyUpdateProperty(string memory _name, bytes memory _value, string memory _reason) public {
+        smn.applyUpdateProperty(property, _name, _value, _reason);
+    }
+
+    function vote4updateProperty(string memory _name, uint _result) public {
+        smn.vote4UpdateProperty(property, _name, _result);
+    }
+
+    function uploadMasterNodeState(uint[] memory _ids, uint8[] memory _states) public {
+        smn.uploadMasterNodeState(_ids, _states);
+    }
+
+    function uploadSuperMasterNodeState(bytes20[] memory _ids, uint8[] memory _states) public {
+        smn.uploadSuperMasterNodeState(_ids, _states);
+    }
+
+    function changeSMNAddress(address _newAddr) public {
+        smn.changeAddress(msg.sender, _newAddr);
+    }
+
+    function changeSMNIP(string memory _newIP) public {
+        smn.changeIP(msg.sender, _newIP);
+    }
+
+    function changeSMNPubkey(string memory _newPubkey) public {
+        smn.changePubkey(msg.sender, _newPubkey);
+    }
+
+    function changeSMNDescription(string memory _newDescription) public {
+        smn.changeDescription(msg.sender, _newDescription);
+    }
+
+    function getSMNInfo(address _smnAddr) public view returns (SuperMasterNodeInfo.Data memory) {
+        return smn.getInfo(_smnAddr);
+    }
+
+    function getTopSMN() public view returns (SuperMasterNodeInfo.Data[] memory) {
+        return smn.getTop();
+    }
 
     /**************************************** supermasternode vote ****************************************/
     function vote4SMN(address _smnAddr, bytes20 _recordID) public {

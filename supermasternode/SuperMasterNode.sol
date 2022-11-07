@@ -157,10 +157,10 @@ contract SuperMasterNode is ISuperMasterNode, Owner {
         _property.vote4UpdateProperty(_name, _result, getTop().length);
     }
 
-    function uploadMasternodeState(uint[] memory _ids, uint8[] memory _states) public override {
+    function uploadMasterNodeState(uint[] memory _ids, uint8[] memory _states) public override {
     }
 
-    function uploadSuperMasternodeState(bytes20[] memory _ids, uint8[] memory _states) public override {
+    function uploadSuperMasterNodeState(bytes20[] memory _ids, uint8[] memory _states) public override {
     }
 
     function changeAddress(address _addr, address _newAddr) public override {
