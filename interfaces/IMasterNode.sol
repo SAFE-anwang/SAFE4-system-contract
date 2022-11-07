@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import "../SafeProperty.sol";
 import "../account/AccountManager.sol";
-import "../supermasternode/SMNVote.sol";
 import "../masternode/MasterNodeInfo.sol";
 
 interface IMasterNode {
@@ -18,7 +17,6 @@ interface IMasterNode {
 
     function applyProposal() external returns (uint);
     function vote4proposal(uint _proposalID, uint _result) external;
-    function getApprovalVote4SMN() external view returns (SMNVote.ProxyInfo[] memory);
 
     function changeAddress(address _addr, address _newAddr) external;
     function changeIP(address _addr, string memory _newIP) external;

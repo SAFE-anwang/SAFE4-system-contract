@@ -18,13 +18,11 @@ contract MasterNode is IMasterNode {
 
     AccountManager internal am;
     SafeProperty internal property;
-    SMNVote internal smnVote;
 
-    constructor(SafeProperty _property, AccountManager _am, SMNVote _smnVote) {
+    constructor(SafeProperty _property, AccountManager _am) {
         counter = 1;
         property = _property;
         am = _am;
-        smnVote = _smnVote;
     }
 
     function registe(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description) public payable override {
@@ -133,10 +131,6 @@ contract MasterNode is IMasterNode {
         require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
         require(bytes(_newDescription).length > 0, "invalid description");
         masternodes[_addr].setDescription(_newDescription);
-    }
-
-    function getApprovalVote4SMN() public view override returns (SMNVote.ProxyInfo[] memory) {
-        return smnVote.getApprovals(msg.sender);
     }
 
     function getInfo(address _addr) public view override returns (MasterNodeInfo.Data memory) {
