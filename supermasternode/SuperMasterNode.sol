@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../node/Node.sol";
 import "../interfaces/ISuperMasterNode.sol";
 import "../utils/Owner.sol";
 import "../utils/SafeMath.sol";
@@ -40,7 +39,6 @@ contract SuperMasterNode is ISuperMasterNode, Owner {
         bytes20 lockID = am.deposit(msg.sender, msg.value, _lockDay);
         if(lockID == 0) {
             emit SMNRegiste(_addr, _ip, _pubkey, "registe supermasternode failed: lock failed");
-
             return;
         }
 
@@ -106,7 +104,7 @@ contract SuperMasterNode is ISuperMasterNode, Owner {
     }
 
     function appendRegiste(bytes20 _lockID, address _addr) public override {
-        AccountRecord.Data memory record = am.getRecordByID(_lockID);
+        AccountRecord.Data memory record = am.getRecordByID(msg.sender, _lockID);
         require(record.useHeight == 0, "lock id is used, can't append");
         require(record.addr == msg.sender, "lock address isn't caller");
         require(record.amount >= 1000, "lock amout need 1000 SAFE at least");
@@ -233,7 +231,7 @@ contract SuperMasterNode is ISuperMasterNode, Owner {
         return isConfirmed(_addr) || isUnconfirmed(_addr);
     }
 
-    function isConfirmed(address _addr) internal view returns (bool) {
+    function isConfirmed(address _addr) public view returns (bool) {
         return supermasternodes[_addr].createTime != 0;
     }
 
