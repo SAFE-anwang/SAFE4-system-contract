@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./SafeProperty.sol";
 import "./masternode/MasterNode.sol";
 import "./supermasternode/SuperMasterNode.sol";
+import "./supermasternode/SMNVote.sol";
 import "./utils/BytesUtil.sol";
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -20,14 +21,12 @@ contract SafeSys is Initializable, OwnableUpgradeable {
     MasterNode internal mn;
     SuperMasterNode internal smn;
 
-    event SafeLock(address _addr, uint _amount, uint _lockDay, string _msg);
-    event SafeWithdraw(address _addr, uint _amount, string _msg);
-
     constructor() {
         property = new SafeProperty();
         am = new AccountManager(property);
-        mn = new MasterNode(property, am, smnVote);
+        mn = new MasterNode(property, am);
         smn = new SuperMasterNode(property, am);
+        smnVote = new SMNVote();
         initialize();
     }
 
@@ -41,64 +40,61 @@ contract SafeSys is Initializable, OwnableUpgradeable {
     }
 
     /**************************************** account manager ****************************************/
-    // self-lock with specified locked height
-    function lock(uint _lockDay) public payable {
-        bytes20 lockID = am.deposit(msg.sender, msg.value, _lockDay);
-        if(lockID == 0) {
-            emit SafeLock(msg.sender, msg.value, _lockDay, "lock successfully");
-        } else {
-            emit SafeLock(msg.sender, msg.value, _lockDay, "lock failed, please check");
-        }
+    function deposit() public payable returns (bytes20) {
+        return am.deposit(msg.sender, msg.value, 0);
     }
 
-    // send locked safe to address by locked height
-    function sendLock(address _to, uint _lockDay) public payable {
-        bytes20 lockID = am.deposit(_to, msg.value, _lockDay);
-        if(lockID == 0) {
-            emit SafeLock(_to, msg.value, _lockDay, "send lock successfully");
-        } else {
-            emit SafeLock(_to, msg.value, _lockDay, "send lock failed, please check");
-        }
+    // self-lock with specified locked height
+    function lock(uint _lockDay) public payable returns (bytes20) {
+        return am.deposit(msg.sender, msg.value, _lockDay);
     }
 
     // withdraw all
     function withdraw() public {
-        uint ret = am.withdraw();
+        uint ret = am.withdraw(msg.sender);
         if(ret == 0) {
-            emit SafeWithdraw(msg.sender, 0, "insufficient amount");
-        } else {
-            emit SafeWithdraw(msg.sender, ret, "withdraw successfully");
+            return;
         }
+        removeVote4SMN(); // adjust supermasternode vote
     }
 
-    // withdraw specify amount
-    function withdraw(uint amount) public {
-        uint ret = am.withdraw(amount);
-        if(ret < amount) {
-            emit SafeWithdraw(msg.sender, ret, "insufficient amount");
-        } else {
-            emit SafeWithdraw(msg.sender, amount, "withdraw successfully");
+    // withdraw specify records
+    function withdraw(bytes20[] memory recordIDs) public {
+        uint ret = am.withdraw(msg.sender, recordIDs);
+        if(ret == 0) {
+            return;
         }
+        removeVote4SMN(recordIDs);
+    }
+
+    // transfer
+    function transfer(address _to, uint _amount) public returns (bytes20) {
+        return am.transfer(msg.sender, _to, _amount);
+    }
+
+    // transfer with lock
+    function transferLock(address _to, uint _amount, uint _lockDay) public returns (bytes20) {
+        return am.transferLock(msg.sender, _to, _amount, _lockDay);
     }
 
     // get total amount
     function getTotalAmount() public view returns (uint, bytes20[] memory) {
-        return am.getTotalAmount();
+        return am.getTotalAmount(msg.sender);
     }
 
     // get unlocked amount
     function getAvailableAmount() public view returns (uint, bytes20[] memory) {
-        return am.getAvailableAmount();
+        return am.getAvailableAmount(msg.sender);
     }
 
     // get locked amount
     function getLockAmount() public view returns (uint, bytes20[] memory) {
-        return am.getLockAmount();
+        return am.getLockAmount(msg.sender);
     }
 
     // get all records
     function getAccountRecords() public view returns(AccountRecord.Data[] memory) {
-        return am.getAccountRecords();
+        return am.getAccountRecords(msg.sender);
     }
 
     /**************************************** masternode ****************************************/
