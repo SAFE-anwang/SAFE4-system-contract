@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../node/Node.sol";
 import "../interfaces/IMasterNode.sol";
 import "../utils/SafeMath.sol";
 import "../utils/BytesUtil.sol";
@@ -32,6 +31,7 @@ contract MasterNode is IMasterNode {
         require(bytes(_ip).length != 0, "invalid masternode ip");
         require(bytes(_pubkey).length != 0, "invalid masternode pubkey");
         require(bytes(_description).length != 0, "invalid masternode description");
+        require(!exist(_addr), "existent masternode");
 
         bytes20 lockID = am.deposit(msg.sender, msg.value, _lockDay);
         if(lockID == 0) {
@@ -86,7 +86,8 @@ contract MasterNode is IMasterNode {
     }
 
     function appendRegiste(bytes20 _lockID, address _addr) public override {
-        AccountRecord.Data memory record = am.getRecordByID(_lockID);
+        require(exist(_addr), "non-existent masternode");
+        AccountRecord.Data memory record = am.getRecordByID(msg.sender, _lockID);
         require(record.useHeight == 0, "lock id is used, can't append");
         require(record.addr == msg.sender, "lock address isn't caller");
         require(record.amount >= 50, "lock amout need 50 SAFE at least");
@@ -139,7 +140,11 @@ contract MasterNode is IMasterNode {
     }
 
     /************************************************** internal **************************************************/
-    function exist(address _addr) internal view returns (bool) {
+    function getCounter() internal returns (uint) {
+        return counter++;
+    }
+
+    function exist(address _addr) public view returns (bool) {
         return masternodes[_addr].createTime != 0;
     }
 }
