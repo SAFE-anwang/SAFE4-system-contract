@@ -114,24 +114,88 @@ contract SafeSys is Initializable, OwnableUpgradeable {
         mn.appendRegiste(_lockID, _mnAddr);
     }
 
+    function applyProposal() public view returns (bytes20) {
+        return mn.applyProposal();
+    }
+
+    function vote4proposal(bytes20 _proposalID, uint _result) public {
+        mn.vote4proposal(_proposalID, _result);
+    }
+
+    function changeMNAddress(address _newAddr) public {
+        mn.changeAddress(msg.sender, _newAddr);
+    }
+
+    function changeMNIP(string memory _newIP) public {
+        mn.changeIP(msg.sender, _newIP);
+    }
+
+    function changeMNPubkey(string memory _newPubkey) public {
+        mn.changePubkey(msg.sender, _newPubkey);
+    }
+
+    function changeMNDescription(string memory _newDescription) public {
+        mn.changeDescription(msg.sender, _newDescription);
+    }
+
     /**************************************** supermasternode ****************************************/
 
     /**************************************** supermasternode vote ****************************************/
-    function vote4SMN(address _smnAddr) public virtual {
-        // require(isSuperMasterNode(_to), "target is not a supermasternode");
-        //_smnVote.vote(_to);
+    function vote4SMN(address _smnAddr, bytes20 _recordID) public {
+        require(!isSuperMasterNode(msg.sender), "voter can't be a supermasternode");
+        require(isSuperMasterNode(_smnAddr), "target is not a supermasternode");
+        AccountRecord.Data memory record = am.getRecordByID(msg.sender, _recordID);
+        uint num = 0;
+        if(isMasterNode(msg.sender)) {
+            num = 2 * record.amount;
+        } else if(record.unlockHeight != 0) {
+            num = 15 * record.amount / 10;
+        } else {
+            num = record.amount;
+        }
+        smnVote.vote(msg.sender, _smnAddr, _recordID, num);
     }
 
     function removeVote4SMN() public {
-        //_smnVote.removeVote();
+        smnVote.removeVote(msg.sender);
     }
 
-    function approvalVote4SMN(address _proxyAddr) public {
-        //require(isMasterNode(_to), "target is not a masternode");
-       // _smnVote.approval(_to);
+    function removeVote4SMN(bytes20[] memory _recordIDs) public {
+        smnVote.removeVote(msg.sender, _recordIDs);
     }
 
-    function removeApprovalVote4SMN() public {
-       // _smnVote.approval(address(0));
+    function approvalVote4SMN(address _proxyAddr, bytes20 _recordID) public {
+        require(isMasterNode(_proxyAddr), "proxy address is not a masternode");
+        AccountRecord.Data memory record = am.getRecordByID(msg.sender, _recordID);
+        uint num = 0;
+        if(isMasterNode(msg.sender)) {
+            num = 2 * record.amount;
+        } else if(record.unlockHeight != 0) {
+            num = 15 * record.amount / 10;
+        } else {
+            num = record.amount;
+        }
+        smnVote.approval(msg.sender, _proxyAddr, _recordID, num);
+    }
+
+    function removeAllApprovalVote4SMN() public {
+        smnVote.removeApproval(msg.sender);
+    }
+
+    function removeApprovalVote4SMN(bytes20[] memory _recordIDs) public {
+        smnVote.removeApproval(msg.sender, _recordIDs);
+    }
+
+    function getApprovalVote4SMN() public view returns (address[] memory) {
+        return smnVote.getApprovals(msg.sender);
+    }
+
+    /**************************************** internal ****************************************/
+    function isMasterNode(address _addr) internal view returns (bool) {
+        return mn.exist(_addr);
+    }
+
+    function isSuperMasterNode(address _addr) internal view returns (bool) {
+        return smn.isConfirmed(_addr);
     }
 }
