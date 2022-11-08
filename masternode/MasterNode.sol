@@ -5,7 +5,7 @@ import "../interfaces/IMasterNode.sol";
 import "../utils/SafeMath.sol";
 import "../utils/BytesUtil.sol";
 
-contract MasterNode is IMasterNode {
+contract MasterNode {
     using SafeMath for uint;
     using BytesUtil for bytes;
     using MasterNodeInfo for MasterNodeInfo.Data;
@@ -18,13 +18,17 @@ contract MasterNode is IMasterNode {
     AccountManager internal am;
     SafeProperty internal property;
 
+    event MNRegiste(address _addr, string _ip, string _pubkey, string _msg);
+    event MNUnionRegiste(address _addr, string _ip, string _pubkey, string _msg);
+    event MNAppendRegiste(address _addr, bytes20 _lockID, string _msg);
+
     constructor(SafeProperty _property, AccountManager _am) {
         counter = 1;
         property = _property;
         am = _am;
     }
 
-    function registe(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description) public payable override {
+    function registe(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description) public payable {
         require(msg.value >= 1000, "masternode need lock 1000 SAFE at least");
         require(_lockDay >= 180, "masternode need lock 6 month at least");
         require(_addr != address(0), "invalid masternode address");
@@ -46,7 +50,7 @@ contract MasterNode is IMasterNode {
         emit MNRegiste(_addr, _ip, _pubkey, "registe masternode successfully");
     }
 
-    function unionRegiste(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description) public payable override {
+    function unionRegiste(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description) public payable {
         require(msg.value >= 200, "union masternode need lock 200 SAFE at least");
         require(_lockDay >= 365, "union masternode need lock 1 year at least");
         require(_addr != address(0), "invalid supermasternode address");
@@ -68,7 +72,7 @@ contract MasterNode is IMasterNode {
         emit MNRegiste(_addr, _ip, _pubkey, "registe union masternode successfully");
     }
 
-    function appendRegiste(uint _lockDay, address _addr) public payable override {
+    function appendRegiste(uint _lockDay, address _addr) public payable {
         require(msg.value >= 50, "masternode need append lock 50 SAFE at least");
         require(_lockDay >= 180, "masternode need lock 6 month at least");
         require(exist(_addr), "non-existent masternode");
@@ -85,7 +89,7 @@ contract MasterNode is IMasterNode {
         emit MNAppendRegiste(_addr, lockID, "append registe masternode successfully");
     }
 
-    function appendRegiste(bytes20 _lockID, address _addr) public override {
+    function appendRegiste(bytes20 _lockID, address _addr) public {
         require(exist(_addr), "non-existent masternode");
         AccountRecord.Data memory record = am.getRecordByID(msg.sender, _lockID);
         require(record.useHeight == 0, "lock id is used, can't append");
@@ -100,14 +104,14 @@ contract MasterNode is IMasterNode {
         emit MNAppendRegiste(_addr, _lockID, "append registe masternode successfully");
     }
 
-    function applyProposal() public pure override returns (bytes20) {
+    function applyProposal() public pure returns (bytes20) {
         return 0;
     }
 
-    function vote4proposal(bytes20 _proposalID, uint _result) public override {
+    function vote4proposal(bytes20 _proposalID, uint _result) public {
     }
 
-    function changeAddress(address _addr, address _newAddr) public override {
+    function changeAddress(address _addr, address _newAddr) public {
         require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
         require(exist(_addr), "non-existent masternode");
         require(!exist(_newAddr), "new masternode address has exist");
@@ -116,25 +120,25 @@ contract MasterNode is IMasterNode {
         id2address[masternodes[_newAddr].id] = _newAddr;
     }
 
-    function changeIP(address _addr, string memory _newIP) public override {
+    function changeIP(address _addr, string memory _newIP) public {
         require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
         require(bytes(_newIP).length > 0, "invalid ip");
         masternodes[_addr].setIP(_newIP);
     }
 
-    function changePubkey(address _addr, string memory _newPubkey) public override {
+    function changePubkey(address _addr, string memory _newPubkey) public {
         require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
         require(bytes(_newPubkey).length > 0, "invalid pubkey");
         masternodes[_addr].setPubkey(_newPubkey);
     }
 
-    function changeDescription(address _addr, string memory _newDescription) public override {
+    function changeDescription(address _addr, string memory _newDescription) public {
         require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
         require(bytes(_newDescription).length > 0, "invalid description");
         masternodes[_addr].setDescription(_newDescription);
     }
 
-    function getInfo(address _addr) public view override returns (MasterNodeInfo.Data memory) {
+    function getInfo(address _addr) public view returns (MasterNodeInfo.Data memory) {
         require(exist(_addr), "non-existent masternode");
         return masternodes[_addr];
     }

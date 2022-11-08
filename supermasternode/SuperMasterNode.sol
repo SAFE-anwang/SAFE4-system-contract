@@ -2,11 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/ISuperMasterNode.sol";
-import "../utils/Owner.sol";
 import "../utils/SafeMath.sol";
 import "../utils/BytesUtil.sol";
 
-contract SuperMasterNode is ISuperMasterNode, Owner {
+contract SuperMasterNode {
     using SafeMath for uint;
     using BytesUtil for bytes;
     using SuperMasterNodeInfo for SuperMasterNodeInfo.Data;
@@ -20,13 +19,17 @@ contract SuperMasterNode is ISuperMasterNode, Owner {
     mapping(bytes20 => address) internal id2address;
     bytes20[] internal ids;
 
+    event SMNRegiste(address _addr, string _ip, string _pubkey, string _msg);
+    event SMNUnionRegiste(address _addr, string _ip, string _pubkey, string _msg);
+    event SMNAppendRegiste(address _addr, bytes20 _lockID, string _msg);
+
     constructor(SafeProperty _property, AccountManager _am) {
         counter = 1;
         am = _am;
         property = _property;
     }
 
-    function registe(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable override {
+    function registe(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable {
         require(msg.value >= 20000, "supermasternode need lock 20000 SAFE at least");
         require(_lockDay >= 365, "supermasternode need lock 1 year at least");
         require(_addr != address(0), "invalid supermasternode address");
@@ -54,7 +57,7 @@ contract SuperMasterNode is ISuperMasterNode, Owner {
         emit SMNRegiste(_addr, _ip, _pubkey, "registe supermasternode successfully");
     }
 
-    function unionRegiste(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable override {
+    function unionRegiste(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable {
         require(msg.value >= 4000, "union supermasternode need lock 4000 SAFE at least");
         require(_lockDay >= 730, "union supermasternode need lock 2 year at least");
         require(_addr != address(0), "invalid supermasternode address");
@@ -82,7 +85,7 @@ contract SuperMasterNode is ISuperMasterNode, Owner {
         emit SMNRegiste(_addr, _ip, _pubkey, "registe union supermasternode successfully");
     }
 
-    function appendRegiste(uint _lockDay, address _addr) public payable override {
+    function appendRegiste(uint _lockDay, address _addr) public payable {
         require(msg.value >= 1000, "supermasternode need append lock 1000 SAFE at least");
         require(_lockDay >= 365, "supermasternode need lock 1 year at least");
         require(exist(_addr), "non-existent supermasternode");
@@ -103,7 +106,7 @@ contract SuperMasterNode is ISuperMasterNode, Owner {
         emit SMNAppendRegiste(_addr, lockID, "append registe supermasternode successfully");
     }
 
-    function appendRegiste(bytes20 _lockID, address _addr) public override {
+    function appendRegiste(bytes20 _lockID, address _addr) public {
         AccountRecord.Data memory record = am.getRecordByID(msg.sender, _lockID);
         require(record.useHeight == 0, "lock id is used, can't append");
         require(record.addr == msg.sender, "lock address isn't caller");
@@ -120,14 +123,14 @@ contract SuperMasterNode is ISuperMasterNode, Owner {
         emit SMNAppendRegiste(_addr, _lockID, "append registe supermasternode successfully");
     }
 
-    function verify(address _addr) public isOwner override {
+    function verify(address _addr) public {
         require(isUnconfirmed(_addr), "non-existent unconfirmed supermasternode");
         require(!isConfirmed(_addr), "existent confirmed supermasternode");
         supermasternodes[_addr] = unconfirmedSupermasternodes[_addr];
         delete unconfirmedSupermasternodes[_addr];
     }
 
-    function reward(address _addr, uint _amount) public override {
+    function reward(address _addr, uint _amount) public {
         SuperMasterNodeInfo.Data memory info = supermasternodes[_addr];
         uint creatorReward = _amount.mul(info.incentivePlan.creator).div(100);
         uint partnerReward = _amount.mul(info.incentivePlan.partner).div(100);
@@ -149,21 +152,21 @@ contract SuperMasterNode is ISuperMasterNode, Owner {
         }
     }
 
-    function applyUpdateProperty(SafeProperty _property, string memory _name, bytes memory _value, string memory _reason) public override {
+    function applyUpdateProperty(SafeProperty _property, string memory _name, bytes memory _value, string memory _reason) public {
         _property.applyUpdateProperty(_name, _value, _reason);
     }
 
-    function vote4UpdateProperty(SafeProperty _property, string memory _name, uint _result) public override {
+    function vote4UpdateProperty(SafeProperty _property, string memory _name, uint _result) public {
         _property.vote4UpdateProperty(_name, _result, getTop().length);
     }
 
-    function uploadMasterNodeState(uint[] memory _ids, uint8[] memory _states) public override {
+    function uploadMasterNodeState(uint[] memory _ids, uint8[] memory _states) public {
     }
 
-    function uploadSuperMasterNodeState(bytes20[] memory _ids, uint8[] memory _states) public override {
+    function uploadSuperMasterNodeState(bytes20[] memory _ids, uint8[] memory _states) public {
     }
 
-    function changeAddress(address _addr, address _newAddr) public override {
+    function changeAddress(address _addr, address _newAddr) public {
         require(msg.sender == supermasternodes[_addr].creator, "caller isn't supermasternode creator");
         require(isConfirmed(_addr), "unconfirmed supermasternode can't change address");
         require(!exist(_newAddr), "new masternode address has exist");
@@ -172,30 +175,30 @@ contract SuperMasterNode is ISuperMasterNode, Owner {
         id2address[supermasternodes[_newAddr].id] = _newAddr;
     }
 
-    function changeIP(address _addr, string memory _newIP) public override {
+    function changeIP(address _addr, string memory _newIP) public {
         require(msg.sender == supermasternodes[_addr].creator, "caller isn't supermasternode creator");
         require(bytes(_newIP).length > 0, "invalid ip");
         supermasternodes[_addr].setIP(_newIP);
     }
 
-    function changePubkey(address _addr, string memory _newPubkey) public override {
+    function changePubkey(address _addr, string memory _newPubkey) public {
         require(msg.sender == supermasternodes[_addr].creator, "caller isn't supermasternode creator");
         require(bytes(_newPubkey).length > 0, "invalid pubkey");
         supermasternodes[_addr].setPubkey(_newPubkey);
     }
 
-    function changeDescription(address _addr, string memory _newDescription) public override {
+    function changeDescription(address _addr, string memory _newDescription) public {
         require(msg.sender == supermasternodes[_addr].creator, "caller isn't supermasternode creator");
         require(bytes(_newDescription).length > 0, "invalid description");
         supermasternodes[_addr].setDescription(_newDescription);
     }
 
-    function getInfo(address _addr) public view override returns (SuperMasterNodeInfo.Data memory) {
+    function getInfo(address _addr) public view returns (SuperMasterNodeInfo.Data memory) {
         require(exist(_addr), "non-existent masternode");
         return supermasternodes[_addr];
     }
 
-    function getTop() public view override returns (SuperMasterNodeInfo.Data[] memory) {
+    function getTop() public view returns (SuperMasterNodeInfo.Data[] memory) {
         uint num = 0;
         for(uint i = 0; i < ids.length; i++) {
             address addr = id2address[ids[i]];
