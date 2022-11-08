@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../interfaces/ISuperMasterNode.sol";
+import "../account/AccountManager.sol";
+import "../supermasternode/SuperMasterNodeInfo.sol";
 import "../utils/SafeMath.sol";
 import "../utils/BytesUtil.sol";
 
