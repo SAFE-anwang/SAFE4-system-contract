@@ -104,6 +104,18 @@ contract MasterNode {
         emit MNAppendRegiste(_addr, _lockID, "append registe masternode successfully");
     }
 
+    function reward(address _addr, uint _amount) public {
+        MasterNodeInfo.Data memory info = masternodes[_addr];
+        uint total = 0;
+        for(uint i = 0; i < info.founders.length; i++) {
+            total = info.founders[i].amount.add(total);
+            if(total >= 20000) {
+                break;
+            }
+            am.reward(info.founders[i].addr, _amount.mul(info.founders[i].amount).div(1000), 6);
+        }
+    }
+
     function applyProposal() public pure returns (bytes20) {
         return 0;
     }

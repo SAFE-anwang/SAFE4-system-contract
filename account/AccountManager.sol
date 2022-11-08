@@ -27,7 +27,8 @@ contract AccountManager {
     uint WITHDRAW_TYPE = 3;
     uint TRANSFER_TYPE = 4;
     uint TRANSFER_LOCK_TYPE = 5;
-    uint REWARD_TYPE = 6;
+    uint MN_REWARD_TYPE = 6;
+    uint SMN_REWARD_TYPE = 7;
 
     event SafeDeposit(address _addr, uint _amount, uint _lockDay, string _msg);
     event SafeWithdraw(address _addr, uint _amount, string _msg);
@@ -157,12 +158,13 @@ contract AccountManager {
         return recordID;
     }
 
-    function reward(address _to, uint _amount) public returns (bytes20) {
+    function reward(address _to, uint _amount, uint _rewardType) public returns (bytes20) {
         require(_to != address(0), "reward to the zero address");
         require(_amount > 0, "invalid amount");
+        require(_rewardType == 6 || _rewardType == 7, "invalid reward type, must be 6(masternode reward), 7(supermasternode reward)");
         bytes20 recordID = addRecord(_to, _amount, 0, 0, 0);
         if(recordID != 0) {
-            addHistory(_to, recordID, _amount, REWARD_TYPE);
+            addHistory(_to, recordID, _amount, _rewardType);
         }
         return recordID;
     }

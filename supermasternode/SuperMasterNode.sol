@@ -136,7 +136,7 @@ contract SuperMasterNode {
         uint partnerReward = _amount.mul(info.incentivePlan.partner).div(100);
         uint voterReward = _amount.sub(creatorReward).sub(partnerReward);
         // reward to creator
-        am.reward(info.creator, creatorReward);
+        am.reward(info.creator, creatorReward, 7);
         // reward to partner
         uint total = 0;
         for(uint i = 0; i < info.founders.length; i++) {
@@ -144,11 +144,11 @@ contract SuperMasterNode {
             if(total >= 20000) {
                 break;
             }
-            am.reward(info.founders[i].addr, partnerReward.mul(info.founders[i].amount).div(20000 - info.founders[0].amount));
+            am.reward(info.founders[i].addr, partnerReward.mul(info.founders[i].amount).div(20000 - info.founders[0].amount), 7);
         }
         // reward to voter
         for(uint i = 0; i < info.voters.length; i++) {
-            am.reward(info.founders[i].addr, voterReward.mul(info.voters[i].amount).div(info.totalVoterAmount));
+            am.reward(info.founders[i].addr, voterReward.mul(info.voters[i].amount).div(info.totalVoterAmount), 7);
         }
     }
 
