@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "./SuperMasterNodeInfo.sol";
+import "./SMNVote.sol";
 import "../account/AccountManager.sol";
-import "../supermasternode/SuperMasterNodeInfo.sol";
 import "../utils/SafeMath.sol";
 import "../utils/BytesUtil.sol";
 
@@ -14,6 +15,7 @@ contract SuperMasterNode {
     uint internal counter;
     AccountManager internal am;
     SafeProperty internal property;
+    SMNVote internal smnVote;
 
     mapping(address => SuperMasterNodeInfo.Data) internal supermasternodes;
     mapping(address => SuperMasterNodeInfo.Data) internal unconfirmedSupermasternodes;
@@ -24,10 +26,11 @@ contract SuperMasterNode {
     event SMNUnionRegiste(address _addr, string _ip, string _pubkey, string _msg);
     event SMNAppendRegiste(address _addr, bytes20 _lockID, string _msg);
 
-    constructor(SafeProperty _property, AccountManager _am) {
+    constructor(SafeProperty _property, AccountManager _am, SMNVote _smnVote) {
         counter = 1;
         am = _am;
         property = _property;
+        smnVote = _smnVote;
     }
 
     function registe(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable {
@@ -48,9 +51,11 @@ contract SuperMasterNode {
 
         bytes20 id = ripemd160(abi.encodePacked(getCounter(), msg.sender, _lockDay, _addr, _ip, _pubkey));
         if(block.number > property.getProperty("smn_unverify_height").value.toUint()) { // don't need verify
-            supermasternodes[_addr].create(id, lockID, _ip, _pubkey, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
+            supermasternodes[_addr].create(id, msg.sender, msg.value, lockID, _ip, _pubkey, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
+            supermasternodes[_addr].addr = _addr;
         } else { // need verify
-            unconfirmedSupermasternodes[_addr].create(id, lockID, _ip, _pubkey, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
+            unconfirmedSupermasternodes[_addr].create(id, msg.sender, msg.value, lockID, _ip, _pubkey, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
+            unconfirmedSupermasternodes[_addr].addr = _addr;
         }
         id2address[id] = _addr;
         ids.push(id);
@@ -76,9 +81,11 @@ contract SuperMasterNode {
 
         bytes20 id = ripemd160(abi.encodePacked(getCounter(), msg.sender, _lockDay, _addr, _ip, _pubkey));
         if(block.number > property.getProperty("smn_unverify_height").value.toUint()) { // don't need verify
-            supermasternodes[_addr].create(id, lockID, _ip, _pubkey, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
+            supermasternodes[_addr].create(id, msg.sender, msg.value, lockID, _ip, _pubkey, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
+            supermasternodes[_addr].addr = _addr;
         } else { // need verify
-            unconfirmedSupermasternodes[_addr].create(id, lockID, _ip, _pubkey, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
+            unconfirmedSupermasternodes[_addr].create(id, msg.sender, msg.value, lockID, _ip, _pubkey, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
+            unconfirmedSupermasternodes[_addr].addr = _addr;
         }
         id2address[id] = _addr;
         ids.push(id);
@@ -210,20 +217,30 @@ contract SuperMasterNode {
             }
         }
 
-        SuperMasterNodeInfo.Data[] memory temp = new SuperMasterNodeInfo.Data[](num);
+        address[] memory smnAddrs = new address[](num);
         uint k = 0;
         for(uint i = 0; i < ids.length; i++) {
             address addr = id2address[ids[i]];
             if(isConfirmed(addr)) {
                 if(supermasternodes[addr].amount >= 20000) {
-                    temp[k++] = supermasternodes[addr];
+                    smnAddrs[k++] = addr;
                 }
             }
         }
 
-        // TODO: sort
-        // TODO: return top 21
-        return temp;
+        // sort by vote number
+        sortByVote(smnAddrs, 0, smnAddrs.length - 1);
+
+        // get top, max: 21
+        num = 21;
+        if(smnAddrs.length < 21) {
+            num = smnAddrs.length;
+        }
+        SuperMasterNodeInfo.Data[] memory ret = new SuperMasterNodeInfo.Data[](num);
+        for(uint i = 0; i < num; i++) {
+            ret[i] = supermasternodes[smnAddrs[i]];
+        }
+        return ret;
     }
 
     /************************************************** internal **************************************************/
@@ -248,5 +265,25 @@ contract SuperMasterNode {
             return false;
         }
         return true;
+    }
+
+    function sortByVote(address[] memory _arr, uint _left, uint _right) internal view {
+        uint i = _left;
+        uint j = _right;
+        if (i == j) return;
+        address middle = _arr[_left + (_right - _left) / 2];
+        while(i <= j) {
+            while(smnVote.getVoteNum(_arr[i]) > smnVote.getVoteNum(middle)) i++;
+            while(smnVote.getVoteNum(middle) > smnVote.getVoteNum(_arr[j]) && j > 0) j--;
+            if(i <= j) {
+                (_arr[i], _arr[j]) = (_arr[j], _arr[i]);
+                i++;
+                if(j != 0) j--;
+            }
+        }
+        if(_left < j)
+            sortByVote(_arr, _left, j);
+        if(i < _right)
+            sortByVote(_arr, i, _right);
     }
 }

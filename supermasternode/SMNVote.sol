@@ -176,6 +176,10 @@ contract SMNVote is SMNVoteProxy {
         return smn2voters[_smnAddr];
     }
 
+    function getVoteNum(address _smnAddr) public view returns (uint) {
+        return smn2num[_smnAddr];
+    }
+
     /**************************************** internal ****************************************/
     function existSMN(address _voterAddr, address _smnAddr) internal view returns (bool, uint) {
         SMNVoteLib.Detail memory voteDetail = voter2smns[_voterAddr];
