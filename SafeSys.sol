@@ -25,8 +25,8 @@ contract SafeSys is Initializable, OwnableUpgradeable {
         property = new SafeProperty();
         am = new AccountManager(property);
         mn = new MasterNode(property, am);
-        smn = new SuperMasterNode(property, am);
         smnVote = new SMNVote();
+        smn = new SuperMasterNode(property, am, smnVote);
         initialize();
     }
 
@@ -251,6 +251,12 @@ contract SafeSys is Initializable, OwnableUpgradeable {
 
     function getApprovalVote4SMN() public view returns (address[] memory) {
         return smnVote.getApprovals(msg.sender);
+    }
+
+    /**************************************** common ****************************************/
+    function reward(address _smnAddr, uint _smnAmount, address _mnAddr, uint _mnAmount) public {
+        smn.reward(_smnAddr, _smnAmount);
+        mn.reward(_mnAddr, _mnAmount);
     }
 
     /**************************************** internal ****************************************/
