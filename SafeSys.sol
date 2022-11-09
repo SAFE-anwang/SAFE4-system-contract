@@ -13,6 +13,7 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 contract SafeSys is Initializable, OwnableUpgradeable {
+    using SafeMath for uint;
     using BytesUtil for bytes;
 
     SafeProperty internal property;
@@ -25,7 +26,7 @@ contract SafeSys is Initializable, OwnableUpgradeable {
         property = new SafeProperty();
         am = new AccountManager(property);
         mn = new MasterNode(property, am);
-        smnVote = new SMNVote();
+        smnVote = new SMNVote(am);
         smn = new SuperMasterNode(property, am, smnVote);
         initialize();
     }
@@ -90,6 +91,11 @@ contract SafeSys is Initializable, OwnableUpgradeable {
     // get locked amount
     function getLockAmount() public view returns (uint, bytes20[] memory) {
         return am.getLockAmount(msg.sender);
+    }
+
+    // get bind amount
+    function getBindAMount() public view returns (uint, bytes20[] memory) {
+        return am.getBindAmount(msg.sender);
     }
 
     // get all records

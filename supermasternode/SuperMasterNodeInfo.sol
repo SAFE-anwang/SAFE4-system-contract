@@ -12,8 +12,6 @@ library SuperMasterNodeInfo {
         bytes20 lockID;
         address addr;
         uint amount;
-        uint addHeight;
-        uint leaveHeight;
     }
 
     struct Data {
@@ -46,8 +44,6 @@ library SuperMasterNodeInfo {
         info.lockID = _lockID;
         info.addr = _creator;
         info.amount = _amount;
-        info.addHeight = block.number;
-        info.leaveHeight = 0; // creator can't leave
         _self.founders.push(info);
 
         IncentivePlan memory plan;
@@ -60,7 +56,7 @@ library SuperMasterNodeInfo {
         _self.updateTime = 0;
     }
 
-    function appendLock(Data storage _self, bytes20 _lockID, address _addr, uint _amount, uint _leaveHeight) public {
+    function appendLock(Data storage _self, bytes20 _lockID, address _addr, uint _amount) public {
         require(_self.amount != 0, "need create first");
         require(!existLockID(_self, _lockID), "existent lock id");
 
@@ -68,8 +64,6 @@ library SuperMasterNodeInfo {
         info.lockID = _lockID;
         info.addr = _addr;
         info.amount = _amount;
-        info.addHeight = block.number;
-        info.leaveHeight = _leaveHeight;
         _self.founders.push(info);
 
         _self.amount += _amount;

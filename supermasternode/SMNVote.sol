@@ -2,12 +2,19 @@
 pragma solidity ^0.8.0;
 
 import "./SMNVoteProxy.sol";
+import "../account/AccountManager.sol";
 
 contract SMNVote is SMNVoteProxy {
+    AccountManager internal am;
+
     mapping(bytes20 => SMNVoteLib.RecordInfo) record2vote;
     mapping(address => SMNVoteLib.Detail) voter2smns; // voter to supermasternode list
     mapping(address => uint) smn2num; // supermasternode to total vote number
     mapping(address => address[]) smn2voters; // supermasternode to voter list
+
+    constructor(AccountManager _am) {
+        am = _am;
+    }
 
     // vote for supermasternode
     function vote(address _voterAddr, address _smnAddr, bytes20 _recordID, uint _num) public {
@@ -30,6 +37,8 @@ contract SMNVote is SMNVoteProxy {
             // add record detail
             record2vote[_recordID] = SMNVoteLib.RecordInfo(_voterAddr, _smnAddr, 0, block.number);
         }
+
+        am.setBindDay(_recordID, 7);
 
         address[] storage voters = smn2voters[_voterAddr];
         (exist, pos) = existVoter(_smnAddr, _voterAddr);

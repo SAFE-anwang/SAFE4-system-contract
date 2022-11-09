@@ -59,7 +59,7 @@ contract SuperMasterNode {
         }
         id2address[id] = _addr;
         ids.push(id);
-        am.setUseHeight(lockID, block.number);
+        am.setBindDay(lockID, _lockDay); // creator's lock id can't unbind util unlock it
         emit SMNRegiste(_addr, _ip, _pubkey, "registe supermasternode successfully");
     }
 
@@ -89,7 +89,7 @@ contract SuperMasterNode {
         }
         id2address[id] = _addr;
         ids.push(id);
-        am.setUseHeight(lockID, block.number);
+        am.setBindDay(lockID, _lockDay); // creator's lock id can't unbind util unlock it
         emit SMNRegiste(_addr, _ip, _pubkey, "registe union supermasternode successfully");
     }
 
@@ -104,30 +104,28 @@ contract SuperMasterNode {
             return;
         }
 
-        uint leaveHeight = block.number.add(uint(90 * 86400).div(property.getProperty("block_space").value.toUint()));
         if(isConfirmed(_addr)) {
-            supermasternodes[_addr].appendLock(lockID, msg.sender, msg.value, leaveHeight);
+            supermasternodes[_addr].appendLock(lockID, msg.sender, msg.value);
         } else {
-            unconfirmedSupermasternodes[_addr].appendLock(lockID, msg.sender, msg.value, leaveHeight);
+            unconfirmedSupermasternodes[_addr].appendLock(lockID, msg.sender, msg.value);
         }
-        am.setUseHeight(lockID, block.number);
+        am.setBindDay(lockID, 90); // lock id can't be unbind util 90 days.
         emit SMNAppendRegiste(_addr, lockID, "append registe supermasternode successfully");
     }
 
     function appendRegiste(bytes20 _lockID, address _addr) public {
         AccountRecord.Data memory record = am.getRecordByID(msg.sender, _lockID);
-        require(record.useHeight == 0, "lock id is used, can't append");
+        require(record.bindInfo.bindHeight == 0, "lock id is bind, can't append");
         require(record.addr == msg.sender, "lock address isn't caller");
         require(record.amount >= 1000, "lock amout need 1000 SAFE at least");
         require(record.lockDay >= 365, "lock day less 1 year");
 
-        uint leaveHeight = block.number.add(uint(90 * 86400).div(property.getProperty("block_space").value.toUint()));
         if(isConfirmed(_addr)) {
-            supermasternodes[_addr].appendLock(_lockID, record.addr, record.amount, leaveHeight);
+            supermasternodes[_addr].appendLock(_lockID, record.addr, record.amount);
         } else {
-            unconfirmedSupermasternodes[_addr].appendLock(_lockID, record.addr, record.amount, leaveHeight);
+            unconfirmedSupermasternodes[_addr].appendLock(_lockID, record.addr, record.amount);
         }
-        am.setUseHeight(_lockID, block.number);
+        am.setBindDay(_lockID, 90); // lock id can't be unbind util 90 days.
         emit SMNAppendRegiste(_addr, _lockID, "append registe supermasternode successfully");
     }
 

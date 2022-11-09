@@ -2,6 +2,11 @@
 pragma solidity ^0.8.0;
 
 library AccountRecord {
+    struct BindInfo {
+        uint bindHeight;
+        uint unbindHeight;
+    }
+
     struct Data {
         bytes20 id;
         address addr;
@@ -11,7 +16,7 @@ library AccountRecord {
         uint unlockHeight; // unlocked height
         uint createTime;
         uint updateTime;
-        uint useHeight; // for voting or regist
+        BindInfo bindInfo; // for voting or regist
     }
 
     function create(Data memory _self, bytes20 _id, address _addr, uint _amount, uint _lockDay, uint _startHeight, uint _unlockHeight) public view {
@@ -23,7 +28,7 @@ library AccountRecord {
         _self.unlockHeight = _unlockHeight;
         _self.createTime = block.timestamp;
         _self.updateTime = 0;
-        _self.useHeight = 0;
+        _self.bindInfo = BindInfo(0, 0);
     }
 
     function setAmount(Data storage _self, uint _amount) public {
@@ -31,7 +36,8 @@ library AccountRecord {
         _self.updateTime = block.timestamp;
     }
 
-    function setUseHeight(Data storage _self, uint _height) internal {
-        _self.useHeight = _height;
+    function setBindInfo(Data storage _self, uint _bindHeight, uint _unbindHeight) internal {
+        _self.bindInfo.bindHeight = _bindHeight;
+        _self.bindInfo.unbindHeight = _unbindHeight;
     }
 }

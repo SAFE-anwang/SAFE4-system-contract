@@ -199,7 +199,7 @@ contract AccountManager {
         uint amount = 0;
         uint index = 0;
         for(uint i = 0; i < records.length; i++) {
-            if(curHeight >= records[i].unlockHeight) {
+            if(curHeight >= records[i].unlockHeight && curHeight >= records[i].bindInfo.unbindHeight) {
                 amount += records[i].amount;
                 recordIDs[index++] = records[i].id;
             }
@@ -215,7 +215,33 @@ contract AccountManager {
         // get avaiable count
         uint count = 0;
         for(uint i = 0; i < records.length; i++) {
-            if(curHeight >= records[i].unlockHeight) {
+            if(curHeight < records[i].unlockHeight) {
+                count++;
+            }
+        }
+
+        // get locked amount and id list
+        bytes20[] memory recordIDs = new bytes20[](count);
+        uint amount = 0;
+        uint index = 0;
+        for(uint i = 0; i < records.length; i++) {
+            if(curHeight < records[i].unlockHeight) {
+                amount += records[i].amount;
+                recordIDs[index++] = records[i].id;
+            }
+        }
+        return (amount, recordIDs);
+    }
+
+    // get bind amount
+    function getBindAmount(address _addr) public view returns (uint, bytes20[] memory) {
+        uint curHeight = block.number;
+        AccountRecord.Data[] memory records = addr2records[_addr];
+
+        // get avaiable count
+        uint count = 0;
+        for(uint i = 0; i < records.length; i++) {
+            if(curHeight < records[i].bindInfo.unbindHeight) {
                 count++;
             }
         }
@@ -238,8 +264,8 @@ contract AccountManager {
         return addr2records[_addr];
     }
 
-    function setUseHeight(bytes20 _recordID, uint _height) public {
-        addr2records[id2owner[_recordID]][id2index[_recordID]].setUseHeight(_height);
+    function setBindDay(bytes20 _recordID, uint _bindDay) public {
+        addr2records[id2owner[_recordID]][id2index[_recordID]].setBindInfo(block.number, block.number.add(_bindDay.mul(86400).div(property.getProperty("block_space").value.toUint())));
     }
 
     /************************************************** internal **************************************************/

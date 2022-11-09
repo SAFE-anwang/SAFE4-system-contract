@@ -47,7 +47,7 @@ contract MasterNode {
         uint id = counter++;
         masternodes[_addr].create(id, lockID, _ip, _pubkey, _description);
         id2address[id] = _addr;
-        am.setUseHeight(lockID, block.number);
+        am.setBindDay(lockID, _lockDay); // creator's lock id can't unbind util unlock it
         emit MNRegiste(_addr, _ip, _pubkey, "registe masternode successfully");
     }
 
@@ -69,7 +69,7 @@ contract MasterNode {
         uint id = counter++;
         masternodes[_addr].create(id, lockID, _ip, _pubkey, _description);
         id2address[id] = _addr;
-        am.setUseHeight(lockID, block.number);
+        am.setBindDay(lockID, _lockDay); // creator's lock id can't unbind util unlock it
         emit MNRegiste(_addr, _ip, _pubkey, "registe union masternode successfully");
     }
 
@@ -84,24 +84,21 @@ contract MasterNode {
             return;
         }
 
-        uint leaveHeight = block.number.add(uint(30 * 86400).div(property.getProperty("block_space").value.toUint()));
-        masternodes[_addr].appendLock(lockID, msg.sender, msg.value, leaveHeight);
-        am.setUseHeight(lockID, block.number);
+        masternodes[_addr].appendLock(lockID, msg.sender, msg.value);
+        am.setBindDay(lockID, 30); // lock id can't be unbind util 30 days.
         emit MNAppendRegiste(_addr, lockID, "append registe masternode successfully");
     }
 
     function appendRegiste(bytes20 _lockID, address _addr) public {
         require(exist(_addr), "non-existent masternode");
         AccountRecord.Data memory record = am.getRecordByID(msg.sender, _lockID);
-        require(record.useHeight == 0, "lock id is used, can't append");
+        require(record.bindInfo.bindHeight == 0, "lock id is bind, can't append");
         require(record.addr == msg.sender, "lock address isn't caller");
         require(record.amount >= 50, "lock amout need 50 SAFE at least");
         require(record.lockDay >= 180, "lock day less 6 month");
 
-        uint blockspace = BytesUtil.toUint(property.getProperty("block_space").value);
-        uint leaveHeight = block.number.add(uint(30 * 86400).div(blockspace));
-        masternodes[_addr].appendLock(_lockID, record.addr, record.amount, leaveHeight);
-        am.setUseHeight(_lockID, block.number);
+        masternodes[_addr].appendLock(_lockID, record.addr, record.amount);
+        am.setBindDay(_lockID, 30); // lock id can't be unbind util 30 days.
         emit MNAppendRegiste(_addr, _lockID, "append registe masternode successfully");
     }
 
