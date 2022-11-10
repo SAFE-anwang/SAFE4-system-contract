@@ -28,11 +28,10 @@ contract SafeSys is Initializable, OwnableUpgradeable {
         mn = new MasterNode(property, am);
         smnVote = new SMNVote(am);
         smn = new SuperMasterNode(property, am, smnVote);
-        initialize();
     }
 
     /**************************************** upgradeable ****************************************/
-    function initialize() internal initializer {
+    function initialize() public initializer {
         __Ownable_init();
     }
 
