@@ -10,11 +10,13 @@ library AccountHistory {
         uint time;
     }
 
-    function create(Data memory _self, bytes20 _id, uint _amount, uint _flag) public view {
-        _self.recordID = _id;
-        _self.amount = _amount;
-        _self.flag = _flag;
-        _self.height = block.number;
-        _self.time = block.timestamp;
+    function create(bytes20 _recordID, uint _amount, uint _flag) public view returns (Data memory) {
+        Data memory data;
+        data.recordID = _recordID;
+        data.amount = _amount;
+        data.flag = _flag;
+        data.height = block.number;
+        data.time = block.timestamp;
+        return data;
     }
 }

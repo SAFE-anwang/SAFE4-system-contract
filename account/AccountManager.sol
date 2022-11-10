@@ -276,11 +276,9 @@ contract AccountManager {
 
     // add record
     function addRecord(address _addr, uint _amount, uint _lockDay, uint _startHeight, uint _unlockHeight) internal returns (bytes20) {
-        AccountRecord.Data memory record;
         bytes20 recordID = ripemd160(abi.encodePacked(counter++, _addr, _amount, _lockDay, _startHeight, _unlockHeight));
-        record.create(recordID, _addr, _amount, _lockDay, _startHeight, _unlockHeight);
         AccountRecord.Data[] storage records = addr2records[_addr];
-        records.push(record);
+        records.push(AccountRecord.create(recordID, _addr, _amount, _lockDay, _startHeight, _unlockHeight));
         id2index[recordID] = records.length - 1;
         id2owner[recordID] = _addr;
         return recordID;
@@ -299,10 +297,7 @@ contract AccountManager {
 
     // add history
     function addHistory(address _addr, bytes20 _recordID, uint _amount, uint _flag) internal {
-        AccountHistory.Data memory history;
-        history.create(_recordID, _amount, _flag);
-        AccountHistory.Data[] storage historys = addr2historys[_addr];
-        historys.push(history);
+        addr2historys[_addr].push(AccountHistory.create(_recordID, _amount, _flag));
     }
 
     // update amount
