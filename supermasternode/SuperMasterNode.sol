@@ -146,11 +146,15 @@ contract SuperMasterNode {
         // reward to partner
         uint total = 0;
         for(uint i = 0; i < info.founders.length; i++) {
-            total = info.founders[i].amount.add(total);
-            if(total >= 20000) {
-                break;
+            if(total.add(info.founders[i].amount) <= 20000) {
+                am.reward(info.founders[i].addr, partnerReward.mul(info.founders[i].amount).div(20000), 7);
+                total = total.add(info.founders[i].amount);
+                if(total == 20000) {
+                    break;
+                }
+            } else {
+                am.reward(info.founders[i].addr, partnerReward.mul(20000 - total).div(20000), 6);
             }
-            am.reward(info.founders[i].addr, partnerReward.mul(info.founders[i].amount).div(20000 - info.founders[0].amount), 7);
         }
         // reward to voter
         for(uint i = 0; i < info.voters.length; i++) {
