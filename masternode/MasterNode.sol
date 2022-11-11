@@ -17,15 +17,13 @@ contract MasterNode {
     mapping(uint => address) id2address;
 
     AccountManager internal am;
-    SafeProperty internal property;
 
     event MNRegiste(address _addr, string _ip, string _pubkey, string _msg);
     event MNUnionRegiste(address _addr, string _ip, string _pubkey, string _msg);
     event MNAppendRegiste(address _addr, bytes20 _lockID, string _msg);
 
-    constructor(SafeProperty _property, AccountManager _am) {
+    constructor(AccountManager _am) {
         counter = 1;
-        property = _property;
         am = _am;
     }
 
