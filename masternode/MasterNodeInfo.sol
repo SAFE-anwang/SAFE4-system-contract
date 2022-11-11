@@ -14,6 +14,7 @@ library MasterNodeInfo {
         uint id; // masternode id
         address creator; // createor address
         uint amount; // total locked amount
+        address addr; // masternode address
         string ip; // masternode ip
         string pubkey; // public key
         string description; // description
@@ -23,9 +24,10 @@ library MasterNodeInfo {
         uint updateTime; // update time
     }
 
-    function create(Data storage _self, uint _id, bytes20 _lockID, string memory _ip, string memory _pubkey, string memory _description) public {
+    function create(Data storage _self, uint _id, bytes20 _lockID, address _addr, string memory _ip, string memory _pubkey, string memory _description) public {
         _self.id = _id;
         _self.creator = msg.sender;
+        _self.addr = _addr;
         _self.amount = msg.value;
         _self.ip = _ip;
         _self.pubkey = _pubkey;
@@ -53,6 +55,11 @@ library MasterNodeInfo {
         _self.founders.push(info);
 
         _self.amount += _amount;
+        _self.updateTime = block.timestamp;
+    }
+
+    function setAddress(Data storage _self, address _addr) public {
+        _self.addr = _addr;
         _self.updateTime = block.timestamp;
     }
 

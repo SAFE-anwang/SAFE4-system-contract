@@ -154,6 +154,7 @@ contract SuperMasterNode {
                 }
             } else {
                 am.reward(info.founders[i].addr, partnerReward.mul(20000 - total).div(20000), 6);
+                break;
             }
         }
         // reward to voter
@@ -182,6 +183,7 @@ contract SuperMasterNode {
         require(!exist(_newAddr), "new masternode address has exist");
         require(_newAddr != address(0), "invalid address");
         supermasternodes[_newAddr] = supermasternodes[_addr];
+        supermasternodes[_newAddr].setAddress(_newAddr);
         id2address[supermasternodes[_newAddr].id] = _newAddr;
     }
 

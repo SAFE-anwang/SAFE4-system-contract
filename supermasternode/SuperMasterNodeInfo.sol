@@ -18,8 +18,8 @@ library SuperMasterNodeInfo {
         bytes20 id; // supermasternode id
         address creator; // creator address
         uint amount; // total amount
-        address addr; // masternode address
-        string ip; // masternode ip
+        address addr; // supermasternode address
+        string ip; // supermasternode ip
         string pubkey; // public key
         string description; // description
         uint state; // node state
@@ -31,7 +31,7 @@ library SuperMasterNodeInfo {
         uint updateTime; // update time
     }
 
-    function create(Data storage _self, bytes20 _id, address _creator, uint _amount, bytes20 _lockID,string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public {
+    function create(Data storage _self, bytes20 _id, address _creator, uint _amount, bytes20 _lockID, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public {
         _self.id = _id;
         _self.creator = _creator;
         _self.amount = _amount;
@@ -67,6 +67,11 @@ library SuperMasterNodeInfo {
         _self.founders.push(info);
 
         _self.amount += _amount;
+        _self.updateTime = block.timestamp;
+    }
+
+    function setAddress(Data storage _self, address _addr) public {
+        _self.addr = _addr;
         _self.updateTime = block.timestamp;
     }
 

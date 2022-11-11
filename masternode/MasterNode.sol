@@ -43,7 +43,7 @@ contract MasterNode {
         }
 
         uint id = counter++;
-        masternodes[_addr].create(id, lockID, _ip, _pubkey, _description);
+        masternodes[_addr].create(id, lockID, _addr, _ip, _pubkey, _description);
         id2address[id] = _addr;
         am.setBindDay(lockID, _lockDay); // creator's lock id can't unbind util unlock it
         emit MNRegiste(_addr, _ip, _pubkey, "registe masternode successfully");
@@ -65,7 +65,7 @@ contract MasterNode {
         }
 
         uint id = counter++;
-        masternodes[_addr].create(id, lockID, _ip, _pubkey, _description);
+        masternodes[_addr].create(id, lockID, _addr, _ip, _pubkey, _description);
         id2address[id] = _addr;
         am.setBindDay(lockID, _lockDay); // creator's lock id can't unbind util unlock it
         emit MNRegiste(_addr, _ip, _pubkey, "registe union masternode successfully");
@@ -112,6 +112,7 @@ contract MasterNode {
                 }
             } else {
                 am.reward(info.founders[i].addr, _amount.mul(1000 - total).div(1000), 6);
+                break;
             }
         }
     }
@@ -129,6 +130,8 @@ contract MasterNode {
         require(!exist(_newAddr), "new masternode address has exist");
         require(_newAddr != address(0), "invalid address");
         masternodes[_newAddr] = masternodes[_addr];
+        masternodes[_newAddr].setAddress(_newAddr);
+        delete masternodes[_addr];
         id2address[masternodes[_newAddr].id] = _newAddr;
     }
 
