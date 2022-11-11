@@ -25,10 +25,11 @@ contract AccountManager {
     uint DEPOSIT_TYPE = 1;
     uint DEPOSIT_LOCK_TYPE = 2;
     uint WITHDRAW_TYPE = 3;
-    uint TRANSFER_TYPE = 4;
-    uint TRANSFER_LOCK_TYPE = 5;
-    uint MN_REWARD_TYPE = 6;
-    uint SMN_REWARD_TYPE = 7;
+    uint TRANSFER_IN_TYPE = 4;
+    uint TRANSFER_IN_LOCK_TYPE = 5;
+    uint TRANSFER_OUT_TYPE = 6;
+    uint MN_REWARD_TYPE = 7;
+    uint SMN_REWARD_TYPE = 8;
 
     event SafeDeposit(address _addr, uint _amount, uint _lockDay, string _msg);
     event SafeWithdraw(address _addr, uint _amount, string _msg);
@@ -123,16 +124,16 @@ contract AccountManager {
         sortByAmount(temp_records, 0, temp_records.length - 1);
         uint usedAmount = 0;
         for(uint i = 0; i < temp_records.length; i++) {
-            usedAmount += temp_records[i].amount;
-            if(usedAmount <= _amount) {
+            if(usedAmount + temp_records[i].amount <= _amount) {
                 delRecord(temp_records[i].id);
-                addHistory(msg.sender, temp_records[i].id, temp_records[i].amount, TRANSFER_TYPE);
+                addHistory(msg.sender, temp_records[i].id, temp_records[i].amount, TRANSFER_OUT_TYPE);
+                usedAmount += temp_records[i].amount;
                 if(usedAmount == _amount) {
                     break;
                 }
             } else {
-                updateRecordAmount(temp_records[i].id, usedAmount - _amount);
-                addHistory(msg.sender, temp_records[i].id, temp_records[i].amount - usedAmount - _amount, TRANSFER_TYPE);
+                addr2records[msg.sender][id2index[temp_records[i].id]].setAmount(usedAmount + temp_records[i].amount - _amount);
+                addHistory(msg.sender, temp_records[i].id, temp_records[i].amount + usedAmount - _amount, TRANSFER_OUT_TYPE);
                 break;
             }
         }
@@ -141,7 +142,7 @@ contract AccountManager {
         if(_lockDay == 0) {
             recordID = addRecord(_to, _amount, 0, 0, 0);
             if(recordID != 0) {
-                addHistory(_to, recordID, _amount, TRANSFER_TYPE);
+                addHistory(_to, recordID, _amount, TRANSFER_IN_TYPE);
                 emit SafeTransfer(_from, _to, amount, _lockDay, "transfer successfully");
             } else {
                 emit SafeTransfer(_from, _to, amount, _lockDay, "transfer failed");
@@ -149,7 +150,7 @@ contract AccountManager {
         } else {
             recordID = addRecord(_to, _amount, _lockDay, block.number, block.number + _lockDay.mul(86400).div(property.getProperty("block_space").value.toUint()));
             if(recordID != 0) {
-                addHistory(_to, recordID, _amount, TRANSFER_LOCK_TYPE);
+                addHistory(_to, recordID, _amount, TRANSFER_IN_LOCK_TYPE);
                 emit SafeTransfer(_from, _to, amount, _lockDay, "transfer with lock successfully");
             } else {
                 emit SafeTransfer(_from, _to, amount, _lockDay, "transfer with lock failed");
@@ -264,6 +265,10 @@ contract AccountManager {
         return addr2records[_addr];
     }
 
+    function getRecordHistory(address _addr) public view returns (AccountHistory.Data[] memory) {
+        return addr2historys[_addr];
+    }
+
     function setBindDay(bytes20 _recordID, uint _bindDay) public {
         addr2records[id2owner[_recordID]][id2index[_recordID]].setBindInfo(block.number, block.number.add(_bindDay.mul(86400).div(property.getProperty("block_space").value.toUint())));
     }
@@ -290,7 +295,9 @@ contract AccountManager {
         uint pos = id2index[_recordID];
         records[pos] = records[records.length - 1];
         records.pop();
-        id2index[records[pos].id] = pos;
+        if(records.length != 0) {
+            id2index[records[pos].id] = pos;
+        }
         delete id2index[_recordID];
         delete id2owner[_recordID];
     }
@@ -298,12 +305,6 @@ contract AccountManager {
     // add history
     function addHistory(address _addr, bytes20 _recordID, uint _amount, uint _flag) internal {
         addr2historys[_addr].push(AccountHistory.create(_recordID, _amount, _flag));
-    }
-
-    // update amount
-    function updateRecordAmount(bytes20 _reocrdID, uint _amount) internal {
-        AccountRecord.Data[] storage records = addr2records[msg.sender];
-        records[id2index[_reocrdID]].setAmount(_amount);
     }
 
     // sort by amount
