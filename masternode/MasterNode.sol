@@ -166,4 +166,8 @@ contract MasterNode {
     function exist(address _addr) public view returns (bool) {
         return masternodes[_addr].createTime != 0;
     }
+
+    function exist(uint _id) public view returns (bool) {
+        return id2address[_id] != address(0);
+    }
 }

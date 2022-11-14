@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "./SuperMasterNodeInfo.sol";
 import "./SMNVote.sol";
+import "./MNState.sol";
+import "./SMNState.sol";
 import "../account/AccountManager.sol";
 import "../utils/SafeMath.sol";
 import "../utils/BytesUtil.sol";
@@ -16,6 +18,9 @@ contract SuperMasterNode {
     AccountManager internal am;
     SafeProperty internal property;
     SMNVote internal smnVote;
+
+    MNState internal mnState;
+    SMNState internal smnState;
 
     mapping(address => SuperMasterNodeInfo.Data) internal supermasternodes;
     mapping(address => SuperMasterNodeInfo.Data) internal unconfirmedSupermasternodes;
@@ -31,6 +36,9 @@ contract SuperMasterNode {
         am = _am;
         property = _property;
         smnVote = _smnVote;
+
+        mnState = new MNState();
+        smnState = new SMNState();
     }
 
     function registe(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable {
@@ -168,13 +176,15 @@ contract SuperMasterNode {
     }
 
     function vote4UpdateProperty(SafeProperty _property, string memory _name, uint _result) public {
-        _property.vote4UpdateProperty(_name, _result, getTop().length);
+        _property.vote4UpdateProperty(_name, _result, getNum());
     }
 
     function uploadMasterNodeState(uint[] memory _ids, uint8[] memory _states) public {
+        mnState.uploadState(_ids, _states, getNum());
     }
 
     function uploadSuperMasterNodeState(bytes20[] memory _ids, uint8[] memory _states) public {
+        smnState.uploadState(_ids, _states, getNum());
     }
 
     function changeAddress(address _addr, address _newAddr) public {
@@ -256,6 +266,10 @@ contract SuperMasterNode {
         return isConfirmed(_addr) || isUnconfirmed(_addr);
     }
 
+    function exist(bytes20 _id) public view returns (bool) {
+        return id2address[_id] != address(0);
+    }
+
     function isConfirmed(address _addr) public view returns (bool) {
         return supermasternodes[_addr].createTime != 0;
     }
@@ -289,5 +303,21 @@ contract SuperMasterNode {
             sortByVote(_arr, _left, j);
         if(i < _right)
             sortByVote(_arr, i, _right);
+    }
+
+    function getNum() internal view returns (uint) {
+        uint num = 0;
+        for(uint i = 0; i < ids.length; i++) {
+            address addr = id2address[ids[i]];
+            if(isConfirmed(addr)) {
+                if(supermasternodes[addr].amount >= 20000) {
+                    num++;
+                }
+            }
+        }
+        if(num >= 21) {
+            return 21;
+        }
+        return num;
     }
 }

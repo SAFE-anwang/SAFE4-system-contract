@@ -25,7 +25,7 @@ contract SafeSys is Initializable, OwnableUpgradeable {
     constructor() {
         property = new SafeProperty();
         am = new AccountManager(property);
-        mn = new MasterNode(property, am);
+        mn = new MasterNode(am);
         smnVote = new SMNVote(am);
         smn = new SuperMasterNode(property, am, smnVote);
     }
@@ -177,10 +177,16 @@ contract SafeSys is Initializable, OwnableUpgradeable {
     }
 
     function uploadMasterNodeState(uint[] memory _ids, uint8[] memory _states) public {
+        for(uint i = 0; i < _ids.length; i++) {
+            require(mn.exist(_ids[i]), "non-existent masternode");
+        }
         smn.uploadMasterNodeState(_ids, _states);
     }
 
     function uploadSuperMasterNodeState(bytes20[] memory _ids, uint8[] memory _states) public {
+        for(uint i = 0; i < _ids.length; i++) {
+            require(smn.exist(_ids[i]), "non-existent supermasternode");
+        }
         smn.uploadSuperMasterNodeState(_ids, _states);
     }
 
