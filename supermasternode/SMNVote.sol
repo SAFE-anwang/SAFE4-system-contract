@@ -60,6 +60,7 @@ contract SMNVote is SMNVoteProxy {
             // remove record id
             for(uint k = 0; k < detail.entries[i].length; k++) {
                 delete record2vote[detail.entries[i][k].recordID];
+                am.setBindDay(detail.entries[i][k].recordID, 0);
             }
 
             // remove voted smn
@@ -121,6 +122,7 @@ contract SMNVote is SMNVoteProxy {
                 // remove record id
                 record2vote[entries[entries.length - 1].recordID].index = index;
                 delete record2vote[recordID];
+                am.setBindDay(recordID, 0);
                 entries[index] = entries[entries.length - 1];
                 entries.pop();
                 if(entries.length == 0) {
