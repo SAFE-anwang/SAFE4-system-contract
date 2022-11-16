@@ -168,14 +168,6 @@ contract SafeSys is Initializable, OwnableUpgradeable {
         smn.verify(_smnAddr);
     }
 
-    function applyUpdateProperty(string memory _name, bytes memory _value, string memory _reason) public {
-        smn.applyUpdateProperty(property, _name, _value, _reason);
-    }
-
-    function vote4updateProperty(string memory _name, uint _result) public {
-        smn.vote4UpdateProperty(property, _name, _result);
-    }
-
     function uploadMasterNodeState(uint[] memory _ids, uint8[] memory _states) public {
         for(uint i = 0; i < _ids.length; i++) {
             require(mn.exist(_ids[i]), "non-existent masternode");
@@ -265,9 +257,17 @@ contract SafeSys is Initializable, OwnableUpgradeable {
     }
 
     /**************************************** common ****************************************/
-    function reward(address _smnAddr, uint _smnAmount, address _mnAddr, uint _mnAmount) public {
+    function reward(address _smnAddr, uint _smnAmount, address _mnAddr, uint _mnAmount) public isSMN {
         smn.reward(_smnAddr, _smnAmount);
         mn.reward(_mnAddr, _mnAmount);
+    }
+
+    function applyUpdateProperty(string memory _name, bytes memory _value, string memory _reason) public isSMN {
+        property.applyUpdateProperty(_name, _value, _reason);
+    }
+
+    function vote4updateProperty(string memory _name, uint _result) public isSMN {
+        property.vote4UpdateProperty(_name, _result, smn.getNum());
     }
 
     /**************************************** internal ****************************************/
@@ -277,5 +277,10 @@ contract SafeSys is Initializable, OwnableUpgradeable {
 
     function isSuperMasterNode(address _addr) internal view returns (bool) {
         return smn.isConfirmed(_addr);
+    }
+
+    modifier isSMN {
+        require(isSuperMasterNode(msg.sender), "U arn't supermasternode");
+        _;
     }
 }
