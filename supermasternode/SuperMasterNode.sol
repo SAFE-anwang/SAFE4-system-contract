@@ -171,14 +171,6 @@ contract SuperMasterNode {
         }
     }
 
-    function applyUpdateProperty(SafeProperty _property, string memory _name, bytes memory _value, string memory _reason) public {
-        _property.applyUpdateProperty(_name, _value, _reason);
-    }
-
-    function vote4UpdateProperty(SafeProperty _property, string memory _name, uint _result) public {
-        _property.vote4UpdateProperty(_name, _result, getNum());
-    }
-
     function uploadMasterNodeState(uint[] memory _ids, uint8[] memory _states) public {
         mnState.uploadState(_ids, _states, getNum());
     }
@@ -257,6 +249,22 @@ contract SuperMasterNode {
         return ret;
     }
 
+    function getNum() public view returns (uint) {
+        uint num = 0;
+        for(uint i = 0; i < ids.length; i++) {
+            address addr = id2address[ids[i]];
+            if(isConfirmed(addr)) {
+                if(supermasternodes[addr].amount >= 20000) {
+                    num++;
+                }
+            }
+        }
+        if(num >= 21) {
+            return 21;
+        }
+        return num;
+    }
+
     /************************************************** internal **************************************************/
     function getCounter() internal returns (uint) {
         return counter++;
@@ -303,21 +311,5 @@ contract SuperMasterNode {
             sortByVote(_arr, _left, j);
         if(i < _right)
             sortByVote(_arr, i, _right);
-    }
-
-    function getNum() internal view returns (uint) {
-        uint num = 0;
-        for(uint i = 0; i < ids.length; i++) {
-            address addr = id2address[ids[i]];
-            if(isConfirmed(addr)) {
-                if(supermasternodes[addr].amount >= 20000) {
-                    num++;
-                }
-            }
-        }
-        if(num >= 21) {
-            return 21;
-        }
-        return num;
     }
 }
