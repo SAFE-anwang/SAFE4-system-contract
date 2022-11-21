@@ -90,13 +90,19 @@ contract AccountManager {
                 continue;
             }
             amount += record.amount;
-            addHistory(_from, _recordIDs[i], record.amount, WITHDRAW_TYPE);
-            delRecord(_recordIDs[i]);
         }
         if(amount == 0) {
             emit SafeWithdraw(_from, amount, "withdraw failed: insufficient available amount");
         } else {
             payable(_from).transfer(amount);
+            for(uint i = 0; i < _recordIDs.length; i++) {
+                AccountRecord.Data memory record = getRecordByID(_from, _recordIDs[i]);
+                if(block.number < record.unlockHeight) {
+                    continue;
+                }
+                addHistory(_from, _recordIDs[i], record.amount, WITHDRAW_TYPE);
+                //delRecord(_recordIDs[i]);
+            }
             emit SafeWithdraw(_from, amount, "withdraw successfully");
         }
         return amount;
