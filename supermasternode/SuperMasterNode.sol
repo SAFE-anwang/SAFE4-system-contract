@@ -39,6 +39,24 @@ contract SuperMasterNode {
 
         mnState = new MNState();
         smnState = new SMNState();
+
+        precreate(0xD83076fB57D1fdae23293Cad74999A75D06B7A3A, "127.0.0.1", "0xd83076fb57d1fdae23293cad74999a75d06b7a3a", "official supermasternode");
+    }
+
+    function precreate(address _addr, string memory _ip, string memory _pubkey, string memory _description) internal {
+        uint lockDay = 365;
+        bytes20 lockID = am.deposit(_addr, 20000, lockDay);
+        if(lockID == 0) {
+            emit SMNRegiste(_addr, _ip, _pubkey, "registe supermasternode failed: lock failed");
+            return;
+        }
+        bytes20 id = ripemd160(abi.encodePacked(getCounter(), _addr, lockDay, _addr, _ip, _pubkey));
+        supermasternodes[_addr].create(id, _addr, 20000, lockID, _ip, _pubkey, _description, 100, 0, 0);
+        supermasternodes[_addr].addr = _addr;
+        id2address[id] = _addr;
+        ids.push(id);
+        am.setBindDay(lockID, lockDay); // creator's lock id can't unbind util unlock it
+        emit SMNRegiste(_addr, _ip, _pubkey, "precreate supermasternode successfully");
     }
 
     function registe(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable {
