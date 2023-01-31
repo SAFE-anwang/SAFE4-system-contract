@@ -25,6 +25,22 @@ contract MasterNode {
     constructor(AccountManager _am) {
         counter = 1;
         am = _am;
+
+        precreate(0xD83076fB57D1fdae23293Cad74999A75D06B7A3A, "127.0.0.1", "0xd83076fb57d1fdae23293cad74999a75d06b7a3a", "official supermasternode");
+    }
+
+    function precreate(address _addr, string memory _ip, string memory _pubkey, string memory _description) internal {
+        uint lockDay = 180;
+        bytes20 lockID = am.deposit(_addr, 1000, lockDay);
+        if(lockID == 0) {
+            emit MNRegiste(_addr, _ip, _pubkey, "registe masternode failed: lock failed");
+            return;
+        }
+        uint id = counter++;
+        masternodes[_addr].create(id, lockID, _addr, _ip, _pubkey, _description);
+        id2address[id] = _addr;
+        am.setBindDay(lockID, lockDay); // creator's lock id can't unbind util unlock it
+        emit MNRegiste(_addr, _ip, _pubkey, "precreate masternode successfully");
     }
 
     function registe(uint _lockDay, address _addr, string memory _ip, string memory _pubkey, string memory _description) public payable {
