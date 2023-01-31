@@ -174,6 +174,10 @@ contract MasterNode {
         return masternodes[_addr];
     }
 
+    function getNext() public view returns (address) {
+        return id2address[counter - 1];
+    }
+
     /************************************************** internal **************************************************/
     function getCounter() internal returns (uint) {
         return counter++;

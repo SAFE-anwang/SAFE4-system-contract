@@ -147,6 +147,10 @@ contract SafeSys is Initializable, OwnableUpgradeable {
         return mn.getInfo(_mnAddr);
     }
 
+    function getNextMN() public view returns (address) {
+        return mn.getNext();
+    }
+
     /**************************************** supermasternode ****************************************/
     function registeSMN(uint _lockDay, address _smnAddr, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable {
         smn.registe(_lockDay, _smnAddr, _ip, _pubkey, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
