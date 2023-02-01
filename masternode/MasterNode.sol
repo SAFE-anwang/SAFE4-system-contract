@@ -121,13 +121,19 @@ contract MasterNode {
         uint total = 0;
         for(uint i = 0; i < info.founders.length; i++) {
             if(total.add(info.founders[i].amount) <= 1000) {
-                am.reward(info.founders[i].addr, _amount.mul(info.founders[i].amount).div(1000), 6);
+                uint temp = _amount.mul(info.founders[i].amount).div(1000);
+                if(temp != 0) {
+                    am.reward(info.founders[i].addr, temp, 6);
+                }
                 total = total.add(info.founders[i].amount);
                 if(total == 1000) {
                     break;
                 }
             } else {
-                am.reward(info.founders[i].addr, _amount.mul(1000 - total).div(1000), 6);
+                uint temp = _amount.mul(1000 - total).div(1000);
+                if(temp != 0) {
+                    am.reward(info.founders[i].addr, temp, 6);
+                }
                 break;
             }
         }

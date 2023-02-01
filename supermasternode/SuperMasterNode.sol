@@ -40,7 +40,7 @@ contract SuperMasterNode {
         mnState = new MNState();
         smnState = new SMNState();
 
-        precreate(0xD83076fB57D1fdae23293Cad74999A75D06B7A3A, "127.0.0.1", "0xd83076fb57d1fdae23293cad74999a75d06b7a3a", "official supermasternode");
+        precreate(0x1a66aEDca5cA1b5eB6574A4f55A932E883ecFc31, "127.0.0.1", "0x1a66aEDca5cA1b5eB6574A4f55A932E883ecFc31", "official supermasternode");
     }
 
     function precreate(address _addr, string memory _ip, string memory _pubkey, string memory _description) internal {
@@ -168,24 +168,35 @@ contract SuperMasterNode {
         uint partnerReward = _amount.mul(info.incentivePlan.partner).div(100);
         uint voterReward = _amount.sub(creatorReward).sub(partnerReward);
         // reward to creator
-        am.reward(info.creator, creatorReward, 7);
+        if(creatorReward != 0) {
+            am.reward(info.creator, creatorReward, 7);
+        }
         // reward to partner
         uint total = 0;
         for(uint i = 0; i < info.founders.length; i++) {
             if(total.add(info.founders[i].amount) <= 20000) {
-                am.reward(info.founders[i].addr, partnerReward.mul(info.founders[i].amount).div(20000), 7);
+                uint temp = partnerReward.mul(info.founders[i].amount).div(20000);
+                if(temp != 0) {
+                    am.reward(info.founders[i].addr, temp, 7);
+                }
                 total = total.add(info.founders[i].amount);
                 if(total == 20000) {
                     break;
                 }
             } else {
-                am.reward(info.founders[i].addr, partnerReward.mul(20000 - total).div(20000), 6);
+                uint temp = partnerReward.mul(20000 - total).div(20000);
+                if(temp != 0) {
+                    am.reward(info.founders[i].addr, temp, 7);
+                }
                 break;
             }
         }
         // reward to voter
         for(uint i = 0; i < info.voters.length; i++) {
-            am.reward(info.founders[i].addr, voterReward.mul(info.voters[i].amount).div(info.totalVoterAmount), 7);
+            uint temp = voterReward.mul(info.voters[i].amount).div(info.totalVoterAmount);
+            if(temp != 0) {
+                am.reward(info.founders[i].addr, temp, 7);
+            }
         }
     }
 
