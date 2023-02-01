@@ -40,7 +40,7 @@ contract SuperMasterNode {
         mnState = new MNState();
         smnState = new SMNState();
 
-        precreate(0x1a66aEDca5cA1b5eB6574A4f55A932E883ecFc31, "127.0.0.1", "0x1a66aEDca5cA1b5eB6574A4f55A932E883ecFc31", "official supermasternode");
+        precreate(0xD83076fB57D1fdae23293Cad74999A75D06B7A3A, "127.0.0.1", "0xD83076fB57D1fdae23293Cad74999A75D06B7A3A", "official supermasternode");
     }
 
     function precreate(address _addr, string memory _ip, string memory _pubkey, string memory _description) internal {
