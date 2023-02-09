@@ -116,7 +116,7 @@ contract MasterNode {
         emit MNAppendRegiste(_addr, _lockID, "append registe masternode successfully");
     }
 
-    function reward(address _addr, uint _amount) public {
+    function reward(address _addr, uint _amount) public payable {
         MasterNodeInfo.Data memory info = masternodes[_addr];
         uint total = 0;
         for(uint i = 0; i < info.founders.length; i++) {

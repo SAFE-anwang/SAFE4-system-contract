@@ -102,6 +102,10 @@ contract SafeSys is Initializable, OwnableUpgradeable {
         return am.getAccountRecords(msg.sender);
     }
 
+    function getBalance(address _addr) public view returns (uint) {
+        return am.getBalance(_addr);
+    }
+
     /**************************************** masternode ****************************************/
     function registeMN(uint _lockDay, address _mnAddr, string memory _ip, string memory _pubkey, string memory _description) public payable {
         mn.registe(_lockDay, _mnAddr, _ip, _pubkey, _description);
@@ -261,7 +265,7 @@ contract SafeSys is Initializable, OwnableUpgradeable {
     }
 
     /**************************************** common ****************************************/
-    function reward(address _smnAddr, uint _smnAmount, address _mnAddr, uint _mnAmount) public isSMN {
+    function reward(address _smnAddr, uint _smnAmount, address _mnAddr, uint _mnAmount) public payable isSMN {
         smn.reward(_smnAddr, _smnAmount);
         mn.reward(_mnAddr, _mnAmount);
     }

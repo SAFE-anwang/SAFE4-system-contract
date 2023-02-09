@@ -162,7 +162,7 @@ contract SuperMasterNode {
         delete unconfirmedSupermasternodes[_addr];
     }
 
-    function reward(address _addr, uint _amount) public {
+    function reward(address _addr, uint _amount) public payable {
         SuperMasterNodeInfo.Data memory info = supermasternodes[_addr];
         uint creatorReward = _amount.mul(info.incentivePlan.creator).div(100);
         uint partnerReward = _amount.mul(info.incentivePlan.partner).div(100);

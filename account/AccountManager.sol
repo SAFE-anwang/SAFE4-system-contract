@@ -101,11 +101,15 @@ contract AccountManager {
                     continue;
                 }
                 addHistory(_from, _recordIDs[i], record.amount, WITHDRAW_TYPE);
-                //delRecord(_recordIDs[i]);
+                delRecord(_recordIDs[i]);
             }
             emit SafeWithdraw(_from, amount, "withdraw successfully");
         }
         return amount;
+    }
+
+    function getBalance(address _addr) public view returns (uint) {
+        return _addr.balance;
     }
 
     function transfer(address _from, address _to, uint _amount) public returns (bytes20) {
@@ -165,7 +169,7 @@ contract AccountManager {
         return recordID;
     }
 
-    function reward(address _to, uint _amount, uint _rewardType) public returns (bytes20) {
+    function reward(address _to, uint _amount, uint _rewardType) public payable returns (bytes20) {
         require(_to != address(0), "reward to the zero address");
         require(_amount > 0, "invalid amount");
         require(_rewardType == 6 || _rewardType == 7, "invalid reward type, must be 6(masternode reward), 7(supermasternode reward)");
