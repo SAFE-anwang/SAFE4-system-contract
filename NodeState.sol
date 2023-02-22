@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract MNState {
+import "./System.sol";
+import "./interfaces/INodeState.sol";
+
+contract NodeState is INodeState, System {
     struct Entry {
         address caller;
         uint8 state;
@@ -9,8 +12,8 @@ contract MNState {
 
     mapping(uint => Entry[]) id2states;
 
-    function uploadState(uint[] memory _ids, uint8[] memory _states, uint total) public {
-        require(_ids.length == _states.length, "masternode id list is incompatible with state list");
+    function uploadState(uint[] memory _ids, uint8[] memory _states) public {
+        require(_ids.length == _states.length, "id list isn't matched with state list");
 
         bool exist = false;
         uint pos = 0;
@@ -19,10 +22,9 @@ contract MNState {
             if(exist) {
                 id2states[_ids[i]][pos].state = _states[i];
             } else {
-                Entry memory entry = Entry(msg.sender, _states[i]);
-                id2states[_ids[i]].push(entry);
+                id2states[_ids[i]].push(Entry(msg.sender, _states[i]));
             }
-            updateState(_ids[i], _states[i], total);
+            updateState(_ids[i], _states[i]);
         }
     }
 
@@ -35,12 +37,12 @@ contract MNState {
         return (false, 0);
     }
 
-    function updateState(uint _id, uint8 _state, uint total) internal {
+    function updateState(uint _id, uint8 _state) internal {
         Entry[] storage entries = id2states[_id];
         uint num = 0;
         for(uint i = 0; i < entries.length; i++) {
             if(_state == entries[i].state) {
-                if(++num >= total * 2 / 3) {
+                if(++num >= getSMNNum() * 2 / 3) {
                     entries[i].state = _state;
                     return;
                 }
