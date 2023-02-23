@@ -91,8 +91,13 @@ contract AccountManager is IAccountManager, System {
         for(uint i = 0; i < temp_records.length; i++) {
             if(usedAmount + temp_records[i].amount <= _amount) {
                 delRecord(temp_records[i].id);
-                smnVote.removeVote(temp_records[i].id);
-                smnVote.removeApproval(temp_records[i].id);
+                uint tempVoteNum = temp_records[i].amount;
+                if(isMN(msg.sender)) {
+                    tempVoteNum = temp_records[i].amount.mul(2);
+                } else if(temp_records[i].unlockHeight != 0) {
+                    tempVoteNum = temp_records[i].amount.mul(15).div(10);
+                }
+                smnVote.decreaseRecord(temp_records[i].id, temp_records[i].amount, tempVoteNum);
                 usedAmount += temp_records[i].amount;
                 if(usedAmount == _amount) {
                     break;
@@ -101,16 +106,13 @@ contract AccountManager is IAccountManager, System {
                 addr2records[msg.sender][recordID2index[temp_records[i].id]].amount = usedAmount + temp_records[i].amount - _amount;
                 addr2records[msg.sender][recordID2index[temp_records[i].id]].updateHeight = block.number;
                 uint tempVoteAmount = _amount - usedAmount;
-                uint tempVoteNum = 0;
+                uint tempVoteNum = tempVoteAmount;
                 if(isMN(msg.sender)) {
                     tempVoteNum = tempVoteAmount.mul(2);
                 } else if(temp_records[i].unlockHeight != 0) {
                     tempVoteNum = tempVoteNum.mul(15).div(10);
-                } else {
-                    tempVoteNum = tempVoteAmount;
                 }
-                smnVote.DecreaseVoteNum(temp_records[i].id, tempVoteAmount, tempVoteNum);
-                smnVote.DecreaseApprovalNum(temp_records[i].id, tempVoteAmount, tempVoteNum);
+                smnVote.decreaseRecord(temp_records[i].id, tempVoteAmount, tempVoteNum);
                 break;
             }
         }
