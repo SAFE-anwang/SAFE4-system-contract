@@ -1,9 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../types/PropertyType.sol";
-
 interface IProperty {
+    struct PropertyInfo {
+        string name;
+        uint value;
+        string description;
+        uint createHeight;
+        uint updateHeight;
+    }
+
+    struct UnconfirmedPropertyInfo {
+        string name;
+        uint value;
+        address applicant;
+        address[] voters;
+        uint[] voteResults;
+        string reason;
+        uint applyHeight;
+    }
+
     function add(string memory _name, uint _value, string memory _description) external;
     function applyUpdate(string memory _name, uint _value, string memory _reason) external;
     function vote4Update(string memory _name, uint _result) external;

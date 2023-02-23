@@ -239,7 +239,7 @@ contract SMNVote is ISMNVote, System {
 
     function addVoteOrProxy(address _voterAddr, address _dstAddr, bytes20 _recordID) internal {
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
-        AccountRecord memory record = am.getRecordByID(_recordID);
+        IAccountManager.AccountRecord memory record = am.getRecordByID(_recordID);
         uint amount = record.amount;
         uint num = amount;
         if(isMN(msg.sender)) {

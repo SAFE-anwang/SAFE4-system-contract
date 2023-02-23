@@ -1,9 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../types/AccountType.sol";
-
 interface IAccountManager {
+    struct AccountRecord {
+        bytes20 id;
+        address addr;
+        uint amount;
+        uint lockDay;
+        uint startHeight; // start height
+        uint unlockHeight; // unlocked height
+        BindInfo bindInfo; // for voting or regist
+        uint createHeight;
+        uint updateHeight;
+    }
+
+    struct BindInfo {
+        uint bindHeight;
+        uint unbindHeight;
+    }
+
     function deposit(address _to, uint _lockDay) external payable returns (bytes20);
     function withdraw() external returns (uint);
     function withdraw(bytes20[] memory _recordIDs) external returns(uint);

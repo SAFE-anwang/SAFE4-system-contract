@@ -1,9 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../types/ProposalType.sol";
-
 interface IProposal {
+    struct ProposalInfo {
+        uint id;
+        address creator;
+        string title;
+        uint payAmount;
+        uint payTimes;
+        uint startPayTime;
+        uint endPayTime;
+        string description;
+        string detail;
+        address[] voters;
+        uint[] voteResults;
+        uint state;
+        uint createHeight;
+        uint updateHeight;
+    }
+
     function create(string memory _title, uint _payAmount, uint _payTimes, uint _startPayTime, uint _endPayTime, string memory _description, string memory _detail) external payable returns (uint);
     function vote(uint _id, uint _voteResult) external;
     function changTitile(uint _id, string memory _title) external;
