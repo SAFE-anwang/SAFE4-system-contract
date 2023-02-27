@@ -24,7 +24,7 @@ contract AccountManager is IAccountManager, System {
     // deposit
     function deposit(address _to, uint _lockDay) public payable returns (bytes20) {
         require(msg.value > 0, "invalid amount");
-        bytes20 recordID = addRecord(_to, msg.value, _lockDay, block.number, block.number + _lockDay.mul(86400).div(getPropertyValue("block_space")));
+        bytes20 recordID = addRecord(_to, msg.value, _lockDay);
         emit SafeDeposit(_to, msg.value, _lockDay, recordID);
         return recordID;
     }
@@ -44,10 +44,9 @@ contract AccountManager is IAccountManager, System {
         uint amount = 0;
         for(uint i = 0; i < _recordIDs.length; i++) {
             AccountRecord memory record = getRecordByID(_recordIDs[i]);
-            if(block.number <= record.unlockHeight || block.number <= record.bindInfo.unbindHeight) {
-                continue;
+            if(block.number >= record.unlockHeight && block.number >= record.bindInfo.unbindHeight) {
+                amount += record.amount;
             }
-            amount += record.amount;
         }
         if(amount == 0) {
             emit SafeWithdraw(msg.sender, amount); // insufficient balance
@@ -57,12 +56,11 @@ contract AccountManager is IAccountManager, System {
         ISMNVote smnVote = ISMNVote(SMNVOTE_PROXY_ADDR);
         for(uint i = 0; i < _recordIDs.length; i++) {
             AccountRecord memory record = getRecordByID(_recordIDs[i]);
-            if(block.number < record.unlockHeight || block.number <= record.bindInfo.unbindHeight) {
-                continue;
+            if(block.number >= record.unlockHeight && block.number >= record.bindInfo.unbindHeight) {
+                delRecord(_recordIDs[i]);
+                smnVote.removeVote(_recordIDs[i]);
+                smnVote.removeApproval(_recordIDs[i]);
             }
-            delRecord(_recordIDs[i]);
-            smnVote.removeVote(_recordIDs[i]);
-            smnVote.removeApproval(_recordIDs[i]);
         }
         emit SafeWithdraw(msg.sender, amount);
         return amount;
@@ -77,7 +75,7 @@ contract AccountManager is IAccountManager, System {
         (amount, recordIDs) = getAvailableAmount();
         require(amount >= _amount, "insufficient balance");
 
-        bytes20 recordID = addRecord(_to, _amount, _lockDay, block.number, block.number + _lockDay.mul(86400).div(getPropertyValue("block_space")));
+        bytes20 recordID = addRecord(_to, _amount, _lockDay);
         emit SafeTransfer(msg.sender, _to, _amount, _lockDay);
 
         // update record
@@ -123,14 +121,19 @@ contract AccountManager is IAccountManager, System {
         require(_to != address(0), "reward to the zero address");
         require(msg.value > 0, "invalid amount");
         require(_rewardType == 6 || _rewardType == 7, "invalid reward type, only 6(masternode reward), 7(supermasternode reward)");
-        return addRecord(_to, msg.value, 0, block.number, block.number);
+        return addRecord(_to, msg.value, 0);
     }
 
     function setBindDay(bytes20 _recordID, uint _bindDay) public {
         require(existRecord(_recordID), "invalid record id");
         AccountRecord storage record = addr2records[recordID2addr[_recordID]][recordID2index[_recordID]];
-        record.bindInfo.bindHeight = block.number;
-        record.bindInfo.unbindHeight = block.number + _bindDay.mul(86400).div(getPropertyValue("block_space"));
+        if(_bindDay == 0) {
+            record.bindInfo.bindHeight = 0;
+            record.bindInfo.unbindHeight = 0;
+        } else {
+            record.bindInfo.bindHeight = block.number;
+            record.bindInfo.unbindHeight = block.number + _bindDay.mul(86400).div(getPropertyValue("block_space"));
+        }
         record.updateHeight = block.number;
     }
 
@@ -154,7 +157,7 @@ contract AccountManager is IAccountManager, System {
         // get avaiable count
         uint count = 0;
         for(uint i = 0; i < records.length; i++) {
-            if(curHeight > records[i].unlockHeight && curHeight > records[i].bindInfo.unbindHeight) {
+            if(curHeight >= records[i].unlockHeight && curHeight >= records[i].bindInfo.unbindHeight) {
                 count++;
             }
         }
@@ -164,7 +167,7 @@ contract AccountManager is IAccountManager, System {
         uint amount = 0;
         uint index = 0;
         for(uint i = 0; i < records.length; i++) {
-            if(curHeight > records[i].unlockHeight && curHeight > records[i].bindInfo.unbindHeight) {
+            if(curHeight >= records[i].unlockHeight && curHeight >= records[i].bindInfo.unbindHeight) {
                 amount += records[i].amount;
                 recordIDs[index++] = records[i].id;
             }
@@ -240,10 +243,16 @@ contract AccountManager is IAccountManager, System {
     }
 
     // add record
-    function addRecord(address _addr, uint _amount, uint _lockDay, uint _startHeight, uint _unlockHeight) internal returns (bytes20) {
-        bytes20 recordID = ripemd160(abi.encodePacked(++record_no, _addr, _amount, _lockDay, _startHeight, _unlockHeight));
+    function addRecord(address _addr, uint _amount, uint _lockDay) internal returns (bytes20) {
+        uint startHeight = 0;
+        uint unlockHeight = 0;
+        if(_lockDay > 0) {
+            startHeight = block.number + 1;
+            unlockHeight = startHeight + _lockDay.mul(86400).div(getPropertyValue("block_space"));
+        }
+        bytes20 recordID = ripemd160(abi.encodePacked(++record_no, _addr, _amount, _lockDay, startHeight, unlockHeight));
         AccountRecord[] storage records = addr2records[_addr];
-        records.push(AccountRecord(recordID, _addr, _amount, _lockDay, _startHeight, _unlockHeight, BindInfo(0, 0), block.number, 0));
+        records.push(AccountRecord(recordID, _addr, _amount, _lockDay, startHeight, unlockHeight, BindInfo(0, 0), block.number, 0));
         recordID2index[recordID] = records.length - 1;
         recordID2addr[recordID] = _addr;
         return recordID;

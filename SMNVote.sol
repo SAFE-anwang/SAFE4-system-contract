@@ -65,8 +65,8 @@ contract SMNVote is ISMNVote, System {
         for(uint i = 0; i < dst2records[msg.sender].length; i++) {
             recordID = dst2records[msg.sender][i];
             voterAddr = id2record[recordID].voterAddr;
-            removeVoteOrProxy(voterAddr, recordID);
-            addVoteOrProxy(voterAddr, _smnAddr, recordID);
+            removeVoteOrProxy(voterAddr, recordID); // remove proxy
+            addVoteOrProxy(voterAddr, _smnAddr, recordID); // add vote
         }
     }
 
@@ -240,6 +240,9 @@ contract SMNVote is ISMNVote, System {
     function addVoteOrProxy(address _voterAddr, address _dstAddr, bytes20 _recordID) internal {
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
         IAccountManager.AccountRecord memory record = am.getRecordByID(_recordID);
+        if(block.number < record.bindInfo.unbindHeight) {
+            return;
+        }
         uint amount = record.amount;
         uint num = amount;
         if(isMN(msg.sender)) {
@@ -287,6 +290,11 @@ contract SMNVote is ISMNVote, System {
         if(!exist) {
             dst2records[_dstAddr].push(_recordID);
             record2index[_recordID] = dst2records[_dstAddr].length - 1;
+        }
+
+        // bind
+        if(isSMN(_dstAddr)) {
+            am.setBindDay(_recordID, 7);
         }
     }
 
@@ -337,6 +345,12 @@ contract SMNVote is ISMNVote, System {
             // decrease vote amount & num
             detail.totalAmounts[pos] = detail.totalAmounts[pos].sub(amount);
             detail.totalNums[pos] = detail.totalNums[pos].sub(num);
+        }
+
+        // unbind
+        if(isSMN(dstAddr)) {
+            IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
+            am.setBindDay(_recordID, 0);
         }
     }
 

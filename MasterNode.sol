@@ -45,7 +45,7 @@ contract MasterNode is IMasterNode, System {
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
         bytes20 lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
         append(_addr, lockID, msg.value);
-        am.setBindDay(lockID, _lockDay);
+        am.setBindDay(lockID, 30);
         emit MNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
