@@ -16,7 +16,6 @@ contract SuperMasterNode is ISuperMasterNode, System {
 
     uint smn_no; // supermasternode no.
     mapping(address => SuperMasterNodeInfo) supermasternodes;
-    mapping(address => SuperMasterNodeInfo) unconfirmedSupermasternodes;
     uint[] smnIDs;
     mapping(uint => address) smnID2addr;
     mapping(string => address) smnIP2addr;
@@ -50,12 +49,6 @@ contract SuperMasterNode is ISuperMasterNode, System {
         append(_addr, lockID, msg.value);
         am.setBindDay(lockID, 90);
         emit SMNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
-    }
-
-    function verify(address _addr) public onlyOwner {
-        require(isUnconfirmed(_addr), "non-existent unconfirmed supermasternode");
-        supermasternodes[_addr] = unconfirmedSupermasternodes[_addr];
-        delete unconfirmedSupermasternodes[_addr];
     }
 
     function reward(address _addr) public payable {
@@ -102,31 +95,25 @@ contract SuperMasterNode is ISuperMasterNode, System {
         require(exist(_addr), "non-existent supermasternode");
         require(!existNodeAddress(_newAddr), "target address has existed");
         require(_newAddr != address(0), "invalid new address");
-        SuperMasterNodeInfo storage smn = isConfirmed(_addr) ? supermasternodes[_addr] : unconfirmedSupermasternodes[_addr];
-        require(msg.sender == smn.creator, "caller isn't creator");
-        SuperMasterNodeInfo storage newSMN = isConfirmed(_addr) ? supermasternodes[_newAddr] : unconfirmedSupermasternodes[_newAddr];
-        newSMN = smn;
+        require(msg.sender == supermasternodes[_addr].creator, "caller isn't creator");
+        SuperMasterNodeInfo storage newSMN = supermasternodes[_newAddr];
+        newSMN = supermasternodes[_addr];
         newSMN.addr = _newAddr;
         newSMN.updateHeight = 0;
         smnID2addr[newSMN.id] = _newAddr;
         smnIP2addr[newSMN.ip] = _newAddr;
         smnPubkey2addr[newSMN.pubkey] = _newAddr;
-        if(isConfirmed(_addr)) {
-            delete supermasternodes[_addr];
-        } else {
-            delete unconfirmedSupermasternodes[_addr];
-        }
+        delete supermasternodes[_addr];
     }
 
     function changeIP(address _addr, string memory _newIP) public {
         require(exist(_addr), "non-existent supermasternode");
         require(!existNodeIP(_newIP), "target ip has existed");
         require(bytes(_newIP).length > 0, "invalid ip");
-        SuperMasterNodeInfo storage smn = isConfirmed(_addr) ? supermasternodes[_addr] : unconfirmedSupermasternodes[_addr];
-        require(msg.sender == smn.creator, "caller isn't creator");
-        string memory oldIP = smn.ip;
-        smn.ip = _newIP;
-        smn.updateHeight = block.number;
+        require(msg.sender == supermasternodes[_addr].creator, "caller isn't creator");
+        string memory oldIP = supermasternodes[_addr].ip;
+        supermasternodes[_addr].ip = _newIP;
+        supermasternodes[_addr].updateHeight = block.number;
         smnIP2addr[_newIP] = _addr;
         delete smnIP2addr[oldIP];
     }
@@ -135,11 +122,10 @@ contract SuperMasterNode is ISuperMasterNode, System {
         require(exist(_addr), "non-existent supermasternode");
         require(!existNodePubkey(_newPubkey), "target pubkey has existed");
         require(bytes(_newPubkey).length > 0, "invalid pubkey");
-        SuperMasterNodeInfo storage smn = isConfirmed(_addr) ? supermasternodes[_addr] : unconfirmedSupermasternodes[_addr];
-        require(msg.sender == smn.creator, "caller isn't creator");
-        string memory oldPubkey = smn.pubkey;
-        smn.pubkey = _newPubkey;
-        smn.updateHeight = block.number;
+        require(msg.sender == supermasternodes[_addr].creator, "caller isn't creator");
+        string memory oldPubkey = supermasternodes[_addr].pubkey;
+        supermasternodes[_addr].pubkey = _newPubkey;
+        supermasternodes[_addr].updateHeight = block.number;
         smnPubkey2addr[_newPubkey] = _addr;
         delete smnPubkey2addr[oldPubkey];
     }
@@ -147,10 +133,9 @@ contract SuperMasterNode is ISuperMasterNode, System {
     function changeDescription(address _addr, string memory _newDescription) public {
         require(exist(_addr), "non-existent supermasternode");
         require(bytes(_newDescription).length > 0, "invalid description");
-        SuperMasterNodeInfo storage smn = isConfirmed(_addr) ? supermasternodes[_addr] : unconfirmedSupermasternodes[_addr];
-        require(msg.sender == smn.creator, "caller isn't creator");
-        smn.description = _newDescription;
-        smn.updateHeight = block.number;
+        require(msg.sender == supermasternodes[_addr].creator, "caller isn't creator");
+        supermasternodes[_addr].description = _newDescription;
+        supermasternodes[_addr].updateHeight = block.number;
     }
 
     function getInfo(address _addr) public view returns (SuperMasterNodeInfo memory) {
@@ -162,10 +147,8 @@ contract SuperMasterNode is ISuperMasterNode, System {
         uint num = 0;
         for(uint i = 0; i < smnIDs.length; i++) {
             address addr = smnID2addr[smnIDs[i]];
-            if(isConfirmed(addr)) {
-                if(supermasternodes[addr].amount >= TOTAL_CREATE_AMOUNT) {
-                    num++;
-                }
+            if(supermasternodes[addr].amount >= TOTAL_CREATE_AMOUNT) {
+                num++;
             }
         }
 
@@ -173,10 +156,8 @@ contract SuperMasterNode is ISuperMasterNode, System {
         uint k = 0;
         for(uint i = 0; i < smnIDs.length; i++) {
             address addr = smnID2addr[smnIDs[i]];
-            if(isConfirmed(addr)) {
-                if(supermasternodes[addr].amount >= TOTAL_CREATE_AMOUNT) {
-                    smnAddrs[k++] = addr;
-                }
+            if(supermasternodes[addr].amount >= TOTAL_CREATE_AMOUNT) {
+                smnAddrs[k++] = addr;
             }
         }
 
@@ -199,20 +180,18 @@ contract SuperMasterNode is ISuperMasterNode, System {
         uint num = 0;
         for(uint i = 0; i < smnIDs.length; i++) {
             address addr = smnID2addr[smnIDs[i]];
-            if(isConfirmed(addr)) {
-                if(supermasternodes[addr].amount >= 5000) {
-                    num++;
-                }
+            if(supermasternodes[addr].amount >= TOTAL_CREATE_AMOUNT) {
+                num++;
             }
         }
-        if(num >= 49) {
-            return 49;
+        if(num >= MAX_NUM) {
+            return MAX_NUM;
         }
         return num;
     }
 
     function exist(address _addr) public view returns (bool) {
-        return isConfirmed(_addr) || isUnconfirmed(_addr);
+        return supermasternodes[_addr].createHeight != 0;
     }
 
     function existID(uint _id) public view returns (bool) {
@@ -228,15 +207,8 @@ contract SuperMasterNode is ISuperMasterNode, System {
     }
 
     function existLockID(address _addr, bytes20 _lockID) public view returns (bool) {
-        SuperMasterNodeInfo memory smn = supermasternodes[_addr];
-        for(uint i = 0; i < smn.founders.length; i++) {
-            if(smn.founders[i].lockID == _lockID) {
-                return true;
-            }
-        }
-        smn = unconfirmedSupermasternodes[_addr];
-        for(uint i = 0; i < smn.founders.length; i++) {
-            if(smn.founders[i].lockID == _lockID) {
+        for(uint i = 0; i < supermasternodes[_addr].founders.length; i++) {
+            if(supermasternodes[_addr].founders[i].lockID == _lockID) {
                 return true;
             }
         }
@@ -255,7 +227,7 @@ contract SuperMasterNode is ISuperMasterNode, System {
     }
 
     function create(address _addr, bytes20 _lockID, uint _amount, string memory _name, string memory _ip, string memory _pubkey, string memory _description, IncentivePlan memory _incentivePlan) internal {
-        SuperMasterNodeInfo storage smn = block.number > getPropertyValue("unverify_height") ? supermasternodes[_addr] : unconfirmedSupermasternodes[_addr];
+        SuperMasterNodeInfo storage smn = supermasternodes[_addr];
         smn.id = ++smn_no;
         smn.name = _name;
         smn.addr = _addr;
@@ -280,19 +252,10 @@ contract SuperMasterNode is ISuperMasterNode, System {
         require(supermasternodes[_addr].amount >= 1000, "need create first");
         require(!existLockID(_addr, _lockID), "lock ID has been used");
         require(_lockID != 0, "invalid lock id");
-        require(_amount >= 500, "append lock 500 SAFE at least");
-        SuperMasterNodeInfo storage smn = isConfirmed(_addr) ? supermasternodes[_addr] : unconfirmedSupermasternodes[_addr];
-        smn.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
-        smn.amount += _amount;
-        smn.updateHeight = block.number;
-    }
-
-    function isConfirmed(address _addr) internal view returns (bool) {
-        return supermasternodes[_addr].createHeight != 0;
-    }
-
-    function isUnconfirmed(address _addr) internal view returns (bool) {
-        return unconfirmedSupermasternodes[_addr].createHeight != 0;
+        require(_amount >= APPEND_AMOUNT, "append lock 500 SAFE at least");
+        supermasternodes[_addr].founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
+        supermasternodes[_addr].amount += _amount;
+        supermasternodes[_addr].updateHeight = block.number;
     }
 
     function sortByVoteNum(address[] memory _arr, uint _left, uint _right) internal view {

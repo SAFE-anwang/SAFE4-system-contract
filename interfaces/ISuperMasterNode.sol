@@ -36,7 +36,6 @@ interface ISuperMasterNode {
 
     function register(address _addr, bool _isUnion, uint _lockDay, string memory _name, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) external payable;
     function appendRegister(address _addr, uint _lockDay) external payable;
-    function verify(address _addr) external;
     function reward(address _addr) external payable;
     function changeAddress(address _addr, address _newAddr) external;
     function changeIP(address _addr, string memory _newIP) external;
