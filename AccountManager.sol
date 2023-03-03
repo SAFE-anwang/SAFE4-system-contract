@@ -131,7 +131,7 @@ contract AccountManager is IAccountManager, System {
             record.bindInfo.bindHeight = 0;
             record.bindInfo.unbindHeight = 0;
         } else {
-            record.bindInfo.bindHeight = block.number;
+            record.bindInfo.bindHeight = block.number + 1;
             record.bindInfo.unbindHeight = block.number + _bindDay.mul(86400).div(getPropertyValue("block_space"));
         }
         record.updateHeight = block.number;
@@ -239,7 +239,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     function existRecord(bytes20 _recordID) internal view returns (bool) {
-        return recordID2addr[_recordID] != address(0);
+        return recordID2addr[_recordID] == msg.sender;
     }
 
     // add record
