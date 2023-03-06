@@ -412,7 +412,4 @@ contract SMNVote is ISMNVote, System {
             dst2num[dstAddr] = 0;
         }
     }
-
-    function proxyVote(address _smnAddr, bytes20 _recordID) internal {
-    }
 }

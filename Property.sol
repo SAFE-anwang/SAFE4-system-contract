@@ -93,10 +93,10 @@ contract Property is IProperty, System {
     }
 
     function exist(string memory _name) internal view returns (bool) {
-        return properties[_name].createHeight != 0;
+        return bytes(properties[_name].name).length != 0;
     }
 
     function existUnconfirmed(string memory _name) internal view returns (bool) {
-        return unconfirmedProperties[_name].applyHeight != 0;
+        return bytes(unconfirmedProperties[_name].name).length != 0;
     }
 }

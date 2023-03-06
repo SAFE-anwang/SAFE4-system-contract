@@ -191,7 +191,7 @@ contract SuperMasterNode is ISuperMasterNode, System {
     }
 
     function exist(address _addr) public view returns (bool) {
-        return supermasternodes[_addr].createHeight != 0;
+        return supermasternodes[_addr].id != 0;
     }
 
     function existID(uint _id) public view returns (bool) {

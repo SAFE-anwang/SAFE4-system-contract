@@ -137,7 +137,7 @@ contract MasterNode is IMasterNode, System {
     }
 
     function exist(address _addr) public view returns (bool) {
-        return masternodes[_addr].createHeight != 0;
+        return masternodes[_addr].id != 0;
     }
 
     function existID(uint _id) public view returns (bool) {
