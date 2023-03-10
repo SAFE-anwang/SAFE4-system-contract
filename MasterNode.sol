@@ -133,7 +133,7 @@ contract MasterNode is IMasterNode, System {
     }
 
     function getNext() public view returns (address) {
-        return mnID2addr[block.number % (mn_no.add(1))];
+        return mnID2addr[(block.number % mn_no).add(1)];
     }
 
     function exist(address _addr) public view returns (bool) {
