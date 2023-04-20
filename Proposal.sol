@@ -84,7 +84,7 @@ contract Proposal is IProposal, System {
                 emit ProposalState(_id, 1);
                 return;
             }
-            if(rejectCount >= smnCount * 2 / 3) {
+            if(rejectCount >= smnCount * 1 / 3) {
                 proposals[_id].state = 2;
                 emit ProposalState(_id, 2);
                 return;
