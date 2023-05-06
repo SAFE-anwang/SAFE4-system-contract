@@ -117,10 +117,9 @@ contract AccountManager is IAccountManager, System {
         return recordID;
     }
 
-    function reward(address _to, uint8 _rewardType) public payable returns (bytes20) {
+    function reward(address _to) public payable returns (bytes20) {
         require(_to != address(0), "reward to the zero address");
         require(msg.value > 0, "invalid amount");
-        require(_rewardType == 6 || _rewardType == 7, "invalid reward type, only 6(masternode reward), 7(supermasternode reward)");
         return addRecord(_to, msg.value, 0);
     }
 
