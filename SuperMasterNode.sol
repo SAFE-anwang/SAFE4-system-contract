@@ -24,6 +24,9 @@ contract SuperMasterNode is ISuperMasterNode, System {
     event SMNRegister(address _addr, address _operator, uint _amount, uint _lockDay, bytes20 _reocrdID);
     event SMNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, bytes20 _recordID);
 
+    receive() external payable {}
+    fallback() external payable {}
+
     function register(address _addr, bool _isUnion, uint _lockDay, string memory _name, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable {
         if(!_isUnion) {
             require(msg.value >= TOTAL_CREATE_AMOUNT, "supermasternode need lock 5000 SAFE at least");
@@ -60,7 +63,7 @@ contract SuperMasterNode is ISuperMasterNode, System {
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
         // reward to creator
         if(creatorReward != 0) {
-            am.reward{value: creatorReward}(info.creator, 7);
+            am.reward{value: creatorReward}(info.creator);
         }
         // reward to partner
         uint total = 0;
@@ -68,7 +71,7 @@ contract SuperMasterNode is ISuperMasterNode, System {
             if(total.add(info.founders[i].amount) <= TOTAL_CREATE_AMOUNT) {
                 uint temp = partnerReward.mul(info.founders[i].amount).div(TOTAL_CREATE_AMOUNT);
                 if(temp != 0) {
-                    am.reward{value: temp}(info.founders[i].addr, 7);
+                    am.reward{value: temp}(info.founders[i].addr);
                 }
                 total = total.add(info.founders[i].amount);
                 if(total == TOTAL_CREATE_AMOUNT) {
@@ -77,17 +80,21 @@ contract SuperMasterNode is ISuperMasterNode, System {
             } else {
                 uint temp = partnerReward.mul(TOTAL_CREATE_AMOUNT.sub(total)).div(TOTAL_CREATE_AMOUNT);
                 if(temp != 0) {
-                    am.reward{value: temp}(info.founders[i].addr, 7);
+                    am.reward{value: temp}(info.founders[i].addr);
                 }
                 break;
             }
         }
         // reward to voter
-        for(uint i = 0; i < info.voters.length; i++) {
-            uint temp = voterReward.mul(info.voters[i].amount).div(info.totalVoterAmount);
-            if(temp != 0) {
-                am.reward{value: temp}(info.founders[i].addr, 7);
+        if(info.voters.length > 0) {
+            for(uint i = 0; i < info.voters.length; i++) {
+                uint temp = voterReward.mul(info.voters[i].amount).div(info.totalVoterAmount);
+                if(temp != 0) {
+                    am.reward{value: temp}(info.voters[i].addr);
+                }
             }
+        } else {
+            am.reward{value: voterReward}(info.creator);
         }
     }
 

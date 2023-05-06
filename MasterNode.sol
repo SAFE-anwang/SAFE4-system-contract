@@ -22,6 +22,9 @@ contract MasterNode is IMasterNode, System {
     event MNRegister(address _addr, address _operator, uint _amount, uint _lockDay, bytes20 _reocrdID);
     event MNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, bytes20 _recordID);
 
+    receive() external payable {}
+    fallback() external payable {}
+
     function register(address _addr, bool _isUnion, uint _lockDay, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive) public payable {
         if(!_isUnion) {
             require(msg.value >= TOTAL_CREATE_AMOUNT, "masternode need lock 1000 SAFE at least");
@@ -57,7 +60,7 @@ contract MasterNode is IMasterNode, System {
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
         // reward to creator
         if(creatorReward != 0) {
-            am.reward{value: creatorReward}(info.creator, 6);
+            am.reward{value: creatorReward}(info.creator);
         }
         // reward to partner
         uint total = 0;
@@ -65,7 +68,7 @@ contract MasterNode is IMasterNode, System {
             if(total.add(info.founders[i].amount) <= TOTAL_CREATE_AMOUNT) {
                 uint temp = partnerReward.mul(info.founders[i].amount).div(TOTAL_CREATE_AMOUNT);
                 if(temp != 0) {
-                    am.reward{value: temp}(info.founders[i].addr, 6);
+                    am.reward{value: temp}(info.founders[i].addr);
                 }
                 total = total.add(info.founders[i].amount);
                 if(total == TOTAL_CREATE_AMOUNT) {
@@ -74,7 +77,7 @@ contract MasterNode is IMasterNode, System {
             } else {
                 uint temp = partnerReward.mul(TOTAL_CREATE_AMOUNT.sub(total)).div(TOTAL_CREATE_AMOUNT);
                 if(temp != 0) {
-                    am.reward{value: temp}(info.founders[i].addr, 6);
+                    am.reward{value: temp}(info.founders[i].addr);
                 }
                 break;
             }

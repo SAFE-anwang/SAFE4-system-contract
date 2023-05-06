@@ -23,7 +23,7 @@ interface IAccountManager {
     function withdraw() external returns (uint);
     function withdraw(bytes20[] memory _recordIDs) external returns(uint);
     function transfer(address _to, uint _amount, uint _lockDay) external returns (bytes20);
-    function reward(address _to, uint8 _rewardType) external payable returns (bytes20);
+    function reward(address _to) external payable returns (bytes20);
     function setBindDay(bytes20 _recordID, uint _bindDay) external;
     function getTotalAmount() external view returns (uint, bytes20[] memory);
     function getAvailableAmount() external view returns (uint, bytes20[] memory);
