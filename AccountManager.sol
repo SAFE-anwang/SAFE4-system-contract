@@ -11,10 +11,10 @@ contract AccountManager is IAccountManager, System {
 
     uint record_no; // record no.
     mapping(address => AccountRecord[]) addr2records;
-    mapping(bytes20 => uint) recordID2index;
-    mapping(bytes20 => address) recordID2addr;
+    mapping(uint => uint) id2index;
+    mapping(uint => address) id2addr;
 
-    event SafeDeposit(address _addr, uint _amount, uint _lockDay, bytes20 _reocrdID);
+    event SafeDeposit(address _addr, uint _amount, uint _lockDay, uint _id);
     event SafeWithdraw(address _addr, uint _amount);
     event SafeTransfer(address _from, address _to, uint _amount, uint _lockDay);
 
@@ -22,29 +22,29 @@ contract AccountManager is IAccountManager, System {
     fallback() external payable {}
 
     // deposit
-    function deposit(address _to, uint _lockDay) public payable returns (bytes20) {
+    function deposit(address _to, uint _lockDay) public payable returns (uint) {
         require(msg.value > 0, "invalid amount");
-        bytes20 recordID = addRecord(_to, msg.value, _lockDay);
-        emit SafeDeposit(_to, msg.value, _lockDay, recordID);
-        return recordID;
+        uint id = addRecord(_to, msg.value, _lockDay);
+        emit SafeDeposit(_to, msg.value, _lockDay, id);
+        return id;
     }
 
     // withdraw all
     function withdraw() public returns (uint) {
         uint amount = 0;
-        bytes20[] memory recordIDs;
-        (amount, recordIDs) = getAvailableAmount();
+        uint[] memory ids;
+        (amount, ids) = getAvailableAmount();
         require(amount > 0, "insufficient amount");
-        return withdraw(recordIDs);
+        return withdraw(ids);
     }
 
     // withdraw by specify amount
-    function withdraw(bytes20[] memory _recordIDs) public returns (uint) {
-        require(_recordIDs.length > 0, "invalid record id");
+    function withdraw(uint[] memory _ids) public returns (uint) {
+        require(_ids.length > 0, "invalid record ids");
         uint amount = 0;
-        for(uint i = 0; i < _recordIDs.length; i++) {
-            AccountRecord memory record = getRecordByID(_recordIDs[i]);
-            if(block.number >= record.unlockHeight && block.number >= record.bindInfo.unbindHeight) {
+        for(uint i = 0; i < _ids.length; i++) {
+            AccountRecord memory record = getRecordByID(_ids[i]);
+            if(block.number >= record.unlockHeight && block.number >= record.unfreezeHeight) {
                 amount += record.amount;
             }
         }
@@ -54,34 +54,34 @@ contract AccountManager is IAccountManager, System {
         }
         payable(msg.sender).transfer(amount);
         ISMNVote smnVote = ISMNVote(SMNVOTE_PROXY_ADDR);
-        for(uint i = 0; i < _recordIDs.length; i++) {
-            AccountRecord memory record = getRecordByID(_recordIDs[i]);
-            if(block.number >= record.unlockHeight && block.number >= record.bindInfo.unbindHeight) {
-                delRecord(_recordIDs[i]);
-                smnVote.removeVote(_recordIDs[i]);
-                smnVote.removeApproval(_recordIDs[i]);
+        for(uint i = 0; i < _ids.length; i++) {
+            AccountRecord memory record = getRecordByID(_ids[i]);
+            if(block.number >= record.unlockHeight && block.number >= record.unfreezeHeight) {
+                delRecord(_ids[i]);
+                smnVote.removeVote(_ids[i]);
+                smnVote.removeApproval(_ids[i]);
             }
         }
         emit SafeWithdraw(msg.sender, amount);
         return amount;
     }
 
-    function transfer(address _to, uint _amount, uint _lockDay) public returns (bytes20) {
+    function transfer(address _to, uint _amount, uint _lockDay) public returns (uint) {
         require(_to != address(0), "transfer to the zero address");
         require(_amount > 0, "invalid amount");
 
         uint amount = 0;
-        bytes20[] memory recordIDs;
-        (amount, recordIDs) = getAvailableAmount();
+        uint[] memory ids;
+        (amount, ids) = getAvailableAmount();
         require(amount >= _amount, "insufficient balance");
 
-        bytes20 recordID = addRecord(_to, _amount, _lockDay);
+        uint id = addRecord(_to, _amount, _lockDay);
         emit SafeTransfer(msg.sender, _to, _amount, _lockDay);
 
         // update record
-        AccountRecord[] memory temp_records = new AccountRecord[](recordIDs.length);
-        for(uint i = 0; i < recordIDs.length; i++) {
-            temp_records[i] = addr2records[msg.sender][recordID2index[recordIDs[i]]];
+        AccountRecord[] memory temp_records = new AccountRecord[](ids.length);
+        for(uint i = 0; i < ids.length; i++) {
+            temp_records[i] = addr2records[msg.sender][id2index[ids[i]]];
         }
         sortRecordByAmount(temp_records, 0, temp_records.length - 1);
         uint usedAmount = 0;
@@ -101,8 +101,8 @@ contract AccountManager is IAccountManager, System {
                     break;
                 }
             } else {
-                addr2records[msg.sender][recordID2index[temp_records[i].id]].amount = usedAmount + temp_records[i].amount - _amount;
-                addr2records[msg.sender][recordID2index[temp_records[i].id]].updateHeight = block.number;
+                addr2records[msg.sender][id2index[temp_records[i].id]].amount = usedAmount + temp_records[i].amount - _amount;
+                addr2records[msg.sender][id2index[temp_records[i].id]].updateHeight = block.number;
                 uint tempVoteAmount = _amount - usedAmount;
                 uint tempVoteNum = tempVoteAmount;
                 if(isMN(msg.sender)) {
@@ -114,68 +114,68 @@ contract AccountManager is IAccountManager, System {
                 break;
             }
         }
-        return recordID;
+        return id;
     }
 
-    function reward(address _to) public payable returns (bytes20) {
+    function reward(address _to) public payable returns (uint) {
         require(_to != address(0), "reward to the zero address");
         require(msg.value > 0, "invalid amount");
         return addRecord(_to, msg.value, 0);
     }
 
-    function setBindDay(bytes20 _recordID, uint _bindDay) public {
-        require(existRecord(_recordID), "invalid record id");
-        AccountRecord storage record = addr2records[recordID2addr[_recordID]][recordID2index[_recordID]];
-        if(_bindDay == 0) {
-            record.bindInfo.bindHeight = 0;
-            record.bindInfo.unbindHeight = 0;
+    function freeze(uint _id, uint _day) public {
+        require(existRecord(_id), "invalid record id");
+        AccountRecord storage record = addr2records[id2addr[_id]][id2index[_id]];
+        if(_day == 0) {
+            record.freezeHeight = 0;
+            record.unfreezeHeight = 0;
         } else {
-            record.bindInfo.bindHeight = block.number + 1;
-            record.bindInfo.unbindHeight = block.number + _bindDay.mul(86400).div(getPropertyValue("block_space"));
+            record.freezeHeight = block.number + 1;
+            record.unfreezeHeight = block.number + _day.mul(86400).div(getPropertyValue("block_space"));
         }
         record.updateHeight = block.number;
     }
 
     // get total amount
-    function getTotalAmount() public view returns (uint, bytes20[] memory) {
+    function getTotalAmount() public view returns (uint, uint[] memory) {
         AccountRecord[] memory records = addr2records[msg.sender];
         uint amount = 0;
-        bytes20[] memory recordIDs = new bytes20[](records.length);
+        uint[] memory ids = new uint[](records.length);
         for(uint i = 0; i < records.length; i++) {
             amount += records[i].amount;
-            recordIDs[i] = records[i].id;
+            ids[i] = records[i].id;
         }
-        return (amount, recordIDs);
+        return (amount, ids);
     }
 
     // get avaiable amount
-    function getAvailableAmount() public view returns (uint, bytes20[] memory) {
+    function getAvailableAmount() public view returns (uint, uint[] memory) {
         uint curHeight = block.number;
         AccountRecord[] memory records = addr2records[msg.sender];
 
         // get avaiable count
         uint count = 0;
         for(uint i = 0; i < records.length; i++) {
-            if(curHeight >= records[i].unlockHeight && curHeight >= records[i].bindInfo.unbindHeight) {
+            if(curHeight >= records[i].unlockHeight && curHeight >= records[i].unfreezeHeight) {
                 count++;
             }
         }
 
         // get avaiable amount and id list
-        bytes20[] memory recordIDs = new bytes20[](count);
+        uint[] memory ids = new uint[](count);
         uint amount = 0;
         uint index = 0;
         for(uint i = 0; i < records.length; i++) {
-            if(curHeight >= records[i].unlockHeight && curHeight >= records[i].bindInfo.unbindHeight) {
+            if(curHeight >= records[i].unlockHeight && curHeight >= records[i].unfreezeHeight) {
                 amount += records[i].amount;
-                recordIDs[index++] = records[i].id;
+                ids[index++] = records[i].id;
             }
         }
-        return (amount, recordIDs);
+        return (amount, ids);
     }
 
     // get locked amount
-    function getLockAmount() public view returns (uint, bytes20[] memory) {
+    function getLockAmount() public view returns (uint, uint[] memory) {
         uint curHeight = block.number;
         AccountRecord[] memory records = addr2records[msg.sender];
 
@@ -188,42 +188,42 @@ contract AccountManager is IAccountManager, System {
         }
 
         // get locked amount and id list
-        bytes20[] memory recordIDs = new bytes20[](count);
+        uint[] memory ids = new uint[](count);
         uint amount = 0;
         uint index = 0;
         for(uint i = 0; i < records.length; i++) {
             if(curHeight < records[i].unlockHeight) {
                 amount += records[i].amount;
-                recordIDs[index++] = records[i].id;
+                ids[index++] = records[i].id;
             }
         }
-        return (amount, recordIDs);
+        return (amount, ids);
     }
 
     // get bind amount
-    function getBindAmount() public view returns (uint, bytes20[] memory) {
+    function getFreezeAmount() public view returns (uint, uint[] memory) {
         uint curHeight = block.number;
         AccountRecord[] memory records = addr2records[msg.sender];
 
         // get avaiable count
         uint count = 0;
         for(uint i = 0; i < records.length; i++) {
-            if(curHeight < records[i].bindInfo.unbindHeight) {
+            if(curHeight < records[i].unfreezeHeight) {
                 count++;
             }
         }
 
         // get locked amount and id list
-        bytes20[] memory recordIDs = new bytes20[](count);
+        uint[] memory ids = new uint[](count);
         uint amount = 0;
         uint index = 0;
         for(uint i = 0; i < records.length; i++) {
-            if(curHeight < records[i].bindInfo.unbindHeight) {
+            if(curHeight < records[i].unfreezeHeight) {
                 amount += records[i].amount;
-                recordIDs[index++] = records[i].id;
+                ids[index++] = records[i].id;
             }
         }
-        return (amount, recordIDs);
+        return (amount, ids);
     }
 
     // get account records
@@ -232,43 +232,43 @@ contract AccountManager is IAccountManager, System {
     }
 
     // get record by id
-    function getRecordByID(bytes20 _recordID) public view returns (AccountRecord memory) {
-        require(existRecord(_recordID), "invalid record id");
-        return addr2records[msg.sender][recordID2index[_recordID]];
+    function getRecordByID(uint _id) public view returns (AccountRecord memory) {
+        require(existRecord(_id), "invalid record id");
+        return addr2records[msg.sender][id2index[_id]];
     }
 
-    function existRecord(bytes20 _recordID) internal view returns (bool) {
-        return recordID2addr[_recordID] == msg.sender;
+    function existRecord(uint _id) internal view returns (bool) {
+        return id2addr[_id] == msg.sender;
     }
 
     // add record
-    function addRecord(address _addr, uint _amount, uint _lockDay) internal returns (bytes20) {
+    function addRecord(address _addr, uint _amount, uint _lockDay) internal returns (uint) {
         uint startHeight = 0;
         uint unlockHeight = 0;
         if(_lockDay > 0) {
             startHeight = block.number + 1;
             unlockHeight = startHeight + _lockDay.mul(86400).div(getPropertyValue("block_space"));
         }
-        bytes20 recordID = ripemd160(abi.encodePacked(++record_no, _addr, _amount, _lockDay, startHeight, unlockHeight));
+        uint id = ++record_no;
         AccountRecord[] storage records = addr2records[_addr];
-        records.push(AccountRecord(recordID, _addr, _amount, _lockDay, startHeight, unlockHeight, BindInfo(0, 0), block.number, 0));
-        recordID2index[recordID] = records.length - 1;
-        recordID2addr[recordID] = _addr;
-        return recordID;
+        records.push(AccountRecord(id, _addr, _amount, _lockDay, startHeight, unlockHeight, 0, 0, block.number, 0));
+        id2index[id] = records.length - 1;
+        id2addr[id] = _addr;
+        return id;
     }
 
     // delete record
-    function delRecord(bytes20 _recordID) internal {
-        require(existRecord(_recordID), "invalid record id");
+    function delRecord(uint _id) internal {
+        require(existRecord(_id), "invalid record id");
         AccountRecord[] storage records = addr2records[msg.sender];
-        uint pos = recordID2index[_recordID];
+        uint pos = id2index[_id];
         records[pos] = records[records.length - 1];
         records.pop();
         if(records.length != 0) {
-            recordID2index[records[pos].id] = pos;
+            id2index[records[pos].id] = pos;
         }
-        delete recordID2index[_recordID];
-        delete recordID2addr[_recordID];
+        delete id2index[_id];
+        delete id2addr[_id];
     }
 
     // sort by amount

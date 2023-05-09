@@ -5,6 +5,7 @@ import "./System.sol";
 import "./interfaces/IMasterNode.sol";
 import "./interfaces/IAccountManager.sol";
 import "./utils/SafeMath.sol";
+import "./utils/NodeUtil.sol";
 
 contract MasterNode is IMasterNode, System {
     using SafeMath for uint256;
@@ -19,26 +20,26 @@ contract MasterNode is IMasterNode, System {
     mapping(string => address) mnIP2addr;
     mapping(string => address) mnPubkey2addr;
 
-    event MNRegister(address _addr, address _operator, uint _amount, uint _lockDay, bytes20 _reocrdID);
-    event MNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, bytes20 _recordID);
+    event MNRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _lockID);
+    event MNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _lockID);
 
     receive() external payable {}
     fallback() external payable {}
 
-    function register(address _addr, bool _isUnion, uint _lockDay, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive) public payable {
+    function register(bool _isUnion, address _addr, uint _lockDay, string memory _enode, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive) public payable {
         if(!_isUnion) {
             require(msg.value >= TOTAL_CREATE_AMOUNT, "masternode need lock 1000 SAFE at least");
         } else {
             require(msg.value >= UNION_CREATE_AMOUNT, "masternode need lock 200 SAFE at least");
         }
-        checkInfo(_addr, _lockDay, _ip, _pubkey, _description, _creatorIncentive, _partnerIncentive);
-        require(!existNodeAddress(_addr), "target address has been used");
-        require(!existNodeIP(_ip), "target ip has been used");
-        require(!existNodePubkey(_pubkey), "target pubkey has been used");
+        string memory ip = NodeUtil.check(1, _isUnion, _addr, _lockDay, _enode, _pubkey, _description, _creatorIncentive, _partnerIncentive, 0);
+        require(!existNodeAddress(_addr), "existent address");
+        require(!existNodeIP(ip), "existent ip");
+        require(!existNodePubkey(_pubkey), "existent pubkey");
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
-        bytes20 lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
-        create(_addr, lockID, msg.value, _ip, _pubkey, _description, 100, 0);
-        am.setBindDay(lockID, _lockDay); // creator's lock id can't unbind util unlock it
+        uint lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
+        create(_addr, lockID, msg.value, _enode, ip, _pubkey, _description, IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
+        am.freeze(lockID, _lockDay); // creator's lock id can't use util unfreeze it
         emit MNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -46,9 +47,9 @@ contract MasterNode is IMasterNode, System {
         require(msg.value >= APPEND_AMOUNT, "masternode need append lock 100 SAFE at least");
         require(exist(_addr), "non-existent masternode");
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
-        bytes20 lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
+        uint lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
         append(_addr, lockID, msg.value);
-        am.setBindDay(lockID, 30);
+        am.freeze(lockID, 30);
         emit MNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -86,7 +87,7 @@ contract MasterNode is IMasterNode, System {
 
     function changeAddress(address _addr, address _newAddr) public {
         require(exist(_addr), "non-existent masternode");
-        require(existNodeAddress(_newAddr), "target address has existed");
+        require(existNodeAddress(_newAddr), "existent new address");
         require(_newAddr != address(0), "invalid new address");
         require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
         masternodes[_newAddr] = masternodes[_addr];
@@ -98,16 +99,16 @@ contract MasterNode is IMasterNode, System {
         mnPubkey2addr[masternodes[_newAddr].pubkey] = _newAddr;
     }
 
-    function changeIP(address _addr, string memory _ip) public {
+    function changeEnode(address _addr, string memory _newEnode) public {
         require(exist(_addr), "non-existent masternode");
-        require(!existNodeIP(_ip), "target ip has existed");
+        string memory ip = NodeUtil.checkEnode(_newEnode);
+        require(!existNodeIP(ip), "existent ip of new enode");
         require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
-        require(bytes(_ip).length > 0, "invalid ip");
         string memory oldIP = masternodes[_addr].ip;
-        masternodes[_addr].ip = _ip;
+        masternodes[_addr].ip = ip;
         masternodes[_addr].updateHeight = block.number;
         delete mnIP2addr[oldIP];
-        mnIP2addr[_ip] = _addr;
+        mnIP2addr[ip] = _addr;
     }
 
     function changePubkey(address _addr, string memory _pubkey) public {
@@ -155,7 +156,7 @@ contract MasterNode is IMasterNode, System {
         return mnPubkey2addr[_pubkey] != address(0);
     }
 
-    function existLockID(address _addr, bytes20 _lokcID) public view returns (bool) {
+    function existLockID(address _addr, uint _lokcID) public view returns (bool) {
         MasterNodeInfo memory mn = masternodes[_addr];
         for(uint i = 0; i < mn.founders.length; i++) {
             if(mn.founders[i].lockID == _lokcID) {
@@ -165,28 +166,19 @@ contract MasterNode is IMasterNode, System {
         return false;
     }
 
-    function checkInfo(address _addr, uint _lockDay, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive) internal view {
-        require(!exist(_addr), "existent address");
-        require(_addr != address(0), "invalid address");
-        require(_lockDay >= 720, "lock 2 years at least");
-        require(bytes(_ip).length != 0, "invalid ip");
-        require(bytes(_pubkey).length != 0, "invalid pubkey");
-        require(bytes(_description).length != 0, "invalid description");
-        require(_creatorIncentive.add(_partnerIncentive) == 100, "invalid incentive plan");
-    }
-
-    function create(address _addr, bytes20 _lockID, uint _amount, string memory _ip, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive) internal {
+    function create(address _addr, uint _lockID, uint _amount, string memory _enode, string memory _ip, string memory _pubkey, string memory _description, IncentivePlan memory plan) internal {
         MasterNodeInfo storage mn = masternodes[_addr];
         mn.id = ++mn_no;
         mn.addr = _addr;
         mn.creator = msg.sender;
         mn.amount = _amount;
+        mn.enode = _enode;
         mn.ip = _ip;
         mn.pubkey = _pubkey;
         mn.description = _description;
         mn.state = 0;
         mn.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
-        mn.incentivePlan = IncentivePlan(_creatorIncentive, _partnerIncentive, 0);
+        mn.incentivePlan = plan;
         mn.createHeight = block.number;
         mn.createHeight = 0;
         mnID2addr[mn.id] = _addr;
@@ -195,7 +187,7 @@ contract MasterNode is IMasterNode, System {
     }
 
 
-    function append(address _addr, bytes20 _lockID, uint _amount) internal {
+    function append(address _addr, uint _lockID, uint _amount) internal {
         require(exist(_addr), "non-existent masternode");
         require(masternodes[_addr].amount >= 200, "need create first");
         require(!existLockID(_addr, _lockID), "lock ID has been used");
