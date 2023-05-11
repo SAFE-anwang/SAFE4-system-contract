@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "./StringUtil.sol";
 
 library NodeUtil {
+    using StringUtil for string;
+
     function check(uint _nodeType, bool _isUnion, address _addr, uint _lockDay, string memory _enode, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) internal pure returns (string memory) {
         require(_nodeType == 1 || _nodeType == 2, "invalid node type");
         checkAddress(_addr);
@@ -53,7 +55,7 @@ library NodeUtil {
         bytes memory enodeBytes = bytes(_enode);
         require(enodeBytes.length >= 150, "invalid nodeInfo");
         require(enodeBytes[136] == '@');
-        require(keccak256(abi.encodePacked(StringUtil.substring(_enode, 0, 8))) == keccak256(abi.encodePacked("enode://")), "missing enode://");
+        require(keccak256(abi.encodePacked(_enode.substring(0, 8))) == keccak256(abi.encodePacked("enode://")), "missing enode://");
         bytes memory ipBytes = new bytes(15);
         uint j = 0;
         for(uint i = 137; i < enodeBytes.length; i++) {
