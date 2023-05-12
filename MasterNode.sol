@@ -64,23 +64,25 @@ contract MasterNode is IMasterNode, System {
             am.reward{value: creatorReward}(info.creator);
         }
         // reward to partner
-        uint total = 0;
-        for(uint i = 0; i < info.founders.length; i++) {
-            if(total.add(info.founders[i].amount) <= TOTAL_CREATE_AMOUNT) {
-                uint temp = partnerReward.mul(info.founders[i].amount).div(TOTAL_CREATE_AMOUNT);
-                if(temp != 0) {
-                    am.reward{value: temp}(info.founders[i].addr);
-                }
-                total = total.add(info.founders[i].amount);
-                if(total == TOTAL_CREATE_AMOUNT) {
+        if(partnerReward != 0) {
+            uint total = 0;
+            for(uint i = 0; i < info.founders.length; i++) {
+                if(total.add(info.founders[i].amount) <= TOTAL_CREATE_AMOUNT) {
+                    uint temp = partnerReward.mul(info.founders[i].amount).div(TOTAL_CREATE_AMOUNT);
+                    if(temp != 0) {
+                        am.reward{value: temp}(info.founders[i].addr);
+                    }
+                    total = total.add(info.founders[i].amount);
+                    if(total == TOTAL_CREATE_AMOUNT) {
+                        break;
+                    }
+                } else {
+                    uint temp = partnerReward.mul(TOTAL_CREATE_AMOUNT.sub(total)).div(TOTAL_CREATE_AMOUNT);
+                    if(temp != 0) {
+                        am.reward{value: temp}(info.founders[i].addr);
+                    }
                     break;
                 }
-            } else {
-                uint temp = partnerReward.mul(TOTAL_CREATE_AMOUNT.sub(total)).div(TOTAL_CREATE_AMOUNT);
-                if(temp != 0) {
-                    am.reward{value: temp}(info.founders[i].addr);
-                }
-                break;
             }
         }
     }

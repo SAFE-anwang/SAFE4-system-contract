@@ -70,35 +70,41 @@ contract SuperMasterNode is ISuperMasterNode, System {
             am.reward{value: creatorReward}(info.creator);
         }
         // reward to partner
-        uint total = 0;
-        for(uint i = 0; i < info.founders.length; i++) {
-            if(total.add(info.founders[i].amount) <= TOTAL_CREATE_AMOUNT) {
-                uint temp = partnerReward.mul(info.founders[i].amount).div(TOTAL_CREATE_AMOUNT);
-                if(temp != 0) {
-                    am.reward{value: temp}(info.founders[i].addr);
-                }
-                total = total.add(info.founders[i].amount);
-                if(total == TOTAL_CREATE_AMOUNT) {
+        if(partnerReward != 0) {
+            uint total = 0;
+            for(uint i = 0; i < info.founders.length; i++) {
+                if(total.add(info.founders[i].amount) <= TOTAL_CREATE_AMOUNT) {
+                    uint temp = partnerReward.mul(info.founders[i].amount).div(TOTAL_CREATE_AMOUNT);
+                    if(temp != 0) {
+                        am.reward{value: temp}(info.founders[i].addr);
+                    }
+                    total = total.add(info.founders[i].amount);
+                    if(total == TOTAL_CREATE_AMOUNT) {
+                        break;
+                    }
+                } else {
+                    uint temp = partnerReward.mul(TOTAL_CREATE_AMOUNT.sub(total)).div(TOTAL_CREATE_AMOUNT);
+                    if(temp != 0) {
+                        am.reward{value: temp}(info.founders[i].addr);
+                    }
                     break;
                 }
-            } else {
-                uint temp = partnerReward.mul(TOTAL_CREATE_AMOUNT.sub(total)).div(TOTAL_CREATE_AMOUNT);
-                if(temp != 0) {
-                    am.reward{value: temp}(info.founders[i].addr);
-                }
-                break;
             }
         }
         // reward to voter
-        if(info.voters.length > 0) {
-            for(uint i = 0; i < info.voters.length; i++) {
-                uint temp = voterReward.mul(info.voters[i].amount).div(info.totalVoterAmount);
-                if(temp != 0) {
-                    am.reward{value: temp}(info.voters[i].addr);
+        if(voterReward != 0) {
+            if(info.voters.length > 0) {
+                for(uint i = 0; i < info.voters.length; i++) {
+                    uint temp = voterReward.mul(info.voters[i].amount).div(info.totalVoterAmount);
+                    if(temp != 0) {
+                        am.reward{value: temp}(info.voters[i].addr);
+                    }
+                }
+            } else {
+                if(voterReward != 0) {
+                    am.reward{value: voterReward}(info.creator);
                 }
             }
-        } else {
-            am.reward{value: voterReward}(info.creator);
         }
     }
 
