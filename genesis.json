@@ -10,7 +10,7 @@
     "constantinopleBlock": 0,
     "petersburgBlock": 0,
     "istanbulBlock": 0,
-    "safe":{"period":30,"epoch":200000}
+    "safe":{"period":30,"epoch":200}
   },
   "nonce": "0",
   "timestamp": "0x6375F7B9",
