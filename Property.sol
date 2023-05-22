@@ -20,7 +20,7 @@ contract Property is IProperty, System {
         emit PropertyAdd(_name, _value);
     }
 
-    function applyUpdate(string memory _name, uint _value, string memory _reason) public onlySMN {
+    function applyUpdate(string memory _name, uint _value, string memory _reason) public onlySN {
         require(exist(_name), "non-existent property");
         require(!existUnconfirmed(_name), "existent unconfirmed property");
         require(_value != properties[_name].value, "same property value");
@@ -35,7 +35,7 @@ contract Property is IProperty, System {
         emit PropertyApplyUpdate(_name, _value, properties[_name].value);
     }
 
-    function vote4Update(string memory _name, uint _voteResult) public onlySMN {
+    function vote4Update(string memory _name, uint _voteResult) public onlySN {
         require(existUnconfirmed(_name), "non-existent unconfirmed property");
         require(_voteResult == 1 || _voteResult == 2 || _voteResult == 3, "invalue vote result, must be agree(1), reject(2), abstain(3)");
         UnconfirmedPropertyInfo storage info = unconfirmedProperties[_name];
@@ -53,14 +53,14 @@ contract Property is IProperty, System {
         }
         uint agreeCount = 0;
         uint rejectCount = 0;
-        uint smnCount = getSMNNum();
+        uint snCount = getSNNum();
         for(i = 0; i < info.voters.length; i++) {
             if(info.voteResults[i] == 1) {
                 agreeCount++;
             } else if(info.voteResults[i] == 2) {
                 rejectCount++;
             }
-            if(agreeCount > smnCount * 2 / 3) {
+            if(agreeCount > snCount * 2 / 3) {
                 PropertyInfo storage info2 = properties[_name];
                 info2.value = info.value;
                 info2.updateHeight = block.timestamp;
@@ -68,7 +68,7 @@ contract Property is IProperty, System {
                 emit PropertyUpdateAgree(_name, info.value);
                 return;
             }
-            if(rejectCount >= smnCount / 3) {
+            if(rejectCount >= snCount / 3) {
                 delete unconfirmedProperties[_name];
                 emit PropertyUpdateReject(_name, info.value);
                 return;

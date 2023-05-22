@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./System.sol";
 import "./interfaces/IAccountManager.sol";
-import "./interfaces/ISMNVote.sol";
+import "./interfaces/ISNVote.sol";
 import "./utils/SafeMath.sol";
 
 contract AccountManager is IAccountManager, System {
@@ -53,13 +53,13 @@ contract AccountManager is IAccountManager, System {
             return 0;
         }
         payable(msg.sender).transfer(amount);
-        ISMNVote smnVote = ISMNVote(SMNVOTE_PROXY_ADDR);
+        ISNVote snVote = ISNVote(SNVOTE_PROXY_ADDR);
         for(uint i = 0; i < _ids.length; i++) {
             AccountRecord memory record = getRecordByID(_ids[i]);
             if(block.number >= record.unlockHeight && block.number >= record.unfreezeHeight) {
                 delRecord(_ids[i]);
-                smnVote.removeVote(_ids[i]);
-                smnVote.removeApproval(_ids[i]);
+                snVote.removeVote(_ids[i]);
+                snVote.removeApproval(_ids[i]);
             }
         }
         emit SafeWithdraw(msg.sender, amount);
@@ -85,7 +85,7 @@ contract AccountManager is IAccountManager, System {
         }
         sortRecordByAmount(temp_records, 0, temp_records.length - 1);
         uint usedAmount = 0;
-        ISMNVote smnVote = ISMNVote(SMNVOTE_PROXY_ADDR);
+        ISNVote snVote = ISNVote(SNVOTE_PROXY_ADDR);
         for(uint i = 0; i < temp_records.length; i++) {
             if(usedAmount + temp_records[i].amount <= _amount) {
                 delRecord(temp_records[i].id);
@@ -95,7 +95,7 @@ contract AccountManager is IAccountManager, System {
                 } else if(temp_records[i].unlockHeight != 0) {
                     tempVoteNum = temp_records[i].amount.mul(15).div(10);
                 }
-                smnVote.decreaseRecord(temp_records[i].id, temp_records[i].amount, tempVoteNum);
+                snVote.decreaseRecord(temp_records[i].id, temp_records[i].amount, tempVoteNum);
                 usedAmount += temp_records[i].amount;
                 if(usedAmount == _amount) {
                     break;
@@ -110,7 +110,7 @@ contract AccountManager is IAccountManager, System {
                 } else if(temp_records[i].unlockHeight != 0) {
                     tempVoteNum = tempVoteNum.mul(15).div(10);
                 }
-                smnVote.decreaseRecord(temp_records[i].id, tempVoteAmount, tempVoteNum);
+                snVote.decreaseRecord(temp_records[i].id, tempVoteAmount, tempVoteNum);
                 break;
             }
         }

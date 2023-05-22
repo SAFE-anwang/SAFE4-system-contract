@@ -42,7 +42,7 @@ contract NodeState is INodeState, System {
         uint num = 0;
         for(uint i = 0; i < entries.length; i++) {
             if(_state == entries[i].state) {
-                if(++num >= getSMNNum() * 2 / 3) {
+                if(++num >= getSNNum() * 2 / 3) {
                     entries[i].state = _state;
                     return;
                 }

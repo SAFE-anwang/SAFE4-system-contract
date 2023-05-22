@@ -48,7 +48,7 @@ contract Proposal is IProposal, System {
         return pp.id;
     }
 
-    function vote(uint _id, uint _voteResult) public onlySMN {
+    function vote(uint _id, uint _voteResult) public onlySN {
         require(existUnconfirmed(_id), "proposal has been confirmed");
         require(_voteResult == 0 || _voteResult == 1 || _voteResult == 2, "invalue vote result, must be agree(1), reject(2), abstain(3)");
         address[] storage voters = proposals[_id].voters;
@@ -71,7 +71,7 @@ contract Proposal is IProposal, System {
 
         uint agreeCount = 0;
         uint rejectCount = 0;
-        uint smnCount = getSMNNum();
+        uint snCount = getSNNum();
         for(i = 0; i < voteResults.length; i++) {
              if(voteResults[i] == 1) {
                 agreeCount++;
@@ -79,12 +79,12 @@ contract Proposal is IProposal, System {
             else if(voteResults[i] == 2) {
                 rejectCount++;
             }
-            if(agreeCount > smnCount * 2 / 3) {
+            if(agreeCount > snCount * 2 / 3) {
                 proposals[_id].state == 1;
                 emit ProposalState(_id, 1);
                 return;
             }
-            if(rejectCount >= smnCount * 1 / 3) {
+            if(rejectCount >= snCount * 1 / 3) {
                 proposals[_id].state = 2;
                 emit ProposalState(_id, 2);
                 return;

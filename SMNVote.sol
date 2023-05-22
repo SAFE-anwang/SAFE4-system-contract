@@ -2,32 +2,32 @@
 pragma solidity ^0.8.0;
 
 import "./System.sol";
-import "./interfaces/ISMNVote.sol";
+import "./interfaces/ISNVote.sol";
 import "./interfaces/IAccountManager.sol";
 import "./utils/SafeMath.sol";
 
-contract SMNVote is ISMNVote, System {
+contract SNVote is ISNVote, System {
     using SafeMath for uint256;
 
-    mapping(uint => SMNVoteRecord) id2record; // record to supermasternode or proxy vote
-    mapping(address => SMNVoteDetail) voter2detail; // voter to supermasternode or proxy list
-    mapping(address => uint) dst2amount; // supermasternode or proxy to total voter amount
-    mapping(address => uint) dst2num; // supermasternode or proxy to total vote number
-    mapping(address => address[]) dst2voters; // supermasternode or proxy to voter list
-    mapping(address => uint[]) dst2records; // supermasternode or proxy to record list
+    mapping(uint => SNVoteRecord) id2record; // record to supernode or proxy vote
+    mapping(address => SNVoteDetail) voter2detail; // voter to supernode or proxy list
+    mapping(address => uint) dst2amount; // supernode or proxy to total voter amount
+    mapping(address => uint) dst2num; // supernode or proxy to total vote number
+    mapping(address => address[]) dst2voters; // supernode or proxy to voter list
+    mapping(address => uint[]) dst2records; // supernode or proxy to record list
     mapping(uint => uint) record2index; // record to index of dst2records
 
-    function vote(address _smnAddr, uint[] memory _recordIDs) public {
+    function vote(address _snAddr, uint[] memory _recordIDs) public {
         for(uint i = 0; i < _recordIDs.length; i++) {
-            vote(_smnAddr, _recordIDs[i]);
+            vote(_snAddr, _recordIDs[i]);
         }
     }
 
-    function vote(address _smnAddr, uint _recordID) public {
-        require(!isSMN(msg.sender), "caller can't be supermasternode");
-        require(isSMN(_smnAddr), "invalid supermasternode");
+    function vote(address _snAddr, uint _recordID) public {
+        require(!isSN(msg.sender), "caller can't be supernode");
+        require(isSN(_snAddr), "invalid supernode");
         require(id2record[_recordID].voterAddr == address(0), "record has been used");
-        addVoteOrProxy(msg.sender, _smnAddr, _recordID);
+        addVoteOrProxy(msg.sender, _snAddr, _recordID);
     }
 
     function removeVote(uint[] memory _recordIDs) public {
@@ -57,16 +57,16 @@ contract SMNVote is ISMNVote, System {
         decreaseVoteOrProxy(_recordID, _amount, _num);
     }
 
-    function proxyVote(address _smnAddr) public {
+    function proxyVote(address _snAddr) public {
         require(isMN(msg.sender), "caller isn't proxy");
-        require(isSMN(_smnAddr), "invalid supermasternode");
+        require(isSN(_snAddr), "invalid supernode");
         uint recordID;
         address voterAddr;
         for(uint i = 0; i < dst2records[msg.sender].length; i++) {
             recordID = dst2records[msg.sender][i];
             voterAddr = id2record[recordID].voterAddr;
             removeVoteOrProxy(voterAddr, recordID); // remove proxy
-            addVoteOrProxy(voterAddr, _smnAddr, recordID); // add vote
+            addVoteOrProxy(voterAddr, _snAddr, recordID); // add vote
         }
     }
 
@@ -77,7 +77,7 @@ contract SMNVote is ISMNVote, System {
     }
 
     function approval(address _proxyAddr, uint _recordID) public {
-        require(!isSMN(msg.sender), "caller can't be supermasternode");
+        require(!isSN(msg.sender), "caller can't be supernode");
         require(isMN(_proxyAddr), "proxy isn't masternode");
         require(id2record[_recordID].voterAddr == address(0), "record has been used");
         addVoteOrProxy(msg.sender, _proxyAddr, _recordID);
@@ -96,10 +96,10 @@ contract SMNVote is ISMNVote, System {
         removeVoteOrProxy(msg.sender, _recordID);
     }
 
-    function getVotedSMN4Voter() public view returns (address[] memory retAddrs, uint[] memory retNums) {
+    function getVotedSN4Voter() public view returns (address[] memory retAddrs, uint[] memory retNums) {
         uint count = 0;
         for(uint i = 0; i < voter2detail[msg.sender].dstAddrs.length; i++) {
-            if(isSMN(voter2detail[msg.sender].dstAddrs[i])) {
+            if(isSN(voter2detail[msg.sender].dstAddrs[i])) {
                 count++;
             }
         }
@@ -110,7 +110,7 @@ contract SMNVote is ISMNVote, System {
         retAddrs = new address[](count);
         retNums = new uint[](count);
         for(uint i = 0; i < voter2detail[msg.sender].dstAddrs.length; i++) {
-            if(isSMN(voter2detail[msg.sender].dstAddrs[i])) {
+            if(isSN(voter2detail[msg.sender].dstAddrs[i])) {
                 retAddrs[index] = voter2detail[msg.sender].dstAddrs[i];
                 retNums[index++] = voter2detail[msg.sender].totalNums[i];
             }
@@ -119,10 +119,10 @@ contract SMNVote is ISMNVote, System {
     }
 
     function getVotedRecords4Voter() public view returns (uint[] memory retIDs) {
-        SMNVoteDetail memory detail = voter2detail[msg.sender];
+        SNVoteDetail memory detail = voter2detail[msg.sender];
         uint count = 0;
         for(uint i = 0; i < detail.dstAddrs.length; i++) {
-            if(isSMN(detail.dstAddrs[i])) {
+            if(isSN(detail.dstAddrs[i])) {
                 for(uint k = 0; k < detail.entries[i].length; k++) {
                     count++;
                 }
@@ -134,7 +134,7 @@ contract SMNVote is ISMNVote, System {
         retIDs = new uint[](count);
         uint index = 0;
         for(uint i = 0; i < detail.dstAddrs.length; i++) {
-            if(isSMN(detail.dstAddrs[i])) {
+            if(isSN(detail.dstAddrs[i])) {
                 for(uint k = 0; k < detail.entries[i].length; k++) {
                     retIDs[index++] = detail.entries[i][k].recordID;
                 }
@@ -142,14 +142,14 @@ contract SMNVote is ISMNVote, System {
         }
     }
 
-    function getVoters4SMN(address _smnAddr) public view returns (address[] memory retAddrs) {
-        require(isSMN(_smnAddr), "invalid supermasternode");
-        return dst2voters[_smnAddr];
+    function getVoters4SN(address _snAddr) public view returns (address[] memory retAddrs) {
+        require(isSN(_snAddr), "invalid supernode");
+        return dst2voters[_snAddr];
     }
 
-    function getVoteNum4SMN(address _smnAddr) public view returns (uint) {
-        require(isSMN(_smnAddr), "invalid supermasternode");
-        return dst2num[_smnAddr];
+    function getVoteNum4SN(address _snAddr) public view returns (uint) {
+        require(isSN(_snAddr), "invalid supernode");
+        return dst2num[_snAddr];
     }
 
     function getProxies4Voter() public view returns (address[] memory retAddrs, uint[] memory retNums) {
@@ -174,7 +174,7 @@ contract SMNVote is ISMNVote, System {
     }
 
     function getProxiedRecords4Voter() public view returns (uint[] memory retIDs) {
-        SMNVoteDetail memory detail = voter2detail[msg.sender];
+        SNVoteDetail memory detail = voter2detail[msg.sender];
         uint count = 0;
         for(uint i = 0; i < detail.dstAddrs.length; i++) {
             if(isMN(detail.dstAddrs[i])) {
@@ -207,18 +207,18 @@ contract SMNVote is ISMNVote, System {
         return dst2num[msg.sender];
     }
 
-    function existDstAddr(address _voterAddr, address _smnAddr) internal view returns (bool, uint) {
-        SMNVoteDetail memory detail = voter2detail[_voterAddr];
+    function existDstAddr(address _voterAddr, address _snAddr) internal view returns (bool, uint) {
+        SNVoteDetail memory detail = voter2detail[_voterAddr];
         for(uint i = 0; i < detail.dstAddrs.length; i++) {
-            if(detail.dstAddrs[i] == _smnAddr) {
+            if(detail.dstAddrs[i] == _snAddr) {
                 return (true, i);
             }
         }
         return (false, 0);
     }
 
-    function existVoter(address _smnAddr, address _voterAddr) internal view returns (bool, uint) {
-        address[] memory voters = dst2voters[_smnAddr];
+    function existVoter(address _snAddr, address _voterAddr) internal view returns (bool, uint) {
+        address[] memory voters = dst2voters[_snAddr];
         for(uint i = 0; i < voters.length; i++) {
             if(voters[i] == _voterAddr) {
                 return (true, i);
@@ -227,8 +227,8 @@ contract SMNVote is ISMNVote, System {
         return (false, 0);
     }
 
-    function existRecord(address _smnAddr, uint _recordID) internal view returns (bool, uint) {
-        uint[] memory recordIDs = dst2records[_smnAddr];
+    function existRecord(address _snAddr, uint _recordID) internal view returns (bool, uint) {
+        uint[] memory recordIDs = dst2records[_snAddr];
         for(uint i = 0; i < recordIDs.length; i++) {
             if(recordIDs[i] == _recordID) {
                 return (true, i);
@@ -251,7 +251,7 @@ contract SMNVote is ISMNVote, System {
             num = record.amount.mul(15).div(10);
         }
 
-        SMNVoteDetail storage detail = voter2detail[_voterAddr];
+        SNVoteDetail storage detail = voter2detail[_voterAddr];
         bool exist = false;
         uint pos = 0;
         (exist, pos) = existDstAddr(_voterAddr, _dstAddr);
@@ -260,9 +260,9 @@ contract SMNVote is ISMNVote, System {
             detail.totalAmounts[pos] = detail.totalAmounts[pos].add(amount);
             detail.totalNums[pos] = detail.totalNums[pos].add(num);
             // add entry
-            detail.entries[pos].push(SMNVoteEntry(_recordID, amount, num, block.number));
+            detail.entries[pos].push(SNVoteEntry(_recordID, amount, num, block.number));
             // add history
-            id2record[_recordID] = SMNVoteRecord(msg.sender, _dstAddr, detail.entries[pos].length - 1, block.number);
+            id2record[_recordID] = SNVoteRecord(msg.sender, _dstAddr, detail.entries[pos].length - 1, block.number);
         } else {
             // add dst address
             detail.dstAddrs.push(_dstAddr);
@@ -270,9 +270,9 @@ contract SMNVote is ISMNVote, System {
             detail.totalAmounts.push(amount);
             detail.totalNums.push(num);
             // add entry
-            detail.entries[0].push(SMNVoteEntry(_recordID, amount, num, block.number));
+            detail.entries[0].push(SNVoteEntry(_recordID, amount, num, block.number));
             // add history
-            id2record[_recordID] = SMNVoteRecord(msg.sender, _dstAddr, 0, block.number);
+            id2record[_recordID] = SNVoteRecord(msg.sender, _dstAddr, 0, block.number);
         }
 
         // add total amount & total num
@@ -293,7 +293,7 @@ contract SMNVote is ISMNVote, System {
         }
 
         // bind
-        if(isSMN(_dstAddr)) {
+        if(isSN(_dstAddr)) {
             am.freeze(_recordID, 7);
         }
     }
@@ -308,8 +308,8 @@ contract SMNVote is ISMNVote, System {
         }
         uint index = id2record[_recordID].index;
 
-        SMNVoteDetail storage detail = voter2detail[_voterAddr];
-        SMNVoteEntry[] storage entries = detail.entries[pos];
+        SNVoteDetail storage detail = voter2detail[_voterAddr];
+        SNVoteEntry[] storage entries = detail.entries[pos];
         uint amount = entries[index].amount;
         uint num = entries[index].num;
 
@@ -348,7 +348,7 @@ contract SMNVote is ISMNVote, System {
         }
 
         // unbind
-        if(isSMN(dstAddr)) {
+        if(isSN(dstAddr)) {
             IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
             am.freeze(_recordID, 0);
         }
@@ -364,8 +364,8 @@ contract SMNVote is ISMNVote, System {
         }
         uint index = id2record[_recordID].index;
 
-        SMNVoteDetail storage detail = voter2detail[msg.sender];
-        SMNVoteEntry[] storage entries = detail.entries[pos];
+        SNVoteDetail storage detail = voter2detail[msg.sender];
+        SNVoteEntry[] storage entries = detail.entries[pos];
         require(entries[index].amount >= _amount, "invalid amount");
         require(entries[index].num >= _num, "invalid num");
 
