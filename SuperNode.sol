@@ -160,6 +160,14 @@ contract SuperNode is ISuperNode, System {
         return supernodes[_addr];
     }
 
+    function getAll() public view returns (SuperNodeInfo[] memory) {
+        SuperNodeInfo[] memory ret = new SuperNodeInfo[](snIDs.length);
+        for(uint i = 0; i < snIDs.length; i++) {
+            ret[i] = supernodes[snID2addr[snIDs[i]]];
+        }
+        return ret;
+    }
+
     function getTop() public view returns (SuperNodeInfo[] memory) {
         uint num = 0;
         for(uint i = 0; i < snIDs.length; i++) {

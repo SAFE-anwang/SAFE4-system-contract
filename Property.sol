@@ -3,10 +3,15 @@ pragma solidity ^0.8.0;
 
 import "./System.sol";
 import "./interfaces/IProperty.sol";
+import "./utils/StringUtil.sol";
 
 contract Property is IProperty, System {
+    using StringUtil for string;
+
     mapping(string => PropertyInfo) properties;
+    string[] confirmedNames;
     mapping(string => UnconfirmedPropertyInfo) unconfirmedProperties;
+    string[] unconfirmedNames;
 
     event PropertyAdd(string _name, uint _value);
     event PropertyApplyUpdate(string _name, uint _newValue, uint _oldValue);
@@ -17,6 +22,7 @@ contract Property is IProperty, System {
     function add(string memory _name, uint _value, string memory _description) public onlyOwner {
         require(!exist(_name), "existent property");
         properties[_name] = PropertyInfo(_name, _value, _description, block.number, 0);
+        confirmedNames.push(_name);
         emit PropertyAdd(_name, _value);
     }
 
@@ -32,6 +38,7 @@ contract Property is IProperty, System {
         info.voteResults.push(1);
         info.reason = _reason;
         info.applyHeight = block.number;
+        unconfirmedNames.push(_name);
         emit PropertyApplyUpdate(_name, _value, properties[_name].value);
     }
 
@@ -64,12 +71,12 @@ contract Property is IProperty, System {
                 PropertyInfo storage info2 = properties[_name];
                 info2.value = info.value;
                 info2.updateHeight = block.timestamp;
-                delete unconfirmedProperties[_name];
+                removeUnconfirmedName(_name);
                 emit PropertyUpdateAgree(_name, info.value);
                 return;
             }
             if(rejectCount >= snCount / 3) {
-                delete unconfirmedProperties[_name];
+                removeUnconfirmedName(_name);
                 emit PropertyUpdateReject(_name, info.value);
                 return;
             }
@@ -92,11 +99,39 @@ contract Property is IProperty, System {
         return getInfo(_name).value;
     }
 
+    function getAllConfirmed() public view returns (PropertyInfo[] memory) {
+        PropertyInfo[] memory ret = new PropertyInfo[](confirmedNames.length);
+        for(uint i = 0; i < confirmedNames.length; i++) {
+            ret[i] = properties[confirmedNames[i]];
+        }
+        return ret;
+    }
+
+    function getAllUnConfirmed() public view returns (UnconfirmedPropertyInfo[] memory) {
+        UnconfirmedPropertyInfo[] memory ret = new UnconfirmedPropertyInfo[](unconfirmedNames.length);
+        for(uint i = 0; i < unconfirmedNames.length; i++) {
+            ret[i] = unconfirmedProperties[unconfirmedNames[i]];
+        }
+        return ret;
+    }
+
     function exist(string memory _name) internal view returns (bool) {
         return bytes(properties[_name].name).length != 0;
     }
 
     function existUnconfirmed(string memory _name) internal view returns (bool) {
         return bytes(unconfirmedProperties[_name].name).length != 0;
+    }
+
+    function removeUnconfirmedName(string memory _name) internal {
+        require(existUnconfirmed(_name), "non-existent unconfirmed property");
+        delete unconfirmedProperties[_name];
+        for(uint i = 0; i < unconfirmedNames.length; i++) {
+            if(unconfirmedNames[i].equal(_name)) {
+                unconfirmedNames[i] = unconfirmedNames[unconfirmedNames.length - 1];
+                unconfirmedNames.pop();
+                break;
+            }
+        }
     }
 }

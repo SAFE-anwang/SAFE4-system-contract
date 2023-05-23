@@ -26,4 +26,6 @@ interface IProperty {
     function getInfo(string memory _name) external view returns (PropertyInfo memory);
     function getUnconfirmedInfo(string memory _name) external view returns (UnconfirmedPropertyInfo memory);
     function getValue(string memory _name) external view returns (uint);
+    function getAllConfirmed() external view returns (PropertyInfo[] memory);
+    function getAllUnConfirmed() external view returns (UnconfirmedPropertyInfo[] memory);
 }

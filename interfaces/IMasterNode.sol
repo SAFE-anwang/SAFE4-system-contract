@@ -24,4 +24,5 @@ interface IMasterNode is INode {
     function reward(address _addr) external payable;
     function getInfo(address _addr) external view returns (MasterNodeInfo memory);
     function getNext() external view returns (address);
+    function getAll() external view returns (MasterNodeInfo[] memory);
 }

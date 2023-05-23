@@ -16,6 +16,7 @@ contract MasterNode is IMasterNode, System {
 
     uint mn_no; // masternode no.
     mapping(address => MasterNodeInfo) masternodes;
+    uint[] mnIDs;
     mapping(uint => address) mnID2addr;
     mapping(string => address) mnIP2addr;
     mapping(string => address) mnPubkey2addr;
@@ -142,6 +143,14 @@ contract MasterNode is IMasterNode, System {
         return mnID2addr[(block.number % mn_no).add(1)];
     }
 
+    function getAll() public view returns (MasterNodeInfo[] memory) {
+        MasterNodeInfo[] memory ret = new MasterNodeInfo[](mnIDs.length);
+        for(uint i = 0; i < mnIDs.length; i++) {
+            ret[i] = masternodes[mnID2addr[mnIDs[i]]];
+        }
+        return ret;
+    }
+
     function exist(address _addr) public view returns (bool) {
         return masternodes[_addr].id != 0;
     }
@@ -186,6 +195,7 @@ contract MasterNode is IMasterNode, System {
         mnID2addr[mn.id] = _addr;
         mnIP2addr[mn.ip] = _addr;
         mnPubkey2addr[mn.pubkey] = _addr;
+        mnIDs.push(mn.id);
     }
 
 
