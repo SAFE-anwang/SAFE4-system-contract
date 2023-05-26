@@ -20,7 +20,6 @@ contract SuperNode is ISuperNode, System {
     uint[] snIDs;
     mapping(uint => address) snID2addr;
     mapping(string => address) snIP2addr;
-    mapping(string => address) snPubkey2addr;
 
     event SNRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _reocrdID);
     event SNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _recordID);
@@ -28,22 +27,21 @@ contract SuperNode is ISuperNode, System {
     receive() external payable {}
     fallback() external payable {}
 
-    function register(bool _isUnion, address _addr, uint _lockDay, string memory _name, string memory _enode, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable {
+    function register(bool _isUnion, address _addr, uint _lockDay, string memory _name, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable {
         if(!_isUnion) {
             require(msg.value >= TOTAL_CREATE_AMOUNT, "supernode need lock 5000 SAFE at least");
         } else {
             require(msg.value >= UNION_CREATE_AMOUNT, "supernode need lock 1000 SAFE at least");
         }
         require(bytes(_name).length > 0 && bytes(_name).length <= 1024, "invalid name");
-        string memory ip = NodeUtil.check(2, _isUnion, _addr, _lockDay, _enode, _pubkey, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
+        string memory ip = NodeUtil.check(2, _isUnion, _addr, _lockDay, _enode, _description, _creatorIncentive, _partnerIncentive, _voterIncentive);
         require(!existNodeAddress(_addr), "existent address");
         require(!existNodeIP(ip), "existent ip");
-        require(!existNodePubkey(_pubkey), "existent pubkey");
 
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
         uint lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
         IncentivePlan memory plan = IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive);
-        create(_addr, lockID, msg.value, _name, _enode, ip, _pubkey, _description, plan);
+        create(_addr, lockID, msg.value, _name, _enode, ip, _description, plan);
         am.freeze(lockID, _lockDay); // creator's lock id can't unbind util unlock it
         emit SNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
@@ -119,7 +117,6 @@ contract SuperNode is ISuperNode, System {
         newSN.updateHeight = 0;
         snID2addr[newSN.id] = _newAddr;
         snIP2addr[newSN.ip] = _newAddr;
-        snPubkey2addr[newSN.pubkey] = _newAddr;
         delete supernodes[_addr];
     }
 
@@ -133,18 +130,6 @@ contract SuperNode is ISuperNode, System {
         supernodes[_addr].updateHeight = block.number;
         snIP2addr[ip] = _addr;
         delete snIP2addr[oldIP];
-    }
-
-    function changePubkey(address _addr, string memory _newPubkey) public {
-        require(exist(_addr), "non-existent supernode");
-        require(!existNodePubkey(_newPubkey), "target pubkey has existed");
-        require(bytes(_newPubkey).length > 0, "invalid pubkey");
-        require(msg.sender == supernodes[_addr].creator, "caller isn't creator");
-        string memory oldPubkey = supernodes[_addr].pubkey;
-        supernodes[_addr].pubkey = _newPubkey;
-        supernodes[_addr].updateHeight = block.number;
-        snPubkey2addr[_newPubkey] = _addr;
-        delete snPubkey2addr[oldPubkey];
     }
 
     function changeDescription(address _addr, string memory _newDescription) public {
@@ -227,10 +212,6 @@ contract SuperNode is ISuperNode, System {
         return snIP2addr[_ip] != address(0);
     }
 
-    function existPubkey(string memory _pubkey) public view returns (bool) {
-        return snPubkey2addr[_pubkey] != address(0);
-    }
-
     function existLockID(address _addr, uint _lockID) public view returns (bool) {
         for(uint i = 0; i < supernodes[_addr].founders.length; i++) {
             if(supernodes[_addr].founders[i].lockID == _lockID) {
@@ -240,7 +221,7 @@ contract SuperNode is ISuperNode, System {
         return false;
     }
 
-    function create(address _addr, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _ip, string memory _pubkey, string memory _description, IncentivePlan memory _incentivePlan) internal {
+    function create(address _addr, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _ip, string memory _description, IncentivePlan memory _incentivePlan) internal {
         SuperNodeInfo storage sn = supernodes[_addr];
         sn.id = ++sn_no;
         sn.name = _name;
@@ -249,7 +230,6 @@ contract SuperNode is ISuperNode, System {
         sn.amount = _amount;
         sn.enode = _enode;
         sn.ip = _ip;
-        sn.pubkey = _pubkey;
         sn.description = _description;
         sn.state = 0;
         sn.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
@@ -259,7 +239,6 @@ contract SuperNode is ISuperNode, System {
         snIDs.push(sn.id);
         snID2addr[sn.id] = _addr;
         snIP2addr[sn.ip] = _addr;
-        snPubkey2addr[sn.pubkey] = _addr;
     }
 
     function append(address _addr, uint _lockID, uint _amount) internal {

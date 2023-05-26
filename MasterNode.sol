@@ -19,7 +19,6 @@ contract MasterNode is IMasterNode, System {
     uint[] mnIDs;
     mapping(uint => address) mnID2addr;
     mapping(string => address) mnIP2addr;
-    mapping(string => address) mnPubkey2addr;
 
     event MNRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _lockID);
     event MNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _lockID);
@@ -27,19 +26,18 @@ contract MasterNode is IMasterNode, System {
     receive() external payable {}
     fallback() external payable {}
 
-    function register(bool _isUnion, address _addr, uint _lockDay, string memory _enode, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive) public payable {
+    function register(bool _isUnion, address _addr, uint _lockDay, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive) public payable {
         if(!_isUnion) {
             require(msg.value >= TOTAL_CREATE_AMOUNT, "masternode need lock 1000 SAFE at least");
         } else {
             require(msg.value >= UNION_CREATE_AMOUNT, "masternode need lock 200 SAFE at least");
         }
-        string memory ip = NodeUtil.check(1, _isUnion, _addr, _lockDay, _enode, _pubkey, _description, _creatorIncentive, _partnerIncentive, 0);
+        string memory ip = NodeUtil.check(1, _isUnion, _addr, _lockDay, _enode, _description, _creatorIncentive, _partnerIncentive, 0);
         require(!existNodeAddress(_addr), "existent address");
         require(!existNodeIP(ip), "existent ip");
-        require(!existNodePubkey(_pubkey), "existent pubkey");
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
         uint lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
-        create(_addr, lockID, msg.value, _enode, ip, _pubkey, _description, IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
+        create(_addr, lockID, msg.value, _enode, ip, _description, IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
         am.freeze(lockID, _lockDay); // creator's lock id can't use util unfreeze it
         emit MNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
@@ -99,7 +97,6 @@ contract MasterNode is IMasterNode, System {
         delete masternodes[_addr];
         mnID2addr[masternodes[_newAddr].id] = _newAddr;
         mnIP2addr[masternodes[_newAddr].ip] = _newAddr;
-        mnPubkey2addr[masternodes[_newAddr].pubkey] = _newAddr;
     }
 
     function changeEnode(address _addr, string memory _newEnode) public {
@@ -112,18 +109,6 @@ contract MasterNode is IMasterNode, System {
         masternodes[_addr].updateHeight = block.number;
         delete mnIP2addr[oldIP];
         mnIP2addr[ip] = _addr;
-    }
-
-    function changePubkey(address _addr, string memory _pubkey) public {
-        require(exist(_addr), "non-existent masternode");
-        require(!existNodePubkey(_pubkey), "target pubkey has existed");
-        require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
-        require(bytes(_pubkey).length > 0, "invalid pubkey");
-        string memory oldPubkey = masternodes[_addr].pubkey;
-        masternodes[_addr].pubkey = _pubkey;
-        masternodes[_addr].updateHeight = block.number;
-        delete mnPubkey2addr[oldPubkey];
-        mnPubkey2addr[_pubkey] = _addr;
     }
 
     function changeDescription(address _addr, string memory _description) public {
@@ -163,10 +148,6 @@ contract MasterNode is IMasterNode, System {
         return mnIP2addr[_ip] != address(0);
     }
 
-    function existPubkey(string memory _pubkey) public view returns (bool) {
-        return mnPubkey2addr[_pubkey] != address(0);
-    }
-
     function existLockID(address _addr, uint _lokcID) public view returns (bool) {
         MasterNodeInfo memory mn = masternodes[_addr];
         for(uint i = 0; i < mn.founders.length; i++) {
@@ -177,7 +158,7 @@ contract MasterNode is IMasterNode, System {
         return false;
     }
 
-    function create(address _addr, uint _lockID, uint _amount, string memory _enode, string memory _ip, string memory _pubkey, string memory _description, IncentivePlan memory plan) internal {
+    function create(address _addr, uint _lockID, uint _amount, string memory _enode, string memory _ip, string memory _description, IncentivePlan memory plan) internal {
         MasterNodeInfo storage mn = masternodes[_addr];
         mn.id = ++mn_no;
         mn.addr = _addr;
@@ -185,7 +166,6 @@ contract MasterNode is IMasterNode, System {
         mn.amount = _amount;
         mn.enode = _enode;
         mn.ip = _ip;
-        mn.pubkey = _pubkey;
         mn.description = _description;
         mn.state = 0;
         mn.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
@@ -194,7 +174,6 @@ contract MasterNode is IMasterNode, System {
         mn.createHeight = 0;
         mnID2addr[mn.id] = _addr;
         mnIP2addr[mn.ip] = _addr;
-        mnPubkey2addr[mn.pubkey] = _addr;
         mnIDs.push(mn.id);
     }
 

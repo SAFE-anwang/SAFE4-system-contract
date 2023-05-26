@@ -11,7 +11,6 @@ interface IMasterNode is INode {
         uint amount; // total locked amount
         string enode; // masternode enode, contain node id & node ip & node port
         string ip; // masternode ip
-        string pubkey; // masternode public key
         string description; // masternode description
         uint state; // masternode state
         MemberInfo[] founders; // masternode founders
@@ -20,7 +19,7 @@ interface IMasterNode is INode {
         uint updateHeight; // masternode update height
     }
 
-    function register(bool _isUnion, address _addr, uint _lockDay, string memory _enode, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive) external payable;
+    function register(bool _isUnion, address _addr, uint _lockDay, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive) external payable;
     function reward(address _addr) external payable;
     function getInfo(address _addr) external view returns (MasterNodeInfo memory);
     function getNext() external view returns (address);

@@ -12,7 +12,6 @@ interface ISuperNode is INode {
         uint amount; // total amount
         string enode; // supernode enode, contain node id & node ip & node port
         string ip; // supernode ip
-        string pubkey; // supernode public key
         string description; // supernode description
         uint state; // supernode state
         MemberInfo[] founders; // supernode founders
@@ -24,7 +23,7 @@ interface ISuperNode is INode {
         uint updateHeight; // supernode update height
     }
 
-    function register(bool _isUnion, address _addr, uint _lockDay, string memory _name, string memory _enode, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) external payable;
+    function register(bool _isUnion, address _addr, uint _lockDay, string memory _name, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) external payable;
     function appendRegister(address _addr, uint _lockDay) external payable;
     function reward(address _addr) external payable;
     function getInfo(address _addr) external view returns (SuperNodeInfo memory);

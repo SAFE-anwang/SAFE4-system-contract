@@ -19,12 +19,10 @@ interface INode {
 
     function changeAddress(address _addr, address _newAddr) external;
     function changeEnode(address _addr, string memory _newEnode) external;
-    function changePubkey(address _addr, string memory _newPubkey) external;
     function changeDescription(address _addr, string memory _newDescription) external;
 
     function exist(address _addr) external view returns (bool);
     function existID(uint _id) external view returns (bool);
     function existIP(string memory _ip) external view returns (bool);
-    function existPubkey(string memory _pubkey) external view returns (bool);
     function existLockID(address _addr, uint _lockID) external view returns (bool);
 }

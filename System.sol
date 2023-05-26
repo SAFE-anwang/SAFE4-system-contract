@@ -96,10 +96,4 @@ contract System is Initializable, OwnableUpgradeable{
         ISuperNode sn = ISuperNode(SUPERNODE_PROXY_ADDR);
         return mn.existIP(_ip) || sn.existIP(_ip);
     }
-
-    function existNodePubkey(string memory _pubkey) internal view returns (bool) {
-        IMasterNode mn = IMasterNode(MASTERNODE_PROXY_ADDR);
-        ISuperNode sn = ISuperNode(SUPERNODE_PROXY_ADDR);
-        return mn.existPubkey(_pubkey) || sn.existPubkey(_pubkey);
-    }
 }

@@ -6,11 +6,10 @@ import "./StringUtil.sol";
 library NodeUtil {
     using StringUtil for string;
 
-    function check(uint _nodeType, bool _isUnion, address _addr, uint _lockDay, string memory _enode, string memory _pubkey, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) internal pure returns (string memory) {
+    function check(uint _nodeType, bool _isUnion, address _addr, uint _lockDay, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) internal pure returns (string memory) {
         require(_nodeType == 1 || _nodeType == 2, "invalid node type");
         checkAddress(_addr);
         checkLockDay(_lockDay);
-        checkPubkey(_pubkey);
         checkDescription(_nodeType, _description);
         checkIncentive(_nodeType, _isUnion, _creatorIncentive, _partnerIncentive, _voterIncentive);
         return checkEnode(_enode);
@@ -22,10 +21,6 @@ library NodeUtil {
 
     function checkLockDay(uint _lockDay) internal pure {
         require(_lockDay >= 720, "lock 2 years at least");
-    }
-
-    function checkPubkey(string memory _pubkey) internal pure {
-        require(bytes(_pubkey).length != 0, "invalid pubkey");
     }
 
     function checkDescription(uint _nodeType, string memory _description) internal pure {
