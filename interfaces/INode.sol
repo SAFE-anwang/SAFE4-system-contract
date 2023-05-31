@@ -15,7 +15,11 @@ interface INode {
         uint voter; // voter percent [40%, 50%]
     }
 
+    event SystemReward(address _nodeAddr, uint _nodeType, address _addr, uint _rewardType, uint _amount);
+
     function appendRegister(address _addr, uint _lockDay) external payable;
+    function reward(address _addr) external payable;
+    function getNum() external view returns (uint);
 
     function changeAddress(address _addr, address _newAddr) external;
     function changeEnode(address _addr, string memory _newEnode) external;

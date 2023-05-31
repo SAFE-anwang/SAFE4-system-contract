@@ -10,9 +10,9 @@ import "./utils/NodeUtil.sol";
 contract SuperNode is ISuperNode, System {
     using SafeMath for uint256;
 
-    uint internal constant TOTAL_CREATE_AMOUNT  = 5000;
-    uint internal constant UNION_CREATE_AMOUNT  = 1000; // 20%
-    uint internal constant APPEND_AMOUNT        = 500; // 10%
+    uint internal constant TOTAL_CREATE_AMOUNT  = 5000000000000000000000;
+    uint internal constant UNION_CREATE_AMOUNT  = 1000000000000000000000; // 20%
+    uint internal constant APPEND_AMOUNT        = 500000000000000000000; // 10%
     uint internal constant MAX_NUM              = 49;
 
     uint sn_no; // supernode no.
@@ -62,28 +62,53 @@ contract SuperNode is ISuperNode, System {
         uint creatorReward = msg.value.mul(info.incentivePlan.creator).div(100);
         uint partnerReward = msg.value.mul(info.incentivePlan.partner).div(100);
         uint voterReward = msg.value.sub(creatorReward).sub(partnerReward);
-        IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
+
+        uint maxCount = info.founders.length + info.voters.length;
+        address[] memory tempAddrs = new address[](maxCount);
+        uint[] memory tempAmounts = new uint[](maxCount);
+        uint[] memory tempRewardTypes = new uint[](maxCount);
+        uint count = 0;
         // reward to creator
         if(creatorReward != 0) {
-            am.reward{value: creatorReward}(info.creator);
+            tempAddrs[count] = info.creator;
+            tempAmounts[count] = creatorReward;
+            tempRewardTypes[count] = 1;
+            count++;
         }
         // reward to partner
         if(partnerReward != 0) {
             uint total = 0;
             for(uint i = 0; i < info.founders.length; i++) {
-                if(total.add(info.founders[i].amount) <= TOTAL_CREATE_AMOUNT) {
-                    uint temp = partnerReward.mul(info.founders[i].amount).div(TOTAL_CREATE_AMOUNT);
-                    if(temp != 0) {
-                        am.reward{value: temp}(info.founders[i].addr);
+                MemberInfo memory partner = info.founders[i];
+                if(total.add(partner.amount) <= TOTAL_CREATE_AMOUNT) {
+                    uint tempAmount = partnerReward.mul(partner.amount).div(TOTAL_CREATE_AMOUNT);
+                    if(tempAmount != 0) {
+                        int pos = NodeUtil.find(tempAddrs, partner.addr);
+                        if(pos == -1) {
+                            tempAddrs[count] = partner.addr;
+                            tempAmounts[count] = tempAmount;
+                            tempRewardTypes[count] = 2;
+                            count++;
+                        } else {
+                            tempAmounts[uint(pos)] += tempAmount;
+                        }
                     }
-                    total = total.add(info.founders[i].amount);
+                    total = total.add(partner.amount);
                     if(total == TOTAL_CREATE_AMOUNT) {
                         break;
                     }
                 } else {
-                    uint temp = partnerReward.mul(TOTAL_CREATE_AMOUNT.sub(total)).div(TOTAL_CREATE_AMOUNT);
-                    if(temp != 0) {
-                        am.reward{value: temp}(info.founders[i].addr);
+                    uint tempAmount = partnerReward.mul(TOTAL_CREATE_AMOUNT.sub(total)).div(TOTAL_CREATE_AMOUNT);
+                    if(tempAmount != 0) {
+                        int pos = NodeUtil.find(tempAddrs, partner.addr);
+                        if(pos == -1) {
+                            tempAddrs[count] = partner.addr;
+                            tempAmounts[count] = tempAmount;
+                            tempRewardTypes[count] = 2;
+                            count++;
+                        } else {
+                            tempAmounts[uint(pos)] += tempAmount;
+                        }
                     }
                     break;
                 }
@@ -93,16 +118,30 @@ contract SuperNode is ISuperNode, System {
         if(voterReward != 0) {
             if(info.voters.length > 0) {
                 for(uint i = 0; i < info.voters.length; i++) {
-                    uint temp = voterReward.mul(info.voters[i].amount).div(info.totalVoterAmount);
-                    if(temp != 0) {
-                        am.reward{value: temp}(info.voters[i].addr);
+                    MemberInfo memory voter = info.voters[i];
+                    uint tempAmount = voterReward.mul(voter.amount).div(info.totalVoterAmount);
+                    if(tempAmount != 0) {
+                        int pos = NodeUtil.find(tempAddrs, voter.addr);
+                        if(pos == -1) {
+                            tempAddrs[count] = voter.addr;
+                            tempAmounts[count] = tempAmount;
+                            tempRewardTypes[count] = 3;
+                            count++;
+                        } else {
+                            tempAmounts[uint(pos)] += tempAmount;
+                        }
                     }
                 }
             } else {
-                if(voterReward != 0) {
-                    am.reward{value: voterReward}(info.creator);
-                }
+                // no voters, reward to creator
+                tempAmounts[0] += voterReward;
             }
+        }
+
+        IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
+        for(uint i = 0; i < count; i++) {
+            am.reward{value: tempAmounts[i]}(tempAddrs[i]);
+            emit SystemReward(_addr, 1, tempAddrs[i], tempRewardTypes[i], tempAmounts[i]);
         }
     }
 

@@ -10,9 +10,9 @@ import "./utils/NodeUtil.sol";
 contract MasterNode is IMasterNode, System {
     using SafeMath for uint256;
 
-    uint internal constant TOTAL_CREATE_AMOUNT  = 1000;
-    uint internal constant UNION_CREATE_AMOUNT  = 200; // 20%
-    uint internal constant APPEND_AMOUNT        = 100; // 10%
+    uint internal constant TOTAL_CREATE_AMOUNT  = 1000000000000000000000;
+    uint internal constant UNION_CREATE_AMOUNT  = 200000000000000000000; // 20%
+    uint internal constant APPEND_AMOUNT        = 100000000000000000000; // 10%
 
     uint mn_no; // masternode no.
     mapping(address => MasterNodeInfo) masternodes;
@@ -57,32 +57,63 @@ contract MasterNode is IMasterNode, System {
         MasterNodeInfo memory info = masternodes[_addr];
         uint creatorReward = msg.value.mul(info.incentivePlan.creator).div(100);
         uint partnerReward = msg.value.mul(info.incentivePlan.partner).div(100);
-        IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
+
+        uint maxCount = info.founders.length;
+        address[] memory tempAddrs = new address[](maxCount);
+        uint[] memory tempAmounts = new uint[](maxCount);
+        uint[] memory tempRewardTypes = new uint[](maxCount);
+        uint count = 0;
         // reward to creator
         if(creatorReward != 0) {
-            am.reward{value: creatorReward}(info.creator);
+            tempAddrs[count] = info.creator;
+            tempAmounts[count] = creatorReward;
+            tempRewardTypes[count] = 1;
+            count++;
         }
         // reward to partner
         if(partnerReward != 0) {
             uint total = 0;
             for(uint i = 0; i < info.founders.length; i++) {
-                if(total.add(info.founders[i].amount) <= TOTAL_CREATE_AMOUNT) {
-                    uint temp = partnerReward.mul(info.founders[i].amount).div(TOTAL_CREATE_AMOUNT);
-                    if(temp != 0) {
-                        am.reward{value: temp}(info.founders[i].addr);
+                MemberInfo memory partner = info.founders[i];
+                if(total.add(partner.amount) <= TOTAL_CREATE_AMOUNT) {
+                    uint tempAmount = partnerReward.mul(partner.amount).div(TOTAL_CREATE_AMOUNT);
+                    if(tempAmount != 0) {
+                        int pos = NodeUtil.find(tempAddrs, partner.addr);
+                        if(pos == -1) {
+                            tempAddrs[count] = partner.addr;
+                            tempAmounts[count] = tempAmount;
+                            tempRewardTypes[count] = 2;
+                            count++;
+                        } else {
+                            tempAmounts[uint(pos)] += tempAmount;
+                        }
                     }
-                    total = total.add(info.founders[i].amount);
+                    total = total.add(partner.amount);
                     if(total == TOTAL_CREATE_AMOUNT) {
                         break;
                     }
                 } else {
-                    uint temp = partnerReward.mul(TOTAL_CREATE_AMOUNT.sub(total)).div(TOTAL_CREATE_AMOUNT);
-                    if(temp != 0) {
-                        am.reward{value: temp}(info.founders[i].addr);
+                    uint tempAmount = partnerReward.mul(TOTAL_CREATE_AMOUNT.sub(total)).div(TOTAL_CREATE_AMOUNT);
+                    if(tempAmount != 0) {
+                        int pos = NodeUtil.find(tempAddrs, partner.addr);
+                        if(pos == -1) {
+                            tempAddrs[count] = partner.addr;
+                            tempAmounts[count] = tempAmount;
+                            tempRewardTypes[count] = 2;
+                            count++;
+                        } else {
+                            tempAmounts[uint(pos)] += tempAmount;
+                        }
                     }
                     break;
                 }
             }
+        }
+        // reward to address
+        IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
+        for(uint i = 0; i < count; i++) {
+            am.reward{value: tempAmounts[i]}(tempAddrs[i]);
+            emit SystemReward(_addr, 2, tempAddrs[i], tempRewardTypes[i], tempAmounts[i]);
         }
     }
 
@@ -134,6 +165,10 @@ contract MasterNode is IMasterNode, System {
             ret[i] = masternodes[mnID2addr[mnIDs[i]]];
         }
         return ret;
+    }
+
+    function getNum() public view returns (uint) {
+        return mnIDs.length;
     }
 
     function exist(address _addr) public view returns (bool) {
