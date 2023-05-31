@@ -33,7 +33,7 @@ contract AccountManager is IAccountManager, System {
     function withdraw() public returns (uint) {
         uint amount = 0;
         uint[] memory ids;
-        (amount, ids) = getAvailableAmount();
+        (amount, ids) = getAvailableAmount(msg.sender);
         require(amount > 0, "insufficient amount");
         return withdraw(ids);
     }
@@ -72,7 +72,7 @@ contract AccountManager is IAccountManager, System {
 
         uint amount = 0;
         uint[] memory ids;
-        (amount, ids) = getAvailableAmount();
+        (amount, ids) = getAvailableAmount(msg.sender);
         require(amount >= _amount, "insufficient balance");
 
         uint id = addRecord(_to, _amount, _lockDay);
@@ -137,8 +137,8 @@ contract AccountManager is IAccountManager, System {
     }
 
     // get total amount
-    function getTotalAmount() public view returns (uint, uint[] memory) {
-        AccountRecord[] memory records = addr2records[msg.sender];
+    function getTotalAmount(address _addr) public view returns (uint, uint[] memory) {
+        AccountRecord[] memory records = addr2records[_addr];
         uint amount = 0;
         uint[] memory ids = new uint[](records.length);
         for(uint i = 0; i < records.length; i++) {
@@ -149,9 +149,9 @@ contract AccountManager is IAccountManager, System {
     }
 
     // get avaiable amount
-    function getAvailableAmount() public view returns (uint, uint[] memory) {
+    function getAvailableAmount(address _addr) public view returns (uint, uint[] memory) {
         uint curHeight = block.number;
-        AccountRecord[] memory records = addr2records[msg.sender];
+        AccountRecord[] memory records = addr2records[_addr];
 
         // get avaiable count
         uint count = 0;
@@ -175,9 +175,9 @@ contract AccountManager is IAccountManager, System {
     }
 
     // get locked amount
-    function getLockAmount() public view returns (uint, uint[] memory) {
+    function getLockAmount(address _addr) public view returns (uint, uint[] memory) {
         uint curHeight = block.number;
-        AccountRecord[] memory records = addr2records[msg.sender];
+        AccountRecord[] memory records = addr2records[_addr];
 
         // get avaiable count
         uint count = 0;
@@ -201,9 +201,9 @@ contract AccountManager is IAccountManager, System {
     }
 
     // get bind amount
-    function getFreezeAmount() public view returns (uint, uint[] memory) {
+    function getFreezeAmount(address _addr) public view returns (uint, uint[] memory) {
         uint curHeight = block.number;
-        AccountRecord[] memory records = addr2records[msg.sender];
+        AccountRecord[] memory records = addr2records[_addr];
 
         // get avaiable count
         uint count = 0;
@@ -227,14 +227,13 @@ contract AccountManager is IAccountManager, System {
     }
 
     // get account records
-    function getRecords() public view returns (AccountRecord[] memory) {
-        return addr2records[msg.sender];
+    function getRecords(address _addr) public view returns (AccountRecord[] memory) {
+        return addr2records[_addr];
     }
 
     // get record by id
     function getRecordByID(uint _id) public view returns (AccountRecord memory) {
-        require(existRecord(_id), "invalid record id");
-        return addr2records[msg.sender][id2index[_id]];
+        return addr2records[id2addr[_id]][id2index[_id]];
     }
 
     function existRecord(uint _id) internal view returns (bool) {

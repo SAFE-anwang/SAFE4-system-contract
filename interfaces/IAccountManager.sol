@@ -21,10 +21,10 @@ interface IAccountManager {
     function transfer(address _to, uint _amount, uint _lockDay) external returns (uint);
     function reward(address _to) external payable returns (uint);
     function freeze(uint _id, uint _day) external;
-    function getTotalAmount() external view returns (uint, uint[] memory); 
-    function getAvailableAmount() external view returns (uint, uint[] memory);
-    function getLockAmount() external view returns (uint, uint[] memory);
-    function getFreezeAmount() external view returns (uint, uint[] memory);
-    function getRecords() external view returns (AccountRecord[] memory);
+    function getTotalAmount(address _addr) external view returns (uint, uint[] memory); 
+    function getAvailableAmount(address _addr) external view returns (uint, uint[] memory);
+    function getLockAmount(address _addr) external view returns (uint, uint[] memory);
+    function getFreezeAmount(address _addr) external view returns (uint, uint[] memory);
+    function getRecords(address _addr) external view returns (AccountRecord[] memory);
     function getRecordByID(uint _id) external view returns (AccountRecord memory);
 }
