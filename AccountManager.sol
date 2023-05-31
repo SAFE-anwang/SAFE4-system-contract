@@ -16,7 +16,7 @@ contract AccountManager is IAccountManager, System {
 
     event SafeDeposit(address _addr, uint _amount, uint _lockDay, uint _id);
     event SafeWithdraw(address _addr, uint _amount);
-    event SafeTransfer(address _from, address _to, uint _amount, uint _lockDay);
+    event SafeTransfer(address _from, address _to, uint _amount, uint _lockDay, uint _id);
 
     receive() external payable {}
     fallback() external payable {}
@@ -76,7 +76,7 @@ contract AccountManager is IAccountManager, System {
         require(amount >= _amount, "insufficient balance");
 
         uint id = addRecord(_to, _amount, _lockDay);
-        emit SafeTransfer(msg.sender, _to, _amount, _lockDay);
+        emit SafeTransfer(msg.sender, _to, _amount, _lockDay, id);
 
         // update record
         AccountRecord[] memory temp_records = new AccountRecord[](ids.length);
