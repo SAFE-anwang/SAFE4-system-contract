@@ -33,12 +33,12 @@ interface ISNVote {
     function approval(address _proxyAddr, uint _recordID) external;
     function removeApproval(uint[] memory _recordIDs) external;
     function removeApproval(uint _recordID) external;
-    function getVotedSN4Voter() external view returns (address[] memory, uint[] memory);
-    function getVotedRecords4Voter() external view returns (uint[] memory recordIDs);
+    function getVotedSN4Voter(address _voterAddr) external view returns (address[] memory, uint[] memory);
+    function getVotedRecords4Voter(address _voterAddr) external view returns (uint[] memory recordIDs);
     function getVoters4SN(address _snAddr) external view returns (address[] memory);
     function getVoteNum4SN(address _snAddr) external view returns (uint);
-    function getProxies4Voter() external view returns (address[] memory, uint[] memory);
-    function getProxiedRecords4Voter() external view returns (uint[] memory recordIDs);
-    function getVoters4Proxy() external view returns (address[] memory);
-    function getVoteNum4Proxy() external view returns (uint);
+    function getProxies4Voter(address _voterAddr) external view returns (address[] memory, uint[] memory);
+    function getProxiedRecords4Voter(address _voterAddr) external view returns (uint[] memory recordIDs);
+    function getVoters4Proxy(address _proxyAddr) external view returns (address[] memory);
+    function getVoteNum4Proxy(address _proxyAddr) external view returns (uint);
 }

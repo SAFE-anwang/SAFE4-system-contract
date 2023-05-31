@@ -96,10 +96,10 @@ contract SNVote is ISNVote, System {
         removeVoteOrProxy(msg.sender, _recordID);
     }
 
-    function getVotedSN4Voter() public view returns (address[] memory retAddrs, uint[] memory retNums) {
+    function getVotedSN4Voter(address _voterAddr) public view returns (address[] memory retAddrs, uint[] memory retNums) {
         uint count = 0;
-        for(uint i = 0; i < voter2detail[msg.sender].dstAddrs.length; i++) {
-            if(isSN(voter2detail[msg.sender].dstAddrs[i])) {
+        for(uint i = 0; i < voter2detail[_voterAddr].dstAddrs.length; i++) {
+            if(isSN(voter2detail[_voterAddr].dstAddrs[i])) {
                 count++;
             }
         }
@@ -109,17 +109,17 @@ contract SNVote is ISNVote, System {
         uint index = 0;
         retAddrs = new address[](count);
         retNums = new uint[](count);
-        for(uint i = 0; i < voter2detail[msg.sender].dstAddrs.length; i++) {
-            if(isSN(voter2detail[msg.sender].dstAddrs[i])) {
-                retAddrs[index] = voter2detail[msg.sender].dstAddrs[i];
-                retNums[index++] = voter2detail[msg.sender].totalNums[i];
+        for(uint i = 0; i < voter2detail[_voterAddr].dstAddrs.length; i++) {
+            if(isSN(voter2detail[_voterAddr].dstAddrs[i])) {
+                retAddrs[index] = voter2detail[_voterAddr].dstAddrs[i];
+                retNums[index++] = voter2detail[_voterAddr].totalNums[i];
             }
         }
         return (retAddrs, retNums);
     }
 
-    function getVotedRecords4Voter() public view returns (uint[] memory retIDs) {
-        SNVoteDetail memory detail = voter2detail[msg.sender];
+    function getVotedRecords4Voter(address _voterAddr) public view returns (uint[] memory retIDs) {
+        SNVoteDetail memory detail = voter2detail[_voterAddr];
         uint count = 0;
         for(uint i = 0; i < detail.dstAddrs.length; i++) {
             if(isSN(detail.dstAddrs[i])) {
@@ -152,10 +152,10 @@ contract SNVote is ISNVote, System {
         return dst2num[_snAddr];
     }
 
-    function getProxies4Voter() public view returns (address[] memory retAddrs, uint[] memory retNums) {
+    function getProxies4Voter(address _voterAddr) public view returns (address[] memory retAddrs, uint[] memory retNums) {
         uint count = 0;
-        for(uint i = 0; i < voter2detail[msg.sender].dstAddrs.length; i++) {
-            if(isMN(voter2detail[msg.sender].dstAddrs[i])) {
+        for(uint i = 0; i < voter2detail[_voterAddr].dstAddrs.length; i++) {
+            if(isMN(voter2detail[_voterAddr].dstAddrs[i])) {
                 count++;
             }
         }
@@ -165,16 +165,16 @@ contract SNVote is ISNVote, System {
         uint index = 0;
         retAddrs = new address[](count);
         retNums = new uint[](count);
-        for(uint i = 0; i < voter2detail[msg.sender].dstAddrs.length; i++) {
-            if(isMN(voter2detail[msg.sender].dstAddrs[i])) {
-                retAddrs[index] = voter2detail[msg.sender].dstAddrs[i];
-                retNums[index++] = voter2detail[msg.sender].totalNums[i];
+        for(uint i = 0; i < voter2detail[_voterAddr].dstAddrs.length; i++) {
+            if(isMN(voter2detail[_voterAddr].dstAddrs[i])) {
+                retAddrs[index] = voter2detail[_voterAddr].dstAddrs[i];
+                retNums[index++] = voter2detail[_voterAddr].totalNums[i];
             }
         }
     }
 
-    function getProxiedRecords4Voter() public view returns (uint[] memory retIDs) {
-        SNVoteDetail memory detail = voter2detail[msg.sender];
+    function getProxiedRecords4Voter(address _voterAddr) public view returns (uint[] memory retIDs) {
+        SNVoteDetail memory detail = voter2detail[_voterAddr];
         uint count = 0;
         for(uint i = 0; i < detail.dstAddrs.length; i++) {
             if(isMN(detail.dstAddrs[i])) {
@@ -197,14 +197,14 @@ contract SNVote is ISNVote, System {
         }
     }
 
-    function getVoters4Proxy() public view returns (address[] memory) {
-        require(isMN(msg.sender), "caller isn't proxy");
-        return dst2voters[msg.sender];
+    function getVoters4Proxy(address _proxyAddr) public view returns (address[] memory) {
+        require(isMN(_proxyAddr), "caller isn't proxy");
+        return dst2voters[_proxyAddr];
     }
 
-    function getVoteNum4Proxy() public view returns (uint) {
-        require(isMN(msg.sender), "caller isn't proxy");
-        return dst2num[msg.sender];
+    function getVoteNum4Proxy(address _proxyAddr) public view returns (uint) {
+        require(isMN(_proxyAddr), "caller isn't proxy");
+        return dst2num[_proxyAddr];
     }
 
     function existDstAddr(address _voterAddr, address _snAddr) internal view returns (bool, uint) {
