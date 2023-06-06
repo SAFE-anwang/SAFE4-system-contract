@@ -13,12 +13,6 @@ contract Property is IProperty, System {
     mapping(string => UnconfirmedPropertyInfo) unconfirmedProperties;
     string[] unconfirmedNames;
 
-    event PropertyAdd(string _name, uint _value);
-    event PropertyApplyUpdate(string _name, uint _newValue, uint _oldValue);
-    event PropertyUpdateReject(string _name, uint _newValue);
-    event PropertyUpdateAgree(string _name, uint _newValue);
-    event PropertyUpdateVote(string _name, uint _newValue, address _voter, uint _voteResult);
-
     function add(string memory _name, uint _value, string memory _description) public onlyOwner {
         require(!exist(_name), "existent property");
         properties[_name] = PropertyInfo(_name, _value, _description, block.number, 0);
@@ -39,7 +33,7 @@ contract Property is IProperty, System {
         info.reason = _reason;
         info.applyHeight = block.number;
         unconfirmedNames.push(_name);
-        emit PropertyApplyUpdate(_name, _value, properties[_name].value);
+        emit PropertyUpdateApply(_name, _value, properties[_name].value);
     }
 
     function vote4Update(string memory _name, uint _voteResult) public onlySN {

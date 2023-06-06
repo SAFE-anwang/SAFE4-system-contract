@@ -20,6 +20,12 @@ interface IProperty {
         uint applyHeight;
     }
 
+    event PropertyAdd(string _name, uint _value);
+    event PropertyUpdateApply(string _name, uint _newValue, uint _oldValue);
+    event PropertyUpdateReject(string _name, uint _newValue);
+    event PropertyUpdateAgree(string _name, uint _newValue);
+    event PropertyUpdateVote(string _name, uint _newValue, address _voter, uint _voteResult);
+
     function add(string memory _name, uint _value, string memory _description) external;
     function applyUpdate(string memory _name, uint _value, string memory _reason) external;
     function vote4Update(string memory _name, uint _result) external;
