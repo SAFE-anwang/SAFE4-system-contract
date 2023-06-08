@@ -38,7 +38,7 @@ contract MasterNode is IMasterNode, System {
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
         uint lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
         create(_addr, lockID, msg.value, _enode, ip, _description, IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
-        am.freeze(lockID, _addr, _lockDay); // creator's lock id can't use util unfreeze it
+        am.setRecordFreeze(lockID, _addr, _lockDay); // creator's lock id can't register other masternode again
         emit MNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -48,8 +48,22 @@ contract MasterNode is IMasterNode, System {
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
         uint lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
         append(_addr, lockID, msg.value);
-        am.freeze(lockID, _addr, 30);
+        am.setRecordFreeze(lockID, _addr, 30); // partner's lock id can register other masternode after 30 days
         emit MNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
+    }
+
+    function turnRegister(address _addr, uint _lockID) public {
+        require(exist(_addr), "non-existent masternode");
+        IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
+        IAccountManager.AccountRecord memory record = am.getRecordByID(_lockID);
+        require(record.addr == msg.sender, "you aren't record owner");
+        require(record.amount >= APPEND_AMOUNT, "masternode need append lock 100 SAFE at least");
+        require(block.number < record.unlockHeight, "record isn't locked");
+        IAccountManager.RecordUseInfo memory useinfo = am.getRecordUseInfo(_lockID);
+        require(block.number >= useinfo.unfreezeHeight, "record is freezen");
+        append(_addr, _lockID, record.lockDay);
+        am.setRecordFreeze(_lockID, _addr, 30); // partner's lock id can register other masternode after 30 days
+        emit MNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
 
     function reward(address _addr) public payable {
