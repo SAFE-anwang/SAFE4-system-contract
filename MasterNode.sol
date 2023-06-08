@@ -38,7 +38,7 @@ contract MasterNode is IMasterNode, System {
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
         uint lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
         create(_addr, lockID, msg.value, _enode, ip, _description, IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
-        am.freeze(lockID, _lockDay); // creator's lock id can't use util unfreeze it
+        am.freeze(lockID, _addr, _lockDay); // creator's lock id can't use util unfreeze it
         emit MNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -48,7 +48,7 @@ contract MasterNode is IMasterNode, System {
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
         uint lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
         append(_addr, lockID, msg.value);
-        am.freeze(lockID, 30);
+        am.freeze(lockID, _addr, 30);
         emit MNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -207,9 +207,9 @@ contract MasterNode is IMasterNode, System {
         mn.incentivePlan = plan;
         mn.createHeight = block.number;
         mn.createHeight = 0;
+        mnIDs.push(mn.id);
         mnID2addr[mn.id] = _addr;
         mnIP2addr[mn.ip] = _addr;
-        mnIDs.push(mn.id);
     }
 
 

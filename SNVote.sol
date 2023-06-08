@@ -240,7 +240,7 @@ contract SNVote is ISNVote, System {
     function addVoteOrProxy(address _voterAddr, address _dstAddr, uint _recordID) internal {
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
         IAccountManager.AccountRecord memory record = am.getRecordByID(_recordID);
-        if(block.number < record.unfreezeHeight) {
+        if(record.addr != _voterAddr || block.number < record.unfreezeHeight) {
             return;
         }
         uint amount = record.amount;
@@ -292,9 +292,9 @@ contract SNVote is ISNVote, System {
             record2index[_recordID] = dst2records[_dstAddr].length - 1;
         }
 
-        // bind
+        // freeze
         if(isSN(_dstAddr)) {
-            am.freeze(_recordID, 7);
+            am.freeze(_recordID, _dstAddr, 7);
         }
     }
 
@@ -347,10 +347,10 @@ contract SNVote is ISNVote, System {
             detail.totalNums[pos] = detail.totalNums[pos].sub(num);
         }
 
-        // unbind
+        // unfreeze
         if(isSN(dstAddr)) {
             IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
-            am.freeze(_recordID, 0);
+            am.freeze(_recordID, dstAddr, 0);
         }
     }
 

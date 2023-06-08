@@ -42,7 +42,7 @@ contract SuperNode is ISuperNode, System {
         uint lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
         IncentivePlan memory plan = IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive);
         create(_addr, lockID, msg.value, _name, _enode, ip, _description, plan);
-        am.freeze(lockID, _lockDay); // creator's lock id can't unbind util unlock it
+        am.freeze(lockID, _addr, _lockDay); // creator's lock id can't unbind util unlock it
         emit SNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -52,7 +52,7 @@ contract SuperNode is ISuperNode, System {
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
         uint lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
         append(_addr, lockID, msg.value);
-        am.freeze(lockID, 90);
+        am.freeze(lockID, _addr, 90);
         emit SNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 

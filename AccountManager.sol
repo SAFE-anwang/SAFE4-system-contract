@@ -126,15 +126,19 @@ contract AccountManager is IAccountManager, System {
         return addRecord(_to, msg.value, 0);
     }
 
-    function freeze(uint _id, uint _day) public {
+    function freeze(uint _id, address _target, uint _day) public {
         require(existRecord(_id), "invalid record id");
         AccountRecord storage record = addr2records[id2addr[_id]][id2index[_id]];
         if(_day == 0) {
             record.freezeHeight = 0;
             record.unfreezeHeight = 0;
+            record.freezeTarget = address(0);
+            emit SafeUnfreeze(_id);
         } else {
             record.freezeHeight = block.number + 1;
             record.unfreezeHeight = block.number + _day.mul(86400).div(getPropertyValue("block_space"));
+            record.freezeTarget = _target;
+            emit SafeFreeze(_id, _target, _day);
         }
     }
 
@@ -144,6 +148,7 @@ contract AccountManager is IAccountManager, System {
         }
         require(existRecord(_id), "invalid record id");
         AccountRecord storage record = addr2records[id2addr[_id]][id2index[_id]];
+        uint oldLockDay = record.lockDay;
         if(block.number >= record.unlockHeight) {
             record.lockDay = _day;
             record.startHeight = block.number + 1;
@@ -151,7 +156,7 @@ contract AccountManager is IAccountManager, System {
             record.lockDay += _day;
         }
         record.unlockHeight = record.startHeight + record.lockDay.mul(86400).div(getPropertyValue("block_space"));
-        emit SafeAddLock(_id, record.lockDay);
+        emit SafeAddLockDay(_id, oldLockDay, record.lockDay);
     }
 
     // get all
@@ -281,7 +286,7 @@ contract AccountManager is IAccountManager, System {
         uint unlockHeight = startHeight + _lockDay.mul(86400).div(getPropertyValue("block_space"));
         uint id = ++record_no;
         AccountRecord[] storage records = addr2records[_addr];
-        records.push(AccountRecord(id, _addr, _amount, _lockDay, startHeight, unlockHeight, 0, 0));
+        records.push(AccountRecord(id, _addr, _amount, _lockDay, startHeight, unlockHeight, 0, 0, address(0)));
         id2index[id] = records.length - 1;
         id2addr[id] = _addr;
         return id;
