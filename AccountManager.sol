@@ -138,6 +138,22 @@ contract AccountManager is IAccountManager, System {
         }
     }
 
+    function addLockDay(uint _id, uint _day) public {
+        if(_id == 0 || _day == 0) {
+            return;
+        }
+        require(existRecord(_id), "invalid record id");
+        AccountRecord storage record = addr2records[id2addr[_id]][id2index[_id]];
+        if(block.number >= record.unlockHeight) {
+            record.lockDay = _day;
+            record.startHeight = block.number + 1;
+        } else {
+            record.lockDay += _day;
+        }
+        record.unlockHeight = record.startHeight + record.lockDay.mul(86400).div(getPropertyValue("block_space"));
+        emit SafeAddLock(_id, record.lockDay);
+    }
+
     // get all
     function getAll(address _addr) public view returns (AccountRecord[] memory) {
         return addr2records[_addr];
