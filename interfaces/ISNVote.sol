@@ -23,16 +23,16 @@ interface ISNVote {
         uint height; // block height
     }
 
-    function vote(address _snAddr, uint[] memory _recordIDs) external;
-    function vote(address _snAddr, uint _recordID) external;
-    function removeVote(uint[] memory _recordIDs) external;
-    function removeVote(uint _recordID) external;
-    function decreaseRecord(uint _recordID, uint _amount, uint _num) external;
+    event SNVOTE_VOTE(address _voterAddr, address _snAddr, uint _recordID, uint _voteNum);
+    event SNVOTE_APPROVAL(address _voterAddr, address _proxyAddr, uint _recordID, uint _voteNum);
+    event SNVOTE_REMOVE_VOTE(address _voterAddr, address _snAddr, uint _recordID, uint _voteNum);
+    event SNVOTE_REMOVE_APPROVAL(address _voterAddr, address _proxyAddr, uint _recordID, uint _voteNum);
+
+    function voteOrApproval(bool _isVote, address _snAddr, uint[] memory _recordIDs) external;
+    function voteOrApproval(bool _isVote, address _snAddr, uint _recordID) external;
+    function removeVoteOrApproval(uint[] memory _recordIDs) external;
+    function removeVoteOrApproval(uint _recordID) external;
     function proxyVote(address _snAddr) external;
-    function approval(address _proxyAddr, uint[] memory _recordIDs) external;
-    function approval(address _proxyAddr, uint _recordID) external;
-    function removeApproval(uint[] memory _recordIDs) external;
-    function removeApproval(uint _recordID) external;
     function getVotedSN4Voter(address _voterAddr) external view returns (address[] memory, uint[] memory);
     function getVotedRecords4Voter(address _voterAddr) external view returns (uint[] memory recordIDs);
     function getVoters4SN(address _snAddr) external view returns (address[] memory);
