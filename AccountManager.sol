@@ -15,6 +15,7 @@ contract AccountManager is IAccountManager, System {
     mapping(address => AccountRecord[]) addr2records;
     mapping(uint => uint) id2index;
     mapping(uint => address) id2addr;
+    mapping(uint => RecordUseInfo) id2useinfo;
 
     receive() external payable {}
     fallback() external payable {}
@@ -45,7 +46,8 @@ contract AccountManager is IAccountManager, System {
                 amount += balances[msg.sender];
             } else {
                 AccountRecord memory record = getRecordByID(_ids[i]);
-                if(record.addr == msg.sender && block.number >= record.unlockHeight && block.number >= record.unfreezeHeight) {
+                RecordUseInfo memory useinfo = id2useinfo[_ids[i]];
+                if(record.addr == msg.sender && block.number >= record.unlockHeight && block.number >= useinfo.unfreezeHeight) {
                     amount += record.amount;
                 }
             }
@@ -56,10 +58,10 @@ contract AccountManager is IAccountManager, System {
             for(uint i = 0; i < _ids.length; i++) {
                 if(_ids[i] != 0) {
                     AccountRecord memory record = getRecordByID(_ids[i]);
-                    if(record.addr == msg.sender && block.number >= record.unlockHeight && block.number >= record.unfreezeHeight) {
+                    RecordUseInfo memory useinfo = id2useinfo[_ids[i]];
+                    if(record.addr == msg.sender && block.number >= record.unlockHeight && block.number >= useinfo.unfreezeHeight) {
                         delRecord(_ids[i]);
-                        snVote.removeVote(_ids[i]);
-                        snVote.removeApproval(_ids[i]);
+                        snVote.removeVoteOrApproval(_ids[i]);
                     }
                 }
             }
@@ -93,27 +95,14 @@ contract AccountManager is IAccountManager, System {
         for(uint i = 0; i < temp_records.length; i++) {
             if(usedAmount + temp_records[i].amount <= _amount) {
                 delRecord(temp_records[i].id);
-                uint tempVoteNum = temp_records[i].amount;
-                if(isMN(msg.sender)) {
-                    tempVoteNum = temp_records[i].amount.mul(2);
-                } else if(temp_records[i].unlockHeight != 0) {
-                    tempVoteNum = temp_records[i].amount.mul(15).div(10);
-                }
-                snVote.decreaseRecord(temp_records[i].id, temp_records[i].amount, tempVoteNum);
+                snVote.removeVoteOrApproval(temp_records[i].id);
                 usedAmount += temp_records[i].amount;
                 if(usedAmount == _amount) {
                     break;
                 }
             } else {
                 addr2records[msg.sender][id2index[temp_records[i].id]].amount = usedAmount + temp_records[i].amount - _amount;
-                uint tempVoteAmount = _amount - usedAmount;
-                uint tempVoteNum = tempVoteAmount;
-                if(isMN(msg.sender)) {
-                    tempVoteNum = tempVoteAmount.mul(2);
-                } else if(temp_records[i].unlockHeight != 0) {
-                    tempVoteNum = tempVoteNum.mul(15).div(10);
-                }
-                snVote.decreaseRecord(temp_records[i].id, tempVoteAmount, tempVoteNum);
+                snVote.removeVoteOrApproval(temp_records[i].id);
                 break;
             }
         }
@@ -126,19 +115,33 @@ contract AccountManager is IAccountManager, System {
         return addRecord(_to, msg.value, 0);
     }
 
-    function freeze(uint _id, address _target, uint _day) public {
+    function setRecordFreeze(uint _id, address _addr, uint _day) public {
         require(existRecord(_id), "invalid record id");
-        AccountRecord storage record = addr2records[id2addr[_id]][id2index[_id]];
+        RecordUseInfo storage useinfo = id2useinfo[_id];
         if(_day == 0) {
-            record.freezeHeight = 0;
-            record.unfreezeHeight = 0;
-            record.freezeTarget = address(0);
+            useinfo.sepcialAddr = address(0);
+            useinfo.freezeHeight = 0;
+            useinfo.unfreezeHeight = 0;
             emit SafeUnfreeze(_id);
         } else {
-            record.freezeHeight = block.number + 1;
-            record.unfreezeHeight = block.number + _day.mul(86400).div(getPropertyValue("block_space"));
-            record.freezeTarget = _target;
-            emit SafeFreeze(_id, _target, _day);
+            useinfo.sepcialAddr = _addr;
+            useinfo.freezeHeight = block.number + 1;
+            useinfo.unfreezeHeight = useinfo.freezeHeight + _day.mul(86400).div(getPropertyValue("block_space"));
+            emit SafeFreeze(_id, _addr, _day);
+        }
+    }
+
+    function setRecordVote(uint _id, address _addr, uint _day) public {
+        require(existRecord(_id), "invalid record id");
+        RecordUseInfo storage useinfo = id2useinfo[_id];
+        if(_day == 0) {
+            useinfo.votedAddr = address(0);
+            useinfo.voteHeight = 0;
+            useinfo.releaseHeight = 0;
+        } else {
+            useinfo.votedAddr = _addr;
+            useinfo.voteHeight = block.number + 1;
+            useinfo.releaseHeight = useinfo.voteHeight + _day.mul(86400).div(getPropertyValue("block_space"));
         }
     }
 
@@ -184,7 +187,7 @@ contract AccountManager is IAccountManager, System {
         // get avaiable count
         uint count = 0;
         for(uint i = 0; i < records.length; i++) {
-            if(curHeight >= records[i].unlockHeight && curHeight >= records[i].unfreezeHeight) {
+            if(curHeight >= records[i].unlockHeight && curHeight >= id2useinfo[records[i].id].unfreezeHeight) {
                 count++;
             }
         }
@@ -197,7 +200,7 @@ contract AccountManager is IAccountManager, System {
         uint amount = 0;
         uint index = 0;
         for(uint i = 0; i < records.length; i++) {
-            if(curHeight >= records[i].unlockHeight && curHeight >= records[i].unfreezeHeight) {
+            if(curHeight >= records[i].unlockHeight && curHeight >= id2useinfo[records[i].id].unfreezeHeight) {
                 amount += records[i].amount;
                 ids[index++] = records[i].id;
             }
@@ -244,7 +247,7 @@ contract AccountManager is IAccountManager, System {
         // get avaiable count
         uint count = 0;
         for(uint i = 0; i < records.length; i++) {
-            if(curHeight < records[i].unfreezeHeight) {
+            if(curHeight < id2useinfo[records[i].id].unfreezeHeight) {
                 count++;
             }
         }
@@ -254,7 +257,7 @@ contract AccountManager is IAccountManager, System {
         uint amount = 0;
         uint index = 0;
         for(uint i = 0; i < records.length; i++) {
-            if(curHeight < records[i].unfreezeHeight) {
+            if(curHeight < id2useinfo[records[i].id].unfreezeHeight) {
                 amount += records[i].amount;
                 ids[index++] = records[i].id;
             }
@@ -272,6 +275,11 @@ contract AccountManager is IAccountManager, System {
         return addr2records[id2addr[_id]][id2index[_id]];
     }
 
+    // get record by id
+    function getRecordUseInfo(uint _id) public view returns (RecordUseInfo memory) {
+        return id2useinfo[_id];
+    }
+
     function existRecord(uint _id) internal view returns (bool) {
         return id2addr[_id] == msg.sender;
     }
@@ -286,7 +294,7 @@ contract AccountManager is IAccountManager, System {
         uint unlockHeight = startHeight + _lockDay.mul(86400).div(getPropertyValue("block_space"));
         uint id = ++record_no;
         AccountRecord[] storage records = addr2records[_addr];
-        records.push(AccountRecord(id, _addr, _amount, _lockDay, startHeight, unlockHeight, 0, 0, address(0)));
+        records.push(AccountRecord(id, _addr, _amount, _lockDay, startHeight, unlockHeight));
         id2index[id] = records.length - 1;
         id2addr[id] = _addr;
         return id;
@@ -307,6 +315,7 @@ contract AccountManager is IAccountManager, System {
         }
         delete id2index[_id];
         delete id2addr[_id];
+        delete id2useinfo[_id];
     }
 
     // sort by amount
