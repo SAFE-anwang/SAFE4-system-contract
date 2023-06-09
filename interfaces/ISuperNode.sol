@@ -23,6 +23,9 @@ interface ISuperNode is INode {
         uint updateHeight; // supernode update height
     }
 
+    event SNRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _reocrdID);
+    event SNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _recordID);
+
     function register(bool _isUnion, address _addr, uint _lockDay, string memory _name, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) external payable;
     function getInfo(address _addr) external view returns (SuperNodeInfo memory);
     function getAll() external view returns (SuperNodeInfo[] memory);

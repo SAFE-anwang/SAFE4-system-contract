@@ -20,9 +20,6 @@ contract MasterNode is IMasterNode, System {
     mapping(uint => address) mnID2addr;
     mapping(string => address) mnIP2addr;
 
-    event MNRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _lockID);
-    event MNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _lockID);
-
     receive() external payable {}
     fallback() external payable {}
 

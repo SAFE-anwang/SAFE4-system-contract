@@ -19,6 +19,9 @@ interface IMasterNode is INode {
         uint updateHeight; // masternode update height
     }
 
+    event MNRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _lockID);
+    event MNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _lockID);
+
     function register(bool _isUnion, address _addr, uint _lockDay, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive) external payable;
     function reward(address _addr) external payable;
     function getInfo(address _addr) external view returns (MasterNodeInfo memory);

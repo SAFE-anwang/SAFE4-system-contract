@@ -21,9 +21,6 @@ contract SuperNode is ISuperNode, System {
     mapping(uint => address) snID2addr;
     mapping(string => address) snIP2addr;
 
-    event SNRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _reocrdID);
-    event SNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _recordID);
-
     receive() external payable {}
     fallback() external payable {}
 
