@@ -24,7 +24,7 @@ interface IAccountManager {
     event SafeWithdraw(address _addr, uint _amount, uint[] _ids);
     event SafeTransfer(address _from, address _to, uint _amount, uint _lockDay, uint _id);
     event SafeFreeze(uint _id, address _addr, uint _day);
-    event SafeUnfreeze(uint _id);
+    event SafeUnfreeze(uint _id, address _addr);
     event SafeAddLockDay(uint _id, uint _oldLockDay, uint _newLockDay);
 
     function deposit(address _to, uint _lockDay) external payable returns (uint);
