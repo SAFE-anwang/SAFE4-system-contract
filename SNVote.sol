@@ -17,9 +17,9 @@ contract SNVote is ISNVote, System {
     mapping(address => uint[]) dst2records; // supernode or proxy to record list
     mapping(uint => uint) record2index; // record to index of dst2records
 
-    function voteOrApproval(bool _isVote, address _snAddr, uint[] memory _recordIDs) public {
+    function voteOrApproval(bool _isVote, address _dstAddr, uint[] memory _recordIDs) public {
         for(uint i = 0; i < _recordIDs.length; i++) {
-            voteOrApproval(_isVote, _snAddr, _recordIDs[i]);
+            voteOrApproval(_isVote, _dstAddr, _recordIDs[i]);
         }
     }
 

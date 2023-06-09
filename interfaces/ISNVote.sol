@@ -28,8 +28,8 @@ interface ISNVote {
     event SNVOTE_REMOVE_VOTE(address _voterAddr, address _snAddr, uint _recordID, uint _voteNum);
     event SNVOTE_REMOVE_APPROVAL(address _voterAddr, address _proxyAddr, uint _recordID, uint _voteNum);
 
-    function voteOrApproval(bool _isVote, address _snAddr, uint[] memory _recordIDs) external;
-    function voteOrApproval(bool _isVote, address _snAddr, uint _recordID) external;
+    function voteOrApproval(bool _isVote, address _dstAddr, uint[] memory _recordIDs) external;
+    function voteOrApproval(bool _isVote, address _dstAddr, uint _recordID) external;
     function removeVoteOrApproval(uint[] memory _recordIDs) external;
     function removeVoteOrApproval(uint _recordID) external;
     function proxyVote(address _snAddr) external;
