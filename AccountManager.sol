@@ -128,6 +128,9 @@ contract AccountManager is IAccountManager, System {
     }
 
     function setRecordFreeze(uint _id, address _addr, uint _day) public {
+        if(_id == 0) {
+            return;
+        }
         require(existRecord(_id), "invalid record id");
         RecordUseInfo storage useinfo = id2useinfo[_id];
         if(_day == 0) {
@@ -149,6 +152,9 @@ contract AccountManager is IAccountManager, System {
     }
 
     function setRecordVote(uint _id, address _addr, uint _day) public {
+        if(_id == 0) {
+            return;
+        }
         require(existRecord(_id), "invalid record id");
         RecordUseInfo storage useinfo = id2useinfo[_id];
         if(_day == 0) {
@@ -179,19 +185,24 @@ contract AccountManager is IAccountManager, System {
         emit SafeAddLockDay(_id, oldLockDay, record.lockDay);
     }
 
-    // get all
-    function getAll(address _addr) public view returns (AccountRecord[] memory) {
-        return addr2records[_addr];
-    }
-
     // get total amount
     function getTotalAmount(address _addr) public view returns (uint, uint[] memory) {
         AccountRecord[] memory records = addr2records[_addr];
+        uint count = records.length;
+        uint tempAmount = balances[_addr];
+        if(tempAmount != 0) {
+            count++;
+        }
         uint amount = 0;
-        uint[] memory ids = new uint[](records.length);
+        uint[] memory ids = new uint[](count);
+        uint index = 0;
+        if(tempAmount != 0) {
+            amount += tempAmount;
+            ids[index++]  = 0;
+        }
         for(uint i = 0; i < records.length; i++) {
             amount += records[i].amount;
-            ids[i] = records[i].id;
+            ids[index++] = records[i].id;
         }
         return (amount, ids);
     }
@@ -200,31 +211,32 @@ contract AccountManager is IAccountManager, System {
     function getAvailableAmount(address _addr) public view returns (uint, uint[] memory) {
         uint curHeight = block.number;
         AccountRecord[] memory records = addr2records[_addr];
+        uint tempAmount = balances[_addr];
 
         // get avaiable count
         uint count = 0;
+        if(tempAmount != 0) {
+            count++;
+        }
         for(uint i = 0; i < records.length; i++) {
             if(curHeight >= records[i].unlockHeight && curHeight >= id2useinfo[records[i].id].unfreezeHeight) {
                 count++;
             }
-        }
-        if(balances[_addr] != 0) {
-            count++;
         }
 
         // get avaiable amount and id list
         uint[] memory ids = new uint[](count);
         uint amount = 0;
         uint index = 0;
+        if(tempAmount != 0) {
+            amount += tempAmount;
+            ids[index++] = 0;
+        }
         for(uint i = 0; i < records.length; i++) {
             if(curHeight >= records[i].unlockHeight && curHeight >= id2useinfo[records[i].id].unfreezeHeight) {
                 amount += records[i].amount;
                 ids[index++] = records[i].id;
             }
-        }
-        if(balances[_addr] != 0) {
-            amount += balances[_addr];
-            ids[index++] = 0;
         }
 
         return (amount, ids);
@@ -284,16 +296,36 @@ contract AccountManager is IAccountManager, System {
 
     // get account records
     function getRecords(address _addr) public view returns (AccountRecord[] memory) {
-        return addr2records[_addr];
+        AccountRecord[] memory records = addr2records[_addr];
+        uint count = records.length;
+        uint tempAmount = balances[_addr];
+        if(tempAmount != 0) {
+            count++;
+        }
+        AccountRecord[] memory ret = new AccountRecord[](count);
+        uint index = 0;
+        if(tempAmount != 0) {
+            ret[index++] = AccountRecord(0, _addr, tempAmount, 0, 0, 0);
+        }
+        for(uint i = 0; i < records.length; i++) {
+            ret[index++] = records[i];
+        }
+        return ret;
     }
 
     // get record by id
     function getRecordByID(uint _id) public view returns (AccountRecord memory) {
+        if(_id == 0) {
+            return AccountRecord(0, msg.sender, balances[msg.sender], 0, 0, 0);
+        }
         return addr2records[id2addr[_id]][id2index[_id]];
     }
 
     // get record by id
     function getRecordUseInfo(uint _id) public view returns (RecordUseInfo memory) {
+        if(_id == 0) {
+            return RecordUseInfo(address(0), 0, 0, address(0), 0, 0);
+        }
         return id2useinfo[_id];
     }
 
