@@ -63,6 +63,8 @@ contract AccountManager is IAccountManager, System {
                         delRecord(_ids[i]);
                         snVote.removeVoteOrApproval(_ids[i]);
                     }
+                } else {
+                    balances[msg.sender] = 0;
                 }
             }
         }
@@ -87,6 +89,8 @@ contract AccountManager is IAccountManager, System {
         for(uint i = 0; i < ids.length; i++) {
             if(ids[i] != 0) {
                 temp_records[i] = addr2records[msg.sender][id2index[ids[i]]];
+            } else {
+                temp_records[i] = AccountRecord(0, msg.sender, balances[msg.sender], 0, 0, 0);
             }
         }
         sortRecordByAmount(temp_records, 0, temp_records.length - 1);
@@ -94,15 +98,23 @@ contract AccountManager is IAccountManager, System {
         ISNVote snVote = ISNVote(SNVOTE_PROXY_ADDR);
         for(uint i = 0; i < temp_records.length; i++) {
             if(usedAmount + temp_records[i].amount <= _amount) {
-                delRecord(temp_records[i].id);
-                snVote.removeVoteOrApproval(temp_records[i].id);
+                if(temp_records[i].id != 0) {
+                    delRecord(temp_records[i].id);
+                    snVote.removeVoteOrApproval(temp_records[i].id);
+                } else {
+                    balances[msg.sender] = 0;
+                }
                 usedAmount += temp_records[i].amount;
                 if(usedAmount == _amount) {
                     break;
                 }
             } else {
+                if(temp_records[i].id != 0) {
                 addr2records[msg.sender][id2index[temp_records[i].id]].amount = usedAmount + temp_records[i].amount - _amount;
                 snVote.removeVoteOrApproval(temp_records[i].id);
+                } else {
+                    balances[msg.sender] = usedAmount + temp_records[i].amount - _amount;
+                }
                 break;
             }
         }
