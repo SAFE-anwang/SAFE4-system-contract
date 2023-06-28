@@ -16,12 +16,29 @@ contract Safe3 {
     mapping(string => uint) availables;
     mapping(string => LockInfo[]) locks;
 
-    // function redeemo(string memory safe3Addr, string memory pubkey) public {
-    // }
+    function redeem(bytes memory _pubkey, bytes32 _msgHash, bytes memory _sig) public returns (bool) {
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly{
+            r := mload(add(_sig ,32))
+            s := mload(add(_sig ,64))
+            v := byte(0,mload(add(_sig ,96)))
+        }
+        address signer = ecrecover(_msgHash, v, r, s);
 
-    function getBtcAddr(string memory _pubkey) public pure returns (string memory) {
-        bytes memory b = hex2bytes(_pubkey);
-        bytes32 h = sha256(b);
+        address safe4Addr = getSafe4Addr(_pubkey);
+        if(safe4Addr != signer) {
+            return false;
+        }
+
+        string memory safe3Addr = getSafe3Addr(_pubkey);
+        payable(safe4Addr).transfer(availables[safe3Addr]);
+        return true;
+    }
+
+    function getSafe3Addr(bytes memory _pubkey) public pure returns (string memory) {
+        bytes32 h = sha256(_pubkey);
         bytes20 r = ripemd160(abi.encodePacked(h));
         bytes memory t = new bytes(21);
         t[0] = 0x4c;
@@ -41,29 +58,10 @@ contract Safe3 {
         return addr;
     }
 
-    function hex2bytes(string memory _data) internal pure returns (bytes memory) {
-        uint8 _ascii_0 = 48;
-        uint8 _ascii_A = 65;
-        uint8 _ascii_a = 97;
-
-        bytes memory a = bytes(_data);
-        uint8[] memory b = new uint8[](a.length);
-
-        for(uint i = 0; i < a.length; i++) {
-            uint8 _a = uint8(a[i]);
-            if(_a >= _ascii_a) {
-                b[i] = _a - _ascii_a + 10;
-            } else if(_a >= _ascii_A) {
-                b[i] = _a - _ascii_A + 10;
-            } else {
-                b[i] = _a - _ascii_0;
-            }
+    function getSafe4Addr(bytes memory _pubkey) public pure returns (address addr) {
+        bytes32 b = keccak256(_pubkey);
+        assembly {
+            addr := mload(add(b, 12))
         }
-
-        bytes memory ret = new bytes(b.length / 2);
-        for(uint i = 0; i < b.length; i += 2) {
-            ret[i / 2] = bytes1(b[i] * 16 + b[i + 1]);
-        }
-        return ret;
     }
 }
