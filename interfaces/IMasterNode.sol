@@ -24,6 +24,7 @@ interface IMasterNode is INode {
 
     function register(bool _isUnion, address _addr, uint _lockDay, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive) external payable;
     function reward(address _addr) external payable;
+    function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID) external;
     function getInfo(address _addr) external view returns (MasterNodeInfo memory);
     function getNext() external view returns (address);
     function getAll() external view returns (MasterNodeInfo[] memory);

@@ -127,6 +127,20 @@ contract AccountManager is IAccountManager, System {
         return addRecord(_to, msg.value, 0);
     }
 
+    function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _remainLockHeight) public returns (uint) {
+        require(_addr != address(0), "reward to the zero address");
+        require(_lockDay > 0, "invalid lock day");
+        require(_remainLockHeight > 0, "invalid remain lock height");
+        uint startHeight = block.number + 1;
+        uint unlockHeight = startHeight + _remainLockHeight.mul(30).div(getPropertyValue("block_space"));
+        uint id = ++record_no;
+        AccountRecord[] storage records = addr2records[_addr];
+        records.push(AccountRecord(id, _addr, _amount, _lockDay, startHeight, unlockHeight));
+        id2index[id] = records.length - 1;
+        id2addr[id] = _addr;
+        return id;
+    }
+
     function setRecordFreeze(uint _id, address _addr, uint _day) public {
         if(_id == 0) {
             return;

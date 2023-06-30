@@ -128,6 +128,15 @@ contract MasterNode is IMasterNode, System {
         }
     }
 
+    function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID) public {
+        require(_amount >= TOTAL_CREATE_AMOUNT, "masternode need lock 1000 SAFE at least");
+        require(!existNodeAddress(_addr), "existent address");
+        create(_addr, _lockID, _amount, "", "", "", IncentivePlan(100, 0, 0));
+        IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
+        am.setRecordFreeze(_lockID, _addr, _lockDay); // creator's lock id can't register other masternode again
+        emit MNRegister(_addr, msg.sender, _amount, _lockDay, _lockID);
+    }
+
     function changeAddress(address _addr, address _newAddr) public {
         require(exist(_addr), "non-existent masternode");
         require(existNodeAddress(_newAddr), "existent new address");
