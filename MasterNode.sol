@@ -128,7 +128,7 @@ contract MasterNode is IMasterNode, System {
         }
     }
 
-    function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID) public {
+    function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID) public onlySafe3Contract {
         require(_amount >= TOTAL_CREATE_AMOUNT, "masternode need lock 1000 SAFE at least");
         require(!existNodeAddress(_addr), "existent address");
         create(_addr, _lockID, _amount, "", "", "", IncentivePlan(100, 0, 0));

@@ -121,13 +121,13 @@ contract AccountManager is IAccountManager, System {
         return id;
     }
 
-    function reward(address _to) public payable returns (uint) {
+    function reward(address _to) public payable onlyMnOrSnContract returns (uint) {
         require(_to != address(0), "reward to the zero address");
         require(msg.value > 0, "invalid amount");
         return addRecord(_to, msg.value, 0);
     }
 
-    function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _remainLockHeight) public returns (uint) {
+    function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _remainLockHeight) public onlySafe3Contract returns (uint) {
         require(_addr != address(0), "reward to the zero address");
         require(_lockDay > 0, "invalid lock day");
         require(_remainLockHeight > 0, "invalid remain lock height");

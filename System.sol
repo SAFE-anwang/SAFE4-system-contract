@@ -47,6 +47,14 @@ contract System is Initializable, OwnableUpgradeable{
     address internal constant SYSTEM_REWARD_ADMIN_ADDR = 0x0000000000000000000000000000000000001081;
     address internal constant SYSTEM_REWARD_PROXY_ADDR = 0x0000000000000000000000000000000000001082;
 
+    address internal constant SAFE3_ADDR = 0x0000000000000000000000000000000000001090;
+    address internal constant SAFE3_ADMIN_ADDR = 0x0000000000000000000000000000000000001091;
+    address internal constant SAFE3_PROXY_ADDR = 0x0000000000000000000000000000000000001092;
+
+    address internal constant MULTICALL_ADDR = 0x0000000000000000000000000000000000001100;
+    address internal constant MULTICALL_ADMIN_ADDR = 0x0000000000000000000000000000000000001101;
+    address internal constant MULTICALL_PROXY_ADDR = 0x0000000000000000000000000000000000001102;
+
     function initialize() public initializer {
         __Ownable_init();
     }
@@ -77,6 +85,16 @@ contract System is Initializable, OwnableUpgradeable{
 
     modifier onlySN {
         require(isSN(msg.sender), "No supernode");
+        _;
+    }
+
+    modifier onlyMnOrSnContract {
+        require(msg.sender == MASTERNODE_PROXY_ADDR || msg.sender == SUPERNODE_PROXY_ADDR, "No masternode and supernode contract");
+        _;
+    }
+
+    modifier onlySafe3Contract {
+        require(msg.sender == SAFE3_PROXY_ADDR, "No SAFE3 contract");
         _;
     }
 
