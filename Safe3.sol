@@ -11,14 +11,14 @@ contract Safe3 is ISafe3, System {
     uint internal constant SAFE3_END_HEIGHT = 5000000;
 
     // avaiable safe3
-    mapping(string => Safe3Info) availables;
-    string[] addrs;
     uint num;
+    string[] addrs;
+    mapping(string => Safe3Info) availables;
 
     // locked safe3
-    mapping(string => Safe3LockInfo[]) locks;
-    string[] lockedAddrs;
     uint lockNum;
+    string[] lockedAddrs;
+    mapping(string => Safe3LockInfo[]) locks;
 
     function redeemAvaiable(bytes memory _pubkey, bytes memory _sig) public {
         string memory safe3Addr = getSafe3Addr(_pubkey);
