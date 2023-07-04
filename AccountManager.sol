@@ -148,17 +148,17 @@ contract AccountManager is IAccountManager, System {
         require(existRecord(_id), "invalid record id");
         RecordUseInfo storage useinfo = id2useinfo[_id];
         if(_day == 0) {
-            if(useinfo.sepcialAddr != address(0)) {
-                emit SafeUnfreeze(_id, useinfo.sepcialAddr);
+            if(useinfo.specialAddr != address(0)) {
+                emit SafeUnfreeze(_id, useinfo.specialAddr);
             }
-            useinfo.sepcialAddr = address(0);
+            useinfo.specialAddr = address(0);
             useinfo.freezeHeight = 0;
             useinfo.unfreezeHeight = 0;
         } else {
-            if(useinfo.sepcialAddr != address(0)) {
-                emit SafeUnfreeze(_id, useinfo.sepcialAddr);
+            if(useinfo.specialAddr != address(0)) {
+                emit SafeUnfreeze(_id, useinfo.specialAddr);
             }
-            useinfo.sepcialAddr = _addr;
+            useinfo.specialAddr = _addr;
             useinfo.freezeHeight = block.number + 1;
             useinfo.unfreezeHeight = useinfo.freezeHeight + _day.mul(86400).div(getPropertyValue("block_space"));
             emit SafeFreeze(_id, _addr, _day);

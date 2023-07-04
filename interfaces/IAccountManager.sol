@@ -12,7 +12,7 @@ interface IAccountManager {
     }
 
     struct RecordUseInfo {
-        address sepcialAddr; // created target address(mn or sn)
+        address specialAddr; // created target address(mn or sn)
         uint freezeHeight; // freeze height for create target address
         uint unfreezeHeight; // unfreeze height after create target address
         address votedAddr; // voted target address

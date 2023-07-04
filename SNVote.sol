@@ -211,7 +211,7 @@ contract SNVote is ISNVote, System {
         }
         uint amount = record.amount;
         uint num = amount;
-        if(isMN(useinfo.sepcialAddr)) {
+        if(isMN(useinfo.specialAddr)) {
              num = record.amount.mul(2);
         } else if(record.unlockHeight != 0) {
             num = record.amount.mul(15).div(10);
