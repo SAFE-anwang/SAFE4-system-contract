@@ -12,35 +12,35 @@ contract Safe3 is ISafe3, System {
 
     // avaiable safe3
     uint num;
-    string[] addrs;
-    mapping(string => Safe3Info) availables;
+    bytes20[] keyIDs;
+    mapping(bytes20 => Safe3Info) availables;
 
     // locked safe3
-    uint lockNum;
-    string[] lockedAddrs;
-    mapping(string => Safe3LockInfo[]) locks;
+    uint lockedNum;
+    bytes20[] lockedKeyIDs;
+    mapping(bytes20 => Safe3LockInfo[]) locks;
 
     function redeemAvaiable(bytes memory _pubkey, bytes memory _sig) public {
-        string memory safe3Addr = getSafe3Addr(_pubkey);
-        require(availables[safe3Addr].amount > 0, "non-existent avaiable amount");
-        require(availables[safe3Addr].redeemHeight == 0, "has redeemed");
+        bytes20 keyID = getKeyIDFromPubkey(_pubkey);
+        require(availables[keyID].amount > 0, "non-existent avaiable amount");
+        require(availables[keyID].redeemHeight == 0, "has redeemed");
 
-        bytes32 h = sha256(abi.encodePacked(safe3Addr));
+        bytes32 h = sha256(abi.encodePacked(getSafe3Addr(_pubkey)));
         bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
         require(verifySig(_pubkey, msgHash, _sig), "invalid signature");
 
         address safe4Addr = getSafe4Addr(_pubkey);
-        payable(safe4Addr).transfer(availables[safe3Addr].amount);
-        availables[safe3Addr].amount = 0;
-        availables[safe3Addr].redeemHeight = block.number + 1;
+        payable(safe4Addr).transfer(availables[keyID].amount);
+        availables[keyID].amount = 0;
+        availables[keyID].redeemHeight = block.number + 1;
     }
 
     function redeemLock(bytes memory _pubkey, bytes memory _sig) public {
-        string memory safe3Addr = getSafe3Addr(_pubkey);
+        bytes20 keyID = getKeyIDFromPubkey(_pubkey);
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
         IMasterNode mn = IMasterNode(MASTERNODE_PROXY_ADDR);
-        for(uint i = 0; i < locks[safe3Addr].length; i++) {
-            Safe3LockInfo memory info = locks[safe3Addr][i];
+        for(uint i = 0; i < locks[keyID].length; i++) {
+            Safe3LockInfo memory info = locks[keyID][i];
             if(info.amount == 0 || info.redeemHeight != 0) {
                 continue;
             }
@@ -81,26 +81,28 @@ contract Safe3 is ISafe3, System {
     }
 
     function getAvailable(string memory _safe3Addr) public view returns (Safe3Info memory) {
-        return availables[_safe3Addr];
+        bytes20 keyID = bytesToBytes20(getKeyIDFromAddress(_safe3Addr), 0);
+        return availables[keyID];
     }
 
     function getLocked(string memory _safe3Addr) public view returns (Safe3LockInfo[] memory) {
-        return locks[_safe3Addr];
+        bytes20 keyID = bytesToBytes20(getKeyIDFromAddress(_safe3Addr), 0);
+        return locks[keyID];
     }
 
     function getAllAvailable() public view returns (Safe3Info[] memory) {
         Safe3Info[] memory ret = new Safe3Info[](num);
-        for(uint i = 0; i < addrs.length; i++) {
-            ret[i] = availables[addrs[i]];
+        for(uint i = 0; i < keyIDs.length; i++) {
+            ret[i] = availables[keyIDs[i]];
         }
         return ret;
     }
 
     function getAllLocked() public view returns (Safe3LockInfo[] memory) {
-        Safe3LockInfo[] memory ret = new Safe3LockInfo[](lockNum);
+        Safe3LockInfo[] memory ret = new Safe3LockInfo[](lockedNum);
         uint pos = 0;
-        for(uint i = 0; i < lockedAddrs.length; i++) {
-            Safe3LockInfo[] memory infos = locks[lockedAddrs[i]];
+        for(uint i = 0; i < lockedKeyIDs.length; i++) {
+            Safe3LockInfo[] memory infos = locks[lockedKeyIDs[i]];
             for(uint k = 0; k > infos.length; k++) {
                 ret[pos++] = infos[k];
             }
@@ -108,13 +110,27 @@ contract Safe3 is ISafe3, System {
         return ret;
     }
 
+    function getKeyIDFromPubkey(bytes memory _pubkey) internal pure returns (bytes20) {
+        return ripemd160(abi.encodePacked(sha256(_pubkey)));
+    }
+
+    function getKeyIDFromAddress(string memory _safe3Addr) internal pure returns (bytes memory) {
+        bytes memory b =  Base58.decodeFromString(_safe3Addr);
+        require(b.length == 25, "invalid safe3 address");
+        bytes memory keyID = new bytes(20);
+        for(uint i = 0; i < 20; i++) {
+            keyID[i] = b[i + 1];
+        }
+        return keyID;
+    }
+
     function getSafe3Addr(bytes memory _pubkey) internal pure returns (string memory) {
         bytes32 h = sha256(_pubkey);
-        bytes20 r = ripemd160(abi.encodePacked(h));
+        bytes20 keyID = ripemd160(abi.encodePacked(h));
         bytes memory t = new bytes(21);
         t[0] = 0x4c;
         for(uint i = 0; i < 20; i++) {
-            t[i + 1] = r[i];
+            t[i + 1] = keyID[i];
         }
         bytes32 h1 = sha256(t);
         bytes32 h2 = sha256(abi.encodePacked(h1));
@@ -146,5 +162,13 @@ contract Safe3 is ISafe3, System {
             v := byte(0,mload(add(_sig ,96)))
         }
         return getSafe4Addr(_pubkey) == ecrecover(_msgHash, v, r, s);
+    }
+
+    function bytesToBytes20(bytes memory b, uint offset) internal pure returns (bytes20) {
+        bytes20 out;
+        for (uint i = 0; i < 20; i++) {
+            out |= bytes20(b[offset + i] & 0xFF) >> (i * 8);
+        }
+        return out;
     }
 }
