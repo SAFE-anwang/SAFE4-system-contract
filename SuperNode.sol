@@ -2,8 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./System.sol";
-import "./interfaces/ISuperNode.sol";
-import "./interfaces/IAccountManager.sol";
 import "./utils/SafeMath.sol";
 import "./utils/NodeUtil.sol";
 
@@ -14,6 +12,10 @@ contract SuperNode is ISuperNode, System {
     uint internal constant UNION_CREATE_AMOUNT  = 1000000000000000000000; // 20%
     uint internal constant APPEND_AMOUNT        = 500000000000000000000; // 10%
     uint internal constant MAX_NUM              = 49;
+
+    uint8 internal constant STATE_INIT   = 0;
+    uint8 internal constant STATE_START  = 1;
+    uint8 internal constant STATE_STOP   = 2;
 
     uint sn_no; // supernode no.
     mapping(address => SuperNodeInfo) supernodes;
@@ -39,7 +41,7 @@ contract SuperNode is ISuperNode, System {
         uint lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
         IncentivePlan memory plan = IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive);
         create(_addr, lockID, msg.value, _name, _enode, ip, _description, plan);
-        am.setRecordFreeze(lockID, _addr, _lockDay); // partner's lock id can't register other supernode again
+        am.setRecordFreeze(lockID, msg.sender, _addr, _lockDay); // partner's lock id can't register other supernode again
         emit SNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -49,7 +51,7 @@ contract SuperNode is ISuperNode, System {
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
         uint lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
         append(_addr, lockID, msg.value);
-        am.setRecordFreeze(lockID, _addr, 90); // partner's lock id can register other supernode after 90 days
+        am.setRecordFreeze(lockID, msg.sender, _addr, 90); // partner's lock id can register other supernode after 90 days
         emit SNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -62,19 +64,19 @@ contract SuperNode is ISuperNode, System {
         require(block.number < record.unlockHeight, "record isn't locked");
         IAccountManager.RecordUseInfo memory useinfo = am.getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight, "record is freezen");
-        append(_addr, _lockID, record.lockDay);
-        am.setRecordFreeze(_lockID, _addr, 90); // partner's lock id can register other masternode after 90 days
+        append(_addr, _lockID, record.amount);
+        am.setRecordFreeze(_lockID, msg.sender, _addr, 90); // partner's lock id can register other masternode after 90 days
         emit SNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
 
-    function reward(address _addr) public payable {
+    function reward(address _addr) public payable onlySystemRewardContract {
         require(msg.value > 0, "invalid reward");
         SuperNodeInfo memory info = supernodes[_addr];
         uint creatorReward = msg.value.mul(info.incentivePlan.creator).div(100);
         uint partnerReward = msg.value.mul(info.incentivePlan.partner).div(100);
         uint voterReward = msg.value.sub(creatorReward).sub(partnerReward);
 
-        uint maxCount = info.founders.length + info.voters.length;
+        uint maxCount = info.founders.length + info.voteInfo.voters.length;
         address[] memory tempAddrs = new address[](maxCount);
         uint[] memory tempAmounts = new uint[](maxCount);
         uint[] memory tempRewardTypes = new uint[](maxCount);
@@ -127,10 +129,10 @@ contract SuperNode is ISuperNode, System {
         }
         // reward to voter
         if(voterReward != 0) {
-            if(info.voters.length > 0) {
-                for(uint i = 0; i < info.voters.length; i++) {
-                    MemberInfo memory voter = info.voters[i];
-                    uint tempAmount = voterReward.mul(voter.amount).div(info.totalVoterAmount);
+            if(info.voteInfo.voters.length > 0) {
+                for(uint i = 0; i < info.voteInfo.voters.length; i++) {
+                    MemberInfo memory voter = info.voteInfo.voters[i];
+                    uint tempAmount = voterReward.mul(voter.amount).div(info.voteInfo.totalAmount);
                     if(tempAmount != 0) {
                         int pos = NodeUtil.find(tempAddrs, voter.addr);
                         if(pos == -1) {
@@ -154,6 +156,7 @@ contract SuperNode is ISuperNode, System {
             am.reward{value: tempAmounts[i]}(tempAddrs[i]);
             emit SystemReward(_addr, 1, tempAddrs[i], tempRewardTypes[i], tempAmounts[i]);
         }
+        info.lastRewardHeight = block.number + 1;
     }
 
     function changeAddress(address _addr, address _newAddr) public {
@@ -177,7 +180,7 @@ contract SuperNode is ISuperNode, System {
         require(msg.sender == supernodes[_addr].creator, "caller isn't creator");
         string memory oldIP = supernodes[_addr].ip;
         supernodes[_addr].ip = ip;
-        supernodes[_addr].updateHeight = block.number;
+        supernodes[_addr].updateHeight = block.number + 1;
         snIP2addr[ip] = _addr;
         delete snIP2addr[oldIP];
     }
@@ -187,7 +190,74 @@ contract SuperNode is ISuperNode, System {
         require(bytes(_newDescription).length > 0, "invalid description");
         require(msg.sender == supernodes[_addr].creator, "caller isn't creator");
         supernodes[_addr].description = _newDescription;
-        supernodes[_addr].updateHeight = block.number;
+        supernodes[_addr].updateHeight = block.number + 1;
+    }
+
+    function changeOfficial(address _addr) public onlyOwner {
+        require(exist(_addr), "non-existent supernode");
+        supernodes[_addr].isOfficial = true;
+    }
+
+    function changeState(uint _id, uint8 _state) public onlySuperNodeStateContract {
+        address addr = snID2addr[_id];
+        if(snID2addr[_id] == address(0)) {
+            return;
+        }
+        SuperNodeInfo storage sn = supernodes[addr];
+        uint8 oldState = sn.stateInfo.state;
+        sn.stateInfo = StateInfo(_state, block.number + 1);
+        emit SNStateUpdate(sn.addr, _state, oldState);
+    }
+
+    function changeVoter(address _addr, address _voter, uint _recordID, uint _amount, uint _type) public onlySNVoteContract {
+        SuperNodeInfo storage info = supernodes[_addr];
+        if(supernodes[_addr].id == 0) {
+            return;
+        }
+
+        VoteInfo storage voteInfo = info.voteInfo;
+        uint pos = 0;
+        bool flag = false;
+        for(uint i = 0; i < voteInfo.voters.length; i++) {
+            if(_voter == voteInfo.voters[i].addr) {
+                pos = i;
+                flag = true;
+            }
+        }
+
+        if(_type == 0 && flag) { // remove voter
+            voteInfo.voters[pos] = voteInfo.voters[voteInfo.voters.length - 1];
+            voteInfo.voters.pop();
+            return;
+        }
+        if(_type == 1 && !flag) { // add voter
+            voteInfo.voters.push(MemberInfo(_recordID, _voter, _amount, block.number + 1));
+        }
+    }
+
+    function changeVoteInfo(address _addr, uint _amount, uint _num, uint _type) public onlySNVoteContract {
+        SuperNodeInfo storage info = supernodes[_addr];
+        if(supernodes[_addr].id == 0) {
+            return;
+        }
+
+        VoteInfo storage voteInfo = info.voteInfo;
+        if(_type == 0) { // reduce vote
+            if(voteInfo.totalAmount <= _amount) {
+                voteInfo.totalAmount = 0;
+            } else {
+                voteInfo.totalAmount -= _amount;
+            }
+            if(voteInfo.totalNum <= _num) {
+                voteInfo.totalNum = 0;
+            } else {
+                voteInfo.totalNum -= _num;
+            }
+        } else { // increase vote
+            voteInfo.totalAmount += _amount;
+            voteInfo.totalNum += _num;
+            voteInfo.height = block.number + 1;
+        }
     }
 
     function getInfo(address _addr) public view returns (SuperNodeInfo memory) {
@@ -232,6 +302,23 @@ contract SuperNode is ISuperNode, System {
         SuperNodeInfo[] memory ret = new SuperNodeInfo[](num);
         for(uint i = 0; i < num; i++) {
             ret[i] = supernodes[snAddrs[i]];
+        }
+        return ret;
+    }
+
+    function getOfficials() public view returns (SuperNodeInfo[] memory) {
+        uint count;
+        for(uint i = 0; i < snIDs.length; i++) {
+            if(supernodes[snID2addr[snIDs[i]]].isOfficial) {
+                count++;
+            }
+        }
+        SuperNodeInfo[] memory ret = new SuperNodeInfo[](count);
+        uint index = 0;
+        for(uint i = 0; i < snIDs.length; i++) {
+            if(supernodes[snID2addr[snIDs[i]]].isOfficial) {
+                ret[index++] = supernodes[snID2addr[snIDs[i]]];
+            }
         }
         return ret;
     }
@@ -281,10 +368,11 @@ contract SuperNode is ISuperNode, System {
         sn.enode = _enode;
         sn.ip = _ip;
         sn.description = _description;
-        sn.state = 0;
-        sn.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
+        sn.stateInfo = StateInfo(STATE_INIT, block.number + 1);
+        sn.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number + 1));
         sn.incentivePlan = _incentivePlan;
-        sn.createHeight = block.number;
+        sn.lastRewardHeight = STATE_INIT;
+        sn.createHeight = block.number + 1;
         sn.updateHeight = 0;
         snIDs.push(sn.id);
         snID2addr[sn.id] = _addr;
@@ -297,9 +385,9 @@ contract SuperNode is ISuperNode, System {
         require(!existLockID(_addr, _lockID), "lock ID has been used");
         require(_lockID != 0, "invalid lock id");
         require(_amount >= APPEND_AMOUNT, "append lock 500 SAFE at least");
-        supernodes[_addr].founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
+        supernodes[_addr].founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number + 1));
         supernodes[_addr].amount += _amount;
-        supernodes[_addr].updateHeight = block.number;
+        supernodes[_addr].updateHeight = block.number + 1;
     }
 
     function sortByVoteNum(address[] memory _arr, uint _left, uint _right) internal view {
@@ -308,8 +396,8 @@ contract SuperNode is ISuperNode, System {
         if (i == j) return;
         address middle = _arr[_left + (_right - _left) / 2];
         while(i <= j) {
-            while(supernodes[_arr[i]].totalVoteNum > supernodes[middle].totalVoteNum) i++;
-            while(supernodes[middle].totalVoteNum > supernodes[_arr[j]].totalVoteNum && j > 0) j--;
+            while(supernodes[_arr[i]].voteInfo.totalNum > supernodes[middle].voteInfo.totalNum) i++;
+            while(supernodes[middle].voteInfo.totalNum > supernodes[_arr[j]].voteInfo.totalNum && j > 0) j--;
             if(i <= j) {
                 (_arr[i], _arr[j]) = (_arr[j], _arr[i]);
                 i++;
