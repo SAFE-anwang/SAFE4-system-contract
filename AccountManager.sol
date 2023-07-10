@@ -2,8 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./System.sol";
-import "./interfaces/IAccountManager.sol";
-import "./interfaces/ISNVote.sol";
 import "./utils/SafeMath.sol";
 
 contract AccountManager is IAccountManager, System {
@@ -60,8 +58,8 @@ contract AccountManager is IAccountManager, System {
                     AccountRecord memory record = getRecordByID(_ids[i]);
                     RecordUseInfo memory useinfo = id2useinfo[_ids[i]];
                     if(record.addr == msg.sender && block.number >= record.unlockHeight && block.number >= useinfo.unfreezeHeight) {
+                        snVote.removeVoteOrApproval(msg.sender, _ids[i]);
                         delRecord(_ids[i]);
-                        snVote.removeVoteOrApproval(_ids[i]);
                     }
                 } else {
                     balances[msg.sender] = 0;
@@ -99,8 +97,8 @@ contract AccountManager is IAccountManager, System {
         for(uint i = 0; i < temp_records.length; i++) {
             if(usedAmount + temp_records[i].amount <= _amount) {
                 if(temp_records[i].id != 0) {
+                    snVote.removeVoteOrApproval(msg.sender, temp_records[i].id);
                     delRecord(temp_records[i].id);
-                    snVote.removeVoteOrApproval(temp_records[i].id);
                 } else {
                     balances[msg.sender] = 0;
                 }
@@ -110,8 +108,8 @@ contract AccountManager is IAccountManager, System {
                 }
             } else {
                 if(temp_records[i].id != 0) {
-                addr2records[msg.sender][id2index[temp_records[i].id]].amount = usedAmount + temp_records[i].amount - _amount;
-                snVote.removeVoteOrApproval(temp_records[i].id);
+                    snVote.removeVoteOrApproval(msg.sender, temp_records[i].id);
+                    addr2records[msg.sender][id2index[temp_records[i].id]].amount = usedAmount + temp_records[i].amount - _amount;
                 } else {
                     balances[msg.sender] = usedAmount + temp_records[i].amount - _amount;
                 }
@@ -125,6 +123,20 @@ contract AccountManager is IAccountManager, System {
         require(_to != address(0), "reward to the zero address");
         require(msg.value > 0, "invalid amount");
         return addRecord(_to, msg.value, 0);
+    }
+
+    // move balance of id0 to new id
+    function moveID0(address _addr) public onlySNVoteContract returns (uint) {
+        uint amount = balances[_addr];
+        require(amount != 0, "balance of id(0) is zero");
+        uint id = ++record_no;
+        AccountRecord[] storage records = addr2records[_addr];
+        records.push(AccountRecord(id, _addr, amount, 0, 0, 0));
+        id2index[id] = records.length - 1;
+        id2addr[id] = _addr;
+        balances[_addr] = 0;
+        emit SafeMoveID0(_addr, amount, id);
+        return id;
     }
 
     function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _remainLockHeight) public onlySafe3Contract returns (uint) {
@@ -141,11 +153,11 @@ contract AccountManager is IAccountManager, System {
         return id;
     }
 
-    function setRecordFreeze(uint _id, address _addr, uint _day) public {
+    function setRecordFreeze(uint _id, address _addr, address _target, uint _day) public onlyMnOrSnContract {
         if(_id == 0) {
             return;
         }
-        require(existRecord(_id), "invalid record id");
+        require(id2addr[_id] == _addr, "invalid record id");
         RecordUseInfo storage useinfo = id2useinfo[_id];
         if(_day == 0) {
             if(useinfo.specialAddr != address(0)) {
@@ -158,27 +170,34 @@ contract AccountManager is IAccountManager, System {
             if(useinfo.specialAddr != address(0)) {
                 emit SafeUnfreeze(_id, useinfo.specialAddr);
             }
-            useinfo.specialAddr = _addr;
+            useinfo.specialAddr = _target;
             useinfo.freezeHeight = block.number + 1;
             useinfo.unfreezeHeight = useinfo.freezeHeight + _day.mul(86400).div(getPropertyValue("block_space"));
-            emit SafeFreeze(_id, _addr, _day);
+            emit SafeFreeze(_id, _target, _day);
         }
     }
 
-    function setRecordVote(uint _id, address _addr, uint _day) public {
+    function setRecordVote(uint _id, address _addr, address _target, uint _day) public onlySNVoteContract {
         if(_id == 0) {
             return;
         }
-        require(existRecord(_id), "invalid record id");
+        require(id2addr[_id] == _addr, "invalid record id");
         RecordUseInfo storage useinfo = id2useinfo[_id];
         if(_day == 0) {
+            if(useinfo.votedAddr != address(0)) {
+                emit SafeRelease(_id, useinfo.votedAddr);
+            }
             useinfo.votedAddr = address(0);
             useinfo.voteHeight = 0;
             useinfo.releaseHeight = 0;
         } else {
-            useinfo.votedAddr = _addr;
+            if(useinfo.votedAddr != address(0)) {
+                emit SafeRelease(_id, useinfo.votedAddr);
+            }
+            useinfo.votedAddr = _target;
             useinfo.voteHeight = block.number + 1;
             useinfo.releaseHeight = useinfo.voteHeight + _day.mul(86400).div(getPropertyValue("block_space"));
+            emit SafeVote(_id, _target, _day);
         }
     }
 
@@ -186,7 +205,7 @@ contract AccountManager is IAccountManager, System {
         if(_id == 0 || _day == 0) {
             return;
         }
-        require(existRecord(_id), "invalid record id");
+        require(id2addr[_id] == msg.sender, "invalid record id");
         AccountRecord storage record = addr2records[id2addr[_id]][id2index[_id]];
         uint oldLockDay = record.lockDay;
         if(block.number >= record.unlockHeight) {
@@ -212,7 +231,7 @@ contract AccountManager is IAccountManager, System {
         uint index = 0;
         if(tempAmount != 0) {
             amount += tempAmount;
-            ids[index++]  = 0;
+            ids[index++] = 0;
         }
         for(uint i = 0; i < records.length; i++) {
             amount += records[i].amount;
@@ -233,7 +252,7 @@ contract AccountManager is IAccountManager, System {
             count++;
         }
         for(uint i = 0; i < records.length; i++) {
-            if(curHeight >= records[i].unlockHeight && curHeight >= id2useinfo[records[i].id].unfreezeHeight) {
+            if(curHeight >= records[i].unlockHeight && curHeight >= id2useinfo[records[i].id].unfreezeHeight && curHeight >= id2useinfo[records[i].id].releaseHeight) {
                 count++;
             }
         }
@@ -247,7 +266,7 @@ contract AccountManager is IAccountManager, System {
             ids[index++] = 0;
         }
         for(uint i = 0; i < records.length; i++) {
-            if(curHeight >= records[i].unlockHeight && curHeight >= id2useinfo[records[i].id].unfreezeHeight) {
+            if(curHeight >= records[i].unlockHeight && curHeight >= id2useinfo[records[i].id].unfreezeHeight && curHeight >= id2useinfo[records[i].id].releaseHeight) {
                 amount += records[i].amount;
                 ids[index++] = records[i].id;
             }
@@ -290,7 +309,7 @@ contract AccountManager is IAccountManager, System {
         // get avaiable count
         uint count = 0;
         for(uint i = 0; i < records.length; i++) {
-            if(curHeight < id2useinfo[records[i].id].unfreezeHeight) {
+            if(curHeight < id2useinfo[records[i].id].unfreezeHeight || curHeight < id2useinfo[records[i].id].releaseHeight) {
                 count++;
             }
         }
@@ -300,7 +319,7 @@ contract AccountManager is IAccountManager, System {
         uint amount = 0;
         uint index = 0;
         for(uint i = 0; i < records.length; i++) {
-            if(curHeight < id2useinfo[records[i].id].unfreezeHeight) {
+            if(curHeight < id2useinfo[records[i].id].unfreezeHeight || curHeight < id2useinfo[records[i].id].releaseHeight) {
                 amount += records[i].amount;
                 ids[index++] = records[i].id;
             }
@@ -343,10 +362,6 @@ contract AccountManager is IAccountManager, System {
         return id2useinfo[_id];
     }
 
-    function existRecord(uint _id) internal view returns (bool) {
-        return id2addr[_id] == msg.sender;
-    }
-
     // add record
     function addRecord(address _addr, uint _amount, uint _lockDay) internal returns (uint) {
         if(_lockDay == 0) {
@@ -368,7 +383,7 @@ contract AccountManager is IAccountManager, System {
         if(_id == 0) {
             return;
         }
-        require(existRecord(_id), "invalid record id");
+        require(id2addr[_id] == msg.sender, "invalid record id");
         AccountRecord[] storage records = addr2records[msg.sender];
         uint pos = id2index[_id];
         records[pos] = records[records.length - 1];

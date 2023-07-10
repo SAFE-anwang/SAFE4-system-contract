@@ -23,8 +23,11 @@ interface IAccountManager {
     event SafeDeposit(address _addr, uint _amount, uint _lockDay, uint _id);
     event SafeWithdraw(address _addr, uint _amount, uint[] _ids);
     event SafeTransfer(address _from, address _to, uint _amount, uint _lockDay, uint _id);
+    event SafeMoveID0(address _addr, uint _amount, uint _id);
     event SafeFreeze(uint _id, address _addr, uint _day);
     event SafeUnfreeze(uint _id, address _addr);
+    event SafeVote(uint _id, address _addr, uint _day);
+    event SafeRelease(uint _id, address _addr); // remove vote
     event SafeAddLockDay(uint _id, uint _oldLockDay, uint _newLockDay);
 
     function deposit(address _to, uint _lockDay) external payable returns (uint);
@@ -32,9 +35,10 @@ interface IAccountManager {
     function withdraw(uint[] memory _ids) external returns(uint);
     function transfer(address _to, uint _amount, uint _lockDay) external returns (uint);
     function reward(address _to) external payable returns (uint);
+    function moveID0(address _addr) external returns (uint);
     function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _remainLockHeight) external returns (uint);
-    function setRecordFreeze(uint _id, address _addr, uint _day) external;
-    function setRecordVote(uint _id, address _addr, uint _day) external;
+    function setRecordFreeze(uint _id, address _addr, address _target, uint _day) external;
+    function setRecordVote(uint _id, address _addr, address _target, uint _day) external;
     function addLockDay(uint _id, uint _day) external;
     function getTotalAmount(address _addr) external view returns (uint, uint[] memory); 
     function getAvailableAmount(address _addr) external view returns (uint, uint[] memory);
