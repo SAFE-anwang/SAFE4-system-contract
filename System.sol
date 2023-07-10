@@ -14,6 +14,7 @@ import "../interfaces/ISNVote.sol";
 import "../interfaces/INodeState.sol";
 import "../interfaces/IProposal.sol";
 import "../interfaces/ISystemReward.sol";
+import "../interfaces/ISafe3.sol";
 
 contract System is Initializable, OwnableUpgradeable{
     address internal constant PROPERTY_ADDR = 0x0000000000000000000000000000000000001000;
@@ -68,21 +69,6 @@ contract System is Initializable, OwnableUpgradeable{
         return abi.encodeWithSignature("initialize()");
     }
 
-    function getPropertyValue(string memory _name) internal view returns (uint) {
-        IProperty p = IProperty(PROPERTY_PROXY_ADDR);
-        return p.getValue(_name);
-    }
-
-    function isMN(address _addr) internal view returns (bool) {
-        IMasterNode mn = IMasterNode(MASTERNODE_PROXY_ADDR);
-        return mn.exist(_addr);
-    }
-
-    function isSN(address _addr) internal view returns (bool) {
-        ISuperNode sn = ISuperNode(SUPERNODE_PROXY_ADDR);
-        return sn.exist(_addr);
-    }
-
     modifier onlyMN {
         require(isMN(msg.sender), "No masternode");
         _;
@@ -128,6 +114,10 @@ contract System is Initializable, OwnableUpgradeable{
         _;
     }
 
+    function getProperty() internal pure returns (IProperty) {
+        return IProperty(PROPERTY_PROXY_ADDR);
+    }
+
     function getAccountManger() internal pure returns (IAccountManager) {
         return IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
     }
@@ -150,6 +140,18 @@ contract System is Initializable, OwnableUpgradeable{
 
     function getSuperNodeState() internal pure returns (INodeState) {
         return INodeState(SUPERNODE_STATE_PROXY_ADDR);
+    }
+
+    function getPropertyValue(string memory _name) internal view returns (uint) {
+        return getProperty().getValue(_name);
+    }
+
+    function isMN(address _addr) internal view returns (bool) {
+        return getMasterNode().exist(_addr);
+    }
+
+    function isSN(address _addr) internal view returns (bool) {
+        return getSuperNode().exist(_addr);
     }
 
     function getSNNum() internal view returns (uint) {

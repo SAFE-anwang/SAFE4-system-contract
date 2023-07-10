@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./interfaces/ISafe3.sol";
-import "./interfaces/IAccountManager.sol";
 import "./System.sol";
-import "utils/Base58.sol";
+import "./utils/Base58.sol";
 
 contract Safe3 is ISafe3, System {
     uint internal constant SPOS_HEIGHT = 1092826;
@@ -37,8 +35,6 @@ contract Safe3 is ISafe3, System {
 
     function redeemLock(bytes memory _pubkey, bytes memory _sig) public {
         bytes20 keyID = getKeyIDFromPubkey(_pubkey);
-        IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
-        IMasterNode mn = IMasterNode(MASTERNODE_PROXY_ADDR);
         for(uint i = 0; i < locks[keyID].length; i++) {
             Safe3LockInfo memory info = locks[keyID][i];
             if(info.amount == 0 || info.redeemHeight != 0) {
@@ -73,9 +69,9 @@ contract Safe3 is ISafe3, System {
                 }
                 remainLockHeight = info.unlockHeight - SAFE3_END_HEIGHT;
             }
-            uint lockID = am.fromSafe3(safe4Addr, info.amount, lockDay, remainLockHeight);
+            uint lockID = getAccountManger().fromSafe3(safe4Addr, info.amount, lockDay, remainLockHeight);
             if(info.isMN) {
-                mn.fromSafe3(safe4Addr, info.amount, lockDay, lockID);
+                getMasterNode().fromSafe3(safe4Addr, info.amount, lockDay, lockID);
             }
         }
     }
