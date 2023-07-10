@@ -2,10 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./System.sol";
-import "./interfaces/IMasterNode.sol";
-import "./interfaces/IAccountManager.sol";
-import "./utils/SafeMath.sol";
-import "./utils/NodeUtil.sol";
 
 contract MasterNode is IMasterNode, System {
     using SafeMath for uint256;
@@ -13,6 +9,10 @@ contract MasterNode is IMasterNode, System {
     uint internal constant TOTAL_CREATE_AMOUNT  = 1000000000000000000000;
     uint internal constant UNION_CREATE_AMOUNT  = 200000000000000000000; // 20%
     uint internal constant APPEND_AMOUNT        = 100000000000000000000; // 10%
+
+    uint8 internal constant STATE_INIT   = 0;
+    uint8 internal constant STATE_START  = 1;
+    uint8 internal constant STATE_STOP   = 2;
 
     uint mn_no; // masternode no.
     mapping(address => MasterNodeInfo) masternodes;
@@ -35,7 +35,7 @@ contract MasterNode is IMasterNode, System {
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
         uint lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
         create(_addr, lockID, msg.value, _enode, ip, _description, IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
-        am.setRecordFreeze(lockID, _addr, _lockDay); // creator's lock id can't register other masternode again
+        am.setRecordFreeze(lockID, msg.sender, _addr, _lockDay); // creator's lock id can't register other masternode again
         emit MNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -45,7 +45,7 @@ contract MasterNode is IMasterNode, System {
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
         uint lockID = am.deposit{value: msg.value}(msg.sender, _lockDay);
         append(_addr, lockID, msg.value);
-        am.setRecordFreeze(lockID, _addr, 30); // partner's lock id can register other masternode after 30 days
+        am.setRecordFreeze(lockID, msg.sender, _addr, 30); // partner's lock id can register other masternode after 30 days
         emit MNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -58,12 +58,12 @@ contract MasterNode is IMasterNode, System {
         require(block.number < record.unlockHeight, "record isn't locked");
         IAccountManager.RecordUseInfo memory useinfo = am.getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight, "record is freezen");
-        append(_addr, _lockID, record.lockDay);
-        am.setRecordFreeze(_lockID, _addr, 30); // partner's lock id can register other masternode after 30 days
+        append(_addr, _lockID, record.amount);
+        am.setRecordFreeze(_lockID, msg.sender, _addr, 30); // partner's lock id can register other masternode after 30 days
         emit MNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
 
-    function reward(address _addr) public payable {
+    function reward(address _addr) public payable onlySRContract {
         require(msg.value > 0, "invalid reward");
         MasterNodeInfo memory info = masternodes[_addr];
         uint creatorReward = msg.value.mul(info.incentivePlan.creator).div(100);
@@ -126,6 +126,7 @@ contract MasterNode is IMasterNode, System {
             am.reward{value: tempAmounts[i]}(tempAddrs[i]);
             emit SystemReward(_addr, 2, tempAddrs[i], tempRewardTypes[i], tempAmounts[i]);
         }
+        info.lastRewardHeight = block.number + 1;
     }
 
     function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID) public onlySafe3Contract {
@@ -133,13 +134,13 @@ contract MasterNode is IMasterNode, System {
         require(!existNodeAddress(_addr), "existent address");
         create(_addr, _lockID, _amount, "", "", "", IncentivePlan(100, 0, 0));
         IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
-        am.setRecordFreeze(_lockID, _addr, _lockDay); // creator's lock id can't register other masternode again
+        am.setRecordFreeze(_lockID, _addr, _addr, _lockDay); // creator's lock id can't register other masternode again
         emit MNRegister(_addr, msg.sender, _amount, _lockDay, _lockID);
     }
 
     function changeAddress(address _addr, address _newAddr) public {
         require(exist(_addr), "non-existent masternode");
-        require(existNodeAddress(_newAddr), "existent new address");
+        require(!existNodeAddress(_newAddr), "existent new address");
         require(_newAddr != address(0), "invalid new address");
         require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
         masternodes[_newAddr] = masternodes[_addr];
@@ -157,7 +158,7 @@ contract MasterNode is IMasterNode, System {
         require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
         string memory oldIP = masternodes[_addr].ip;
         masternodes[_addr].ip = ip;
-        masternodes[_addr].updateHeight = block.number;
+        masternodes[_addr].updateHeight = block.number + 1;
         delete mnIP2addr[oldIP];
         mnIP2addr[ip] = _addr;
     }
@@ -167,7 +168,24 @@ contract MasterNode is IMasterNode, System {
         require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
         require(bytes(_description).length > 0, "invalid description");
         masternodes[_addr].description = _description;
-        masternodes[_addr].updateHeight = block.number;
+        masternodes[_addr].updateHeight = block.number + 1;
+    }
+
+    function changeOfficial(address _addr) public onlyOwner {
+        require(exist(_addr), "non-existent masternode");
+        masternodes[_addr].isOfficial = true;
+        masternodes[_addr].updateHeight = block.number + 1;
+    }
+
+    function changeState(uint _id, uint8 _state) public onlyMasterNodeStateContract {
+        address addr = mnID2addr[_id];
+        if(mnID2addr[_id] == address(0)) {
+            return;
+        }
+        MasterNodeInfo storage mn = masternodes[addr];
+        uint8 oldState = mn.stateInfo.state;
+        mn.stateInfo = StateInfo(_state, block.number + 1);
+        emit MNStateUpdate(mn.addr, _state, oldState);
     }
 
     function getInfo(address _addr) public view returns (MasterNodeInfo memory) {
@@ -176,13 +194,64 @@ contract MasterNode is IMasterNode, System {
     }
 
     function getNext() public view returns (address) {
-        return mnID2addr[(block.number % mn_no).add(1)];
+        uint count = 0;
+        for(uint i = 0; i < mnIDs.length; i++) {
+            MasterNodeInfo memory mn = masternodes[mnID2addr[mnIDs[i]]];
+            if(mn.amount < TOTAL_CREATE_AMOUNT) {
+                continue;
+            }
+            if(mn.stateInfo.state != STATE_START) {
+                continue;
+            }
+            count++;
+        }
+        if(count != 0) {
+            MasterNodeInfo[] memory mns = new MasterNodeInfo[](count);
+            uint index = 0;
+            for(uint i = 0; i < mns.length; i++) {
+                MasterNodeInfo memory mn = masternodes[mnID2addr[mnIDs[i]]];
+                if(mn.amount < TOTAL_CREATE_AMOUNT) {
+                    continue;
+                }
+                if(mn.stateInfo.state != STATE_START) {
+                    continue;
+                }
+                mns[index++] = mn;
+            }
+            sortByRewardHeight(mns, 0, mns.length - 1);
+            return mns[0].addr;
+        }
+        // select official masternodes
+        MasterNodeInfo[] memory officials = getOfficials();
+        if(officials.length != 0) {
+            sortByRewardHeight(officials, 0, officials.length - 1);
+            return officials[block.number % officials.length].addr;
+        } else {
+            return mnID2addr[(block.number % mn_no).add(1)];
+        }
     }
 
     function getAll() public view returns (MasterNodeInfo[] memory) {
         MasterNodeInfo[] memory ret = new MasterNodeInfo[](mnIDs.length);
         for(uint i = 0; i < mnIDs.length; i++) {
             ret[i] = masternodes[mnID2addr[mnIDs[i]]];
+        }
+        return ret;
+    }
+
+    function getOfficials() public view returns (MasterNodeInfo[] memory) {
+        uint count;
+        for(uint i = 0; i < mnIDs.length; i++) {
+            if(masternodes[mnID2addr[mnIDs[i]]].isOfficial) {
+                count++;
+            }
+        }
+        MasterNodeInfo[] memory ret = new MasterNodeInfo[](count);
+        uint index = 0;
+        for(uint i = 0; i < mnIDs.length; i++) {
+            if(masternodes[mnID2addr[mnIDs[i]]].isOfficial) {
+                ret[index++] = masternodes[mnID2addr[mnIDs[i]]];
+            }
         }
         return ret;
     }
@@ -222,10 +291,11 @@ contract MasterNode is IMasterNode, System {
         mn.enode = _enode;
         mn.ip = _ip;
         mn.description = _description;
-        mn.state = 0;
-        mn.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
+        mn.stateInfo = StateInfo(STATE_INIT, block.number + 1);
+        mn.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number + 1));
         mn.incentivePlan = plan;
-        mn.createHeight = block.number;
+        mn.lastRewardHeight = 0;
+        mn.createHeight = block.number + 1;
         mn.createHeight = 0;
         mnIDs.push(mn.id);
         mnID2addr[mn.id] = _addr;
@@ -239,8 +309,29 @@ contract MasterNode is IMasterNode, System {
         require(!existLockID(_addr, _lockID), "lock ID has been used");
         require(_lockID != 0, "invalid lock id");
         require(_amount >= 100, "append lock 100 SAFE at least");
-        masternodes[_addr].founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
+        masternodes[_addr].founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number + 1));
         masternodes[_addr].amount += _amount;
-        masternodes[_addr].updateHeight = block.number;
+        masternodes[_addr].updateHeight = block.number + 1;
+    }
+
+    // ASC by lastRewardHeight
+    function sortByRewardHeight(MasterNodeInfo[] memory _arr, uint _left, uint _right) internal pure {
+        uint i = _left;
+        uint j = _right;
+        if (i == j) return;
+        MasterNodeInfo memory middle = _arr[_left + (_right - _left) / 2];
+        while(i <= j) {
+            while(_arr[i].lastRewardHeight < middle.lastRewardHeight) i++;
+            while(middle.lastRewardHeight < _arr[j].lastRewardHeight && j > 0) j--;
+            if(i <= j) {
+                (_arr[i], _arr[j]) = (_arr[j], _arr[i]);
+                i++;
+                if(j != 0) j--;
+            }
+        }
+        if(_left < j)
+            sortByRewardHeight(_arr, _left, j);
+        if(i < _right)
+            sortByRewardHeight(_arr, i, _right);
     }
 }
