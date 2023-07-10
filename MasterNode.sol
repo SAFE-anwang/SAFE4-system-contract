@@ -2,9 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "./System.sol";
+import "./utils/SafeMath.sol";
+import "./utils/NodeUtil.sol";
 
 contract MasterNode is IMasterNode, System {
-    using SafeMath for uint256;
+    using SafeMath for uint;
 
     uint internal constant TOTAL_CREATE_AMOUNT  = 1000000000000000000000;
     uint internal constant UNION_CREATE_AMOUNT  = 200000000000000000000; // 20%
@@ -63,7 +65,7 @@ contract MasterNode is IMasterNode, System {
         emit MNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
 
-    function reward(address _addr) public payable onlySRContract {
+    function reward(address _addr) public payable onlySystemRewardContract {
         require(msg.value > 0, "invalid reward");
         MasterNodeInfo memory info = masternodes[_addr];
         uint creatorReward = msg.value.mul(info.incentivePlan.creator).div(100);
