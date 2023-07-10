@@ -51,14 +51,18 @@ library NodeUtil {
         require(enodeBytes.length >= 150, "invalid nodeInfo");
         require(enodeBytes[136] == '@');
         require(keccak256(abi.encodePacked(_enode.substring(0, 8))) == keccak256(abi.encodePacked("enode://")), "missing enode://");
-        bytes memory ipBytes = new bytes(15);
-        uint j = 0;
+        uint count = 0;
         for(uint i = 137; i < enodeBytes.length; i++) {
             if(enodeBytes[i] == ':') {
                 break;
             }
-            require(j < 15, "invalid ip");
-            ipBytes[j++] = enodeBytes[i];
+            require(enodeBytes[i] == '.' || (enodeBytes[i] >= '0' && enodeBytes[i] <= '9'), "invalid ip of enode");
+            count++;
+        }
+        require(count >= 7 && count <= 15, "invalid ip length of enode");
+        bytes memory ipBytes = new bytes(count);
+        for(uint i = 0; i < count; i++) {
+            ipBytes[i] = enodeBytes[i + 137];
         }
         return string(ipBytes);
     }
