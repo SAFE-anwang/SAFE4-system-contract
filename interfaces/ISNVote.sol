@@ -2,24 +2,18 @@
 pragma solidity ^0.8.0;
 
 interface ISNVote {
-    struct SNVoteDetail {
-        address[] dstAddrs; // supernodes or proxy
-        uint[] totalAmounts; // total voter amounts
-        uint[] totalNums; // total vote numbers
-        SNVoteEntry[][] entries;
+    struct VoteDetail {
+        address addr; // supernode or proxy for voter; voterAddr for supernode or proxy
+        uint totalAmount; // total voter amount
+        uint totalNum; // total vote number
+        uint[] recordIDs; // record id list
     }
 
-    struct SNVoteEntry {
-        uint recordID; // record id
-        uint amount; // voter amount
-        uint num; // vote number
-        uint height; // vote height
-    }
-
-    struct SNVoteRecord {
+    struct VoteRecord {
         address voterAddr; // voter address
         address dstAddr; // supernode or proxy
-        uint index; // index of vote entry
+        uint amount; // voter amount
+        uint num; // vote number
         uint height; // block height
     }
 
@@ -29,16 +23,15 @@ interface ISNVote {
     event SNVOTE_REMOVE_APPROVAL(address _voterAddr, address _proxyAddr, uint _recordID, uint _voteNum);
 
     function voteOrApproval(bool _isVote, address _dstAddr, uint[] memory _recordIDs) external;
-    function voteOrApproval(bool _isVote, address _dstAddr, uint _recordID) external;
     function removeVoteOrApproval(uint[] memory _recordIDs) external;
-    function removeVoteOrApproval(uint _recordID) external;
+    function removeVoteOrApproval(address _voterAddr, uint _recordID) external;
     function proxyVote(address _snAddr) external;
-    function getVotedSN4Voter(address _voterAddr) external view returns (address[] memory, uint[] memory);
-    function getVotedRecords4Voter(address _voterAddr) external view returns (uint[] memory recordIDs);
-    function getVoters4SN(address _snAddr) external view returns (address[] memory);
+    function getSuperNodes4Voter(address _voterAddr) external view returns (address[] memory, uint[] memory);
+    function getRecordIDs4Voter(address _voterAddr) external view returns (uint[] memory);
+    function getVoters4SN(address _snAddr) external view returns (address[] memory, uint[] memory);
     function getVoteNum4SN(address _snAddr) external view returns (uint);
     function getProxies4Voter(address _voterAddr) external view returns (address[] memory, uint[] memory);
-    function getProxiedRecords4Voter(address _voterAddr) external view returns (uint[] memory recordIDs);
-    function getVoters4Proxy(address _proxyAddr) external view returns (address[] memory);
+    function getProxiedRecordIDs4Voter(address _voterAddr) external view returns (uint[] memory);
+    function getVoters4Proxy(address _proxyAddr) external view returns (address[] memory, uint[] memory);
     function getVoteNum4Proxy(address _proxyAddr) external view returns (uint);
 }

@@ -2,50 +2,62 @@
 pragma solidity ^0.8.0;
 
 import "./System.sol";
-import "./interfaces/ISNVote.sol";
-import "./interfaces/IAccountManager.sol";
 import "./utils/SafeMath.sol";
 
 contract SNVote is ISNVote, System {
-    using SafeMath for uint256;
+    using SafeMath for uint;
 
-    mapping(uint => SNVoteRecord) id2record; // record to supernode or proxy vote
-    mapping(address => SNVoteDetail) voter2detail; // voter to supernode or proxy list
-    mapping(address => uint) dst2amount; // supernode or proxy to total voter amount
-    mapping(address => uint) dst2num; // supernode or proxy to total vote number
+    // for records
+    mapping(uint => VoteRecord) id2record; // voter's record to supernode or proxy vote
+
+    // for voters
+    mapping(address => mapping(address => VoteDetail)) voter2details; // voter to details
+    mapping(address => uint) voter2amount; // voter to total amount
+    mapping(address => uint) voter2num; // voter to total votenum
+    mapping(address => address[]) voter2dsts; // voter to supernode or proxy list
+    mapping(address => uint[]) voter2ids; // voter to record list
+
+    // for supernodes or proxies
+    mapping(address => mapping(address => VoteDetail)) dst2details; // supernode or proxy to details
+    mapping(address => uint) dst2amount; // supernode or proxy to total amount
+    mapping(address => uint) dst2num; // supernode or proxy to total votenum
     mapping(address => address[]) dst2voters; // supernode or proxy to voter list
-    mapping(address => uint[]) dst2records; // supernode or proxy to record list
-    mapping(uint => uint) record2index; // record to index of dst2records
+    mapping(address => uint[]) dst2ids; // supernode or proxy to record list
 
     function voteOrApproval(bool _isVote, address _dstAddr, uint[] memory _recordIDs) public {
-        for(uint i = 0; i < _recordIDs.length; i++) {
-            voteOrApproval(_isVote, _dstAddr, _recordIDs[i]);
-        }
-    }
-
-    function voteOrApproval(bool _isVote, address _dstAddr, uint _recordID) public {
         require(!isSN(msg.sender), "caller can't be supernode");
         if(_isVote) {
             require(isSN(_dstAddr), "invalid supernode address");
         } else {
             require(isMN(_dstAddr), "invalid proxy address");
         }
-        require(id2record[_recordID].voterAddr == address(0), "record has been used");
-        remove(msg.sender, _recordID);
-        add(msg.sender, _dstAddr, _recordID);
+        uint id = 0;
+        for(uint i = 0; i < _recordIDs.length; i++) {
+            id = _recordIDs[i];
+            if(_recordIDs[i] == 0) {
+                // generate new record id
+                id = getAccountManger().moveID0(msg.sender);
+            }
+            remove(msg.sender, id);
+            add(msg.sender, _dstAddr, id);
+        }
     }
 
     function removeVoteOrApproval(uint[] memory _recordIDs) public {
+        require(!isSN(msg.sender), "caller can't be supernode");
         for(uint i = 0; i < _recordIDs.length; i++) {
-            removeVoteOrApproval(_recordIDs[i]);
+            if(_recordIDs[i] == 0) {
+                continue;
+            }
+            remove(msg.sender, _recordIDs[i]);
         }
     }
 
-    function removeVoteOrApproval(uint _recordID) public {
-        if(id2record[_recordID].voterAddr != msg.sender) {
+    function removeVoteOrApproval(address _voterAddr, uint _recordID) public onlyAccountManagerContract {
+        if(_recordID == 0) {
             return;
         }
-        remove(msg.sender, _recordID);
+        remove(_voterAddr, _recordID);
     }
 
     function proxyVote(address _snAddr) public {
@@ -53,99 +65,92 @@ contract SNVote is ISNVote, System {
         require(isSN(_snAddr), "invalid supernode");
         uint recordID;
         address voterAddr;
-        for(uint i = 0; i < dst2records[msg.sender].length; i++) {
-            recordID = dst2records[msg.sender][i];
+        uint[] memory ids = dst2ids[msg.sender];
+        for(uint i = 0; i < ids.length; i++) {
+            recordID = ids[i];
             voterAddr = id2record[recordID].voterAddr;
             remove(voterAddr, recordID); // remove vote or approval
             add(voterAddr, _snAddr, recordID); // add vote
         }
     }
 
-    function getVotedSN4Voter(address _voterAddr) public view returns (address[] memory retAddrs, uint[] memory retNums) {
+    // get voter's supernode
+    function getSuperNodes4Voter(address _voterAddr) public view returns (address[] memory retAddrs, uint[] memory retNums) {
         uint count = 0;
-        for(uint i = 0; i < voter2detail[_voterAddr].dstAddrs.length; i++) {
-            if(isSN(voter2detail[_voterAddr].dstAddrs[i])) {
+        address[] memory dsts = voter2dsts[_voterAddr];
+        for(uint i = 0; i < dsts.length; i++) {
+            if(isSN(dsts[i])) {
                 count++;
             }
         }
         if(count == 0) {
             return (retAddrs, retNums);
         }
-        uint index = 0;
         retAddrs = new address[](count);
         retNums = new uint[](count);
-        for(uint i = 0; i < voter2detail[_voterAddr].dstAddrs.length; i++) {
-            if(isSN(voter2detail[_voterAddr].dstAddrs[i])) {
-                retAddrs[index] = voter2detail[_voterAddr].dstAddrs[i];
-                retNums[index++] = voter2detail[_voterAddr].totalNums[i];
+        uint index = 0;
+        for(uint i = 0; i < dsts.length; i++) {
+            if(isSN(dsts[i])) {
+                retAddrs[index] = dsts[i];
+                retNums[index++] = voter2details[_voterAddr][dsts[i]].totalNum;
             }
         }
         return (retAddrs, retNums);
     }
 
-    function getVotedRecords4Voter(address _voterAddr) public view returns (uint[] memory retIDs) {
-        SNVoteDetail memory detail = voter2detail[_voterAddr];
-        uint count = 0;
-        for(uint i = 0; i < detail.dstAddrs.length; i++) {
-            if(isSN(detail.dstAddrs[i])) {
-                for(uint k = 0; k < detail.entries[i].length; k++) {
-                    count++;
-                }
-            }
-        }
-        if(count != 0) {
-            return retIDs;
-        }
-        retIDs = new uint[](count);
-        uint index = 0;
-        for(uint i = 0; i < detail.dstAddrs.length; i++) {
-            if(isSN(detail.dstAddrs[i])) {
-                for(uint k = 0; k < detail.entries[i].length; k++) {
-                    retIDs[index++] = detail.entries[i][k].recordID;
-                }
-            }
-        }
+    // get voter's records
+    function getRecordIDs4Voter(address _voterAddr) public view returns (uint[] memory) {
+        return voter2ids[_voterAddr];
     }
 
-    function getVoters4SN(address _snAddr) public view returns (address[] memory retAddrs) {
+    // get supernode's voters
+    function getVoters4SN(address _snAddr) public view returns (address[] memory retAddrs, uint[] memory retNums) {
         require(isSN(_snAddr), "invalid supernode");
-        return dst2voters[_snAddr];
+        retAddrs = dst2voters[_snAddr];
+        retNums = new uint[](retAddrs.length);
+        for(uint i = 0; i < retAddrs.length; i++) {
+            retNums[i] = dst2details[_snAddr][retAddrs[i]].totalNum;
+        }
     }
 
+    // get supernode's votenum
     function getVoteNum4SN(address _snAddr) public view returns (uint) {
         require(isSN(_snAddr), "invalid supernode");
         return dst2num[_snAddr];
     }
 
+    // get voter's proxy
     function getProxies4Voter(address _voterAddr) public view returns (address[] memory retAddrs, uint[] memory retNums) {
         uint count = 0;
-        for(uint i = 0; i < voter2detail[_voterAddr].dstAddrs.length; i++) {
-            if(isMN(voter2detail[_voterAddr].dstAddrs[i])) {
+        address[] memory dsts = voter2dsts[_voterAddr];
+        for(uint i = 0; i < dsts.length; i++) {
+            if(isMN(dsts[i])) {
                 count++;
             }
         }
         if(count == 0) {
             return (retAddrs, retNums);
         }
-        uint index = 0;
         retAddrs = new address[](count);
         retNums = new uint[](count);
-        for(uint i = 0; i < voter2detail[_voterAddr].dstAddrs.length; i++) {
-            if(isMN(voter2detail[_voterAddr].dstAddrs[i])) {
-                retAddrs[index] = voter2detail[_voterAddr].dstAddrs[i];
-                retNums[index++] = voter2detail[_voterAddr].totalNums[i];
+        uint index = 0;
+        for(uint i = 0; i < dsts.length; i++) {
+            if(isMN(dsts[i])) {
+                retAddrs[index] = dsts[i];
+                retNums[index++] = voter2details[_voterAddr][dsts[i]].totalNum;
             }
         }
     }
 
-    function getProxiedRecords4Voter(address _voterAddr) public view returns (uint[] memory retIDs) {
-        SNVoteDetail memory detail = voter2detail[_voterAddr];
+    // get voter's proxied record
+    function getProxiedRecordIDs4Voter(address _voterAddr) public view returns (uint[] memory retIDs) {
+        uint[] memory ids = voter2ids[_voterAddr];
+        uint id = 0;
         uint count = 0;
-        for(uint i = 0; i < detail.dstAddrs.length; i++) {
-            if(isMN(detail.dstAddrs[i])) {
-                for(uint k = 0; k < detail.entries[i].length; k++) {
-                    count++;
-                }
+        for(uint i = 0; i < ids.length; i++) {
+            id = ids[i];
+            if(isMN(id2record[id].dstAddr)) {
+                count++;
             }
         }
         if(count == 0) {
@@ -153,37 +158,42 @@ contract SNVote is ISNVote, System {
         }
         retIDs = new uint[](count);
         uint index = 0;
-        for(uint i = 0; i < detail.dstAddrs.length; i++) {
-            if(isMN(detail.dstAddrs[i])) {
-                for(uint k = 0; k < detail.entries[i].length; k++) {
-                    retIDs[index++] = detail.entries[i][k].recordID;
-                }
+        for(uint i = 0; i < ids.length; i++) {
+            id = ids[i];
+            if(isMN(id2record[id].dstAddr)) {
+                retIDs[index++] = id;
             }
         }
     }
 
-    function getVoters4Proxy(address _proxyAddr) public view returns (address[] memory) {
-        require(isMN(_proxyAddr), "caller isn't proxy");
-        return dst2voters[_proxyAddr];
+    // get proxy's voters
+    function getVoters4Proxy(address _proxyAddr) public view returns (address[] memory retAddrs, uint[] memory retNums) {
+        require(isMN(_proxyAddr), "invalid proxy");
+        retAddrs = dst2voters[_proxyAddr];
+        retNums = new uint[](retAddrs.length);
+        for(uint i = 0; i < retAddrs.length; i++) {
+            retNums[i] = dst2details[_proxyAddr][retAddrs[i]].totalNum;
+        }
     }
 
+    // get proxy's votenum
     function getVoteNum4Proxy(address _proxyAddr) public view returns (uint) {
-        require(isMN(_proxyAddr), "caller isn't proxy");
+        require(isMN(_proxyAddr), "invalid proxy");
         return dst2num[_proxyAddr];
     }
 
-    function existDstAddr(address _voterAddr, address _snAddr) internal view returns (bool, uint) {
-        SNVoteDetail memory detail = voter2detail[_voterAddr];
-        for(uint i = 0; i < detail.dstAddrs.length; i++) {
-            if(detail.dstAddrs[i] == _snAddr) {
+    function existDst4Voter(address _voterAddr, address _dstAddr) internal view returns (bool, uint) {
+        address[] memory dsts = voter2dsts[_voterAddr];
+        for(uint i = 0; i < dsts.length; i++) {
+            if(dsts[i] == _dstAddr) {
                 return (true, i);
             }
         }
         return (false, 0);
     }
 
-    function existVoter(address _snAddr, address _voterAddr) internal view returns (bool, uint) {
-        address[] memory voters = dst2voters[_snAddr];
+    function existVoter4Dst(address _dstAddr, address _voterAddr) internal view returns (bool, uint) {
+        address[] memory voters = dst2voters[_dstAddr];
         for(uint i = 0; i < voters.length; i++) {
             if(voters[i] == _voterAddr) {
                 return (true, i);
@@ -192,8 +202,8 @@ contract SNVote is ISNVote, System {
         return (false, 0);
     }
 
-    function existRecord(address _snAddr, uint _recordID) internal view returns (bool, uint) {
-        uint[] memory recordIDs = dst2records[_snAddr];
+    function existID4Voter(address _voterAddr, uint _recordID) internal view returns (bool, uint) {
+        uint[] memory recordIDs = voter2ids[_voterAddr];
         for(uint i = 0; i < recordIDs.length; i++) {
             if(recordIDs[i] == _recordID) {
                 return (true, i);
@@ -202,127 +212,293 @@ contract SNVote is ISNVote, System {
         return (false, 0);
     }
 
-    function add(address _voterAddr, address _dstAddr, uint _recordID) internal {
-        IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
-        IAccountManager.AccountRecord memory record = am.getRecordByID(_recordID);
-        IAccountManager.RecordUseInfo memory useinfo = am.getRecordUseInfo(_recordID);
-        if(record.addr != _voterAddr || block.number < useinfo.unfreezeHeight) {
-            return;
+    function existID4Dst(address _dstAddr, uint _recordID) internal view returns (bool, uint) {
+        uint[] memory recordIDs = dst2ids[_dstAddr];
+        for(uint i = 0; i < recordIDs.length; i++) {
+            if(recordIDs[i] == _recordID) {
+                return (true, i);
+            }
         }
+        return (false, 0);
+    }
+
+    function add4Voter(address _voterAddr, address _dstAddr, uint _recordID, uint _amount, uint _num) internal {
+        // update detail
+        VoteDetail storage detail = voter2details[_voterAddr][_dstAddr];
+        detail.addr = _dstAddr;
+        detail.totalAmount += _amount;
+        detail.totalNum += _num;
+        detail.recordIDs.push(_recordID);
+
+        // update total amount
+        voter2amount[_voterAddr] += _amount;
+
+        // update total votenum
+        voter2num[_voterAddr] += _num;
+
+        // update dst list
+        bool flag = false;
+        uint pos = 0;
+        (flag, pos) = existDst4Voter(_voterAddr, _dstAddr);
+        if(!flag) {
+            voter2dsts[_voterAddr].push(_dstAddr);
+        }
+
+        // update record list
+        flag = false;
+        pos = 0;
+        (flag, pos) = existID4Voter(_voterAddr, _recordID);
+        if(!flag) {
+            voter2ids[_voterAddr].push(_recordID);
+        }
+    }
+
+    function add4Dst(address _dstAddr, address _voterAddr, uint _recordID, uint _amount, uint _num) internal {
+        // update detail
+        VoteDetail storage detail = dst2details[_dstAddr][_voterAddr];
+        detail.addr = _voterAddr;
+        detail.totalAmount += _amount;
+        detail.totalNum += _num;
+        detail.recordIDs.push(_recordID);
+
+        // update total amount
+        dst2amount[_dstAddr] += _amount;
+
+        // update total votenum
+        dst2num[_dstAddr] += _num;
+
+        // update voter list
+        bool flag = false;
+        uint pos = 0;
+        (flag, pos) = existVoter4Dst(_dstAddr, _voterAddr);
+        if(!flag) {
+            dst2voters[_dstAddr].push(_voterAddr);
+            if(isSN(_dstAddr)) {
+                getSuperNode().changeVoter(_dstAddr, _voterAddr, _recordID, _amount, 1);
+            }
+        }
+
+        // update record list
+        flag = false;
+        pos = 0;
+        (flag, pos) = existID4Dst(_dstAddr, _recordID);
+        if(!flag) {
+            dst2ids[_dstAddr].push(_recordID);
+        }
+    }
+
+    function add(address _voterAddr, address _dstAddr, uint _recordID) internal {
+        IAccountManager.AccountRecord memory record = getAccountManger().getRecordByID(_recordID);
+        require(record.addr == _voterAddr, "caller isn't owner of record");
+
+        IAccountManager.RecordUseInfo memory useinfo = getAccountManger().getRecordUseInfo(_recordID);
+        require(block.number >= useinfo.releaseHeight, "record is voted, need wait for release");
+
         uint amount = record.amount;
         uint num = amount;
         if(isMN(useinfo.specialAddr)) {
              num = record.amount.mul(2);
-        } else if(record.unlockHeight != 0) {
+        } else if(block.number < record.unlockHeight) {
             num = record.amount.mul(15).div(10);
         }
 
-        // vote or approval new dstAddr
-        SNVoteDetail storage detail = voter2detail[_voterAddr];
-        bool exist = false;
-        uint pos = 0;
-        (exist, pos) = existDstAddr(_voterAddr, _dstAddr);
-        if(exist) {
-            // add amount & num
-            detail.totalAmounts[pos] = detail.totalAmounts[pos].add(amount);
-            detail.totalNums[pos] = detail.totalNums[pos].add(num);
-            // add entry
-            detail.entries[pos].push(SNVoteEntry(_recordID, amount, num, block.number));
-            // add history
-            id2record[_recordID] = SNVoteRecord(msg.sender, _dstAddr, detail.entries[pos].length - 1, block.number);
-        } else {
-            // add dst address
-            detail.dstAddrs.push(_dstAddr);
-            // add amount & num
-            detail.totalAmounts.push(amount);
-            detail.totalNums.push(num);
-            // add entry
-            detail.entries[0].push(SNVoteEntry(_recordID, amount, num, block.number));
-            // add history
-            id2record[_recordID] = SNVoteRecord(msg.sender, _dstAddr, 0, block.number);
-        }
+        // update vote record
+        id2record[_recordID] = VoteRecord(_voterAddr, _dstAddr, amount, num, block.number + 1);
 
-        // add total amount & total num
-        dst2amount[_dstAddr] = dst2amount[_dstAddr].add(amount);
-        dst2num[_dstAddr] = dst2num[_dstAddr].add(num);
+        // update voter
+        add4Voter(_voterAddr, _dstAddr, _recordID, amount, num);
 
-        // add voter
-        (exist, pos) = existVoter(_dstAddr, msg.sender);
-        if(!exist) {
-            dst2voters[_dstAddr].push(msg.sender);
-        }
+        // update dst
+        add4Dst(_dstAddr, _voterAddr, _recordID, amount, num);
 
-        // add record
-        (exist, pos) = existRecord(_dstAddr, _recordID);
-        if(!exist) {
-            dst2records[_dstAddr].push(_recordID);
-            record2index[_recordID] = dst2records[_dstAddr].length - 1;
-        }
-
-        // freeze
-        if(isSN(_dstAddr)) {
-            am.setRecordVote(_recordID, _dstAddr, 7);
+        // freeze record
+        if(isSN(_dstAddr)) { // vote
+            getAccountManger().setRecordVote(_recordID, _voterAddr, _dstAddr, 1);
+            getSuperNode().changeVoteInfo(_dstAddr, amount, num, 1);
             emit SNVOTE_VOTE(_voterAddr, _dstAddr, _recordID, num);
-        } else {
+        } else { // approval
             emit SNVOTE_APPROVAL(_voterAddr, _dstAddr, _recordID, num);
         }
     }
 
-    function remove(address _voterAddr, uint _recordID) internal {
-        address dstAddr = id2record[_recordID].dstAddr;
-        bool exist = false;
+    function remove4Voter(address _voterAddr, address _dstAddr, uint _recordID, uint _amount, uint _num) internal {
+        // update detail
+        bool flag = false;
         uint pos = 0;
-        (exist, pos) = existDstAddr(_voterAddr, dstAddr);
-        if(!exist) {
+        (flag, pos) = existDst4Voter(_voterAddr, _dstAddr);
+        if(!flag) {
             return;
         }
-        uint index = id2record[_recordID].index;
 
-        SNVoteDetail storage detail = voter2detail[_voterAddr];
-        SNVoteEntry[] storage entries = detail.entries[pos];
-        uint amount = entries[index].amount;
-        uint num = entries[index].num;
+        // remove record id
+        VoteDetail storage detail = voter2details[_voterAddr][_dstAddr];
+        uint[] storage recordIDs = detail.recordIDs;
+        flag = false;
+        pos = 0;
+        for(uint i = 0; i < recordIDs.length; i++) {
+            if(recordIDs[i] == _recordID) {
+                flag = true;
+                pos = i;
+                break;
+            }
+        }
+        if(!flag) {
+            return;
+        }
+        recordIDs[pos] = recordIDs[recordIDs.length - 1];
+        recordIDs.pop();
+        if(recordIDs.length == 0) {
+            // remove detail
+            delete voter2details[_voterAddr][_dstAddr];
+        } else {
+            // remove amount & votenum
+            detail.totalAmount -= _amount;
+            detail.totalNum -= _num;
+        }
 
-        // remove amount & number
-        dst2amount[dstAddr] = dst2amount[dstAddr].sub(amount);
-        dst2num[dstAddr] = dst2num[dstAddr].sub(num);
-        // remove history
-        id2record[entries[entries.length - 1].recordID].index = index;
-        delete id2record[_recordID];
-        // remove entry
-        entries[index] = entries[entries.length - 1];
-        entries.pop();
-        if(entries.length == 0) {
-            // remove total amount & total num
-            detail.totalAmounts[pos] = detail.totalAmounts[detail.totalAmounts.length - 1];
-            detail.totalAmounts.pop();
-            detail.totalNums[pos] = detail.totalNums[detail.totalNums.length - 1];
-            detail.totalNums.pop();
-            // remove dst address
-            detail.dstAddrs[pos] = detail.dstAddrs[detail.dstAddrs.length -1];
-            detail.dstAddrs.pop();
-            // remove entry
-            detail.entries[pos] = detail.entries[detail.entries.length -1];
-            detail.entries.pop();
-            // remove voter
-            (exist, pos) = existVoter(dstAddr, _voterAddr);
-            if(exist) {
-                address[] storage voters = dst2voters[dstAddr];
+        // update total amount
+        if(voter2amount[_voterAddr] <= _amount) {
+            voter2amount[_voterAddr] = 0;
+        } else {
+            voter2amount[_voterAddr] -= _amount;
+        }
+
+        // update total votenum
+        if(voter2num[_voterAddr] <= _num) {
+            voter2num[_voterAddr] = 0;
+        } else {
+            voter2num[_voterAddr] -= _num;
+        }
+
+        // update dst list
+        if(recordIDs.length == 0) {
+            flag = false;
+            pos = 0;
+            (flag, pos) = existDst4Voter(_voterAddr, _dstAddr);
+            if(flag) {
+                address[] storage dsts = voter2dsts[_voterAddr];
+                dsts[pos] = dsts[dsts.length - 1];
+                dsts.pop();
+            }
+        }
+
+        // update record id list
+        flag = false;
+        pos = 0;
+        (flag, pos) = existID4Voter(_voterAddr, _recordID);
+        if(flag) {
+            uint[] storage ids = voter2ids[_voterAddr];
+            ids[pos] = ids[ids.length - 1];
+            ids.pop();
+        }
+    }
+
+    function remove4Dst(address _dstAddr, address _voterAddr, uint _recordID, uint _amount, uint _num) internal {
+        // update detail
+        bool flag = false;
+        uint pos = 0;
+        (flag, pos) = existVoter4Dst(_dstAddr, _voterAddr);
+        if(!flag) {
+            return;
+        }
+
+        // remove record id
+        VoteDetail storage detail = dst2details[_dstAddr][_voterAddr];
+        uint[] storage recordIDs = detail.recordIDs;
+        flag = false;
+        pos = 0;
+        for(uint i = 0; i < recordIDs.length; i++) {
+            if(recordIDs[i] == _recordID) {
+                flag = true;
+                pos = i;
+                break;
+            }
+        }
+        if(!flag) {
+            return;
+        }
+        recordIDs[pos] = recordIDs[recordIDs.length - 1];
+        recordIDs.pop();
+        if(recordIDs.length == 0) {
+            // remove detail
+            delete dst2details[_dstAddr][_voterAddr];
+            if(isSN(_dstAddr)) {
+                getSuperNode().changeVoter(_dstAddr, _voterAddr, _recordID, _amount, 0);
+            }
+        } else {
+            // remove amount & votenum
+            detail.totalAmount -= _amount;
+            detail.totalNum -= _num;
+        }
+
+        // update total amount
+        if(dst2amount[_dstAddr] <= _amount) {
+            dst2amount[_dstAddr] = 0;
+        } else {
+            dst2amount[_dstAddr] -= _amount;
+        }
+
+        // update total votenum
+        if(dst2num[_dstAddr] <= _num) {
+            dst2num[_dstAddr] = 0;
+        } else {
+            dst2num[_dstAddr] -= _num;
+        }
+        
+        // update voter list
+        if(recordIDs.length == 0) {
+            flag = false;
+            pos = 0;
+            (flag, pos) = existVoter4Dst(_dstAddr, _voterAddr);
+            if(flag) {
+                address[] storage voters = dst2voters[_dstAddr];
                 voters[pos] = voters[voters.length - 1];
                 voters.pop();
             }
-        } else {
-            // decrease vote amount & num
-            detail.totalAmounts[pos] = detail.totalAmounts[pos].sub(amount);
-            detail.totalNums[pos] = detail.totalNums[pos].sub(num);
         }
 
-        // unfreeze
-        if(isSN(dstAddr)) {
-            IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
-            am.setRecordVote(_recordID, dstAddr, 0);
+        // update record id list
+        flag = false;
+        pos = 0;
+        (flag, pos) = existID4Dst(_dstAddr, _recordID);
+        if(flag) {
+            uint[] storage ids = dst2ids[_dstAddr];
+            ids[pos] = ids[ids.length - 1];
+            ids.pop();
+        }
+    }
+
+    function remove(address _voterAddr, uint _recordID) internal {
+        IAccountManager.AccountRecord memory record = getAccountManger().getRecordByID(_recordID);
+        require(record.addr == _voterAddr, "caller isn't owner of record");
+
+        IAccountManager.RecordUseInfo memory useinfo = getAccountManger().getRecordUseInfo(_recordID);
+        require(block.number >= useinfo.releaseHeight, "record is voted, need wait for release");
+
+        VoteRecord memory voteRecord = id2record[_recordID];
+        address dstAddr = voteRecord.dstAddr;
+        if(dstAddr == address(0) || voteRecord.voterAddr != _voterAddr) {
+            return;
+        }
+
+        uint amount = voteRecord.amount;
+        uint num = voteRecord.num;
+
+        // update voter
+        remove4Voter(_voterAddr, dstAddr, _recordID, amount, num);
+
+        // update dst
+        remove4Dst(dstAddr, _voterAddr, _recordID, amount, num);
+
+        // remove vote record
+        delete id2record[_recordID];
+
+        // unfreeze record
+        if(isSN(dstAddr)) { // vote
+            getAccountManger().setRecordVote(_recordID, _voterAddr, dstAddr, 0);
+            getSuperNode().changeVoteInfo(dstAddr, amount, num, 0);
             emit SNVOTE_REMOVE_VOTE(_voterAddr, dstAddr, _recordID, num);
-        } else {
+        } else { // proxy
             emit SNVOTE_REMOVE_APPROVAL(_voterAddr, dstAddr, _recordID, num);
         }
     }
