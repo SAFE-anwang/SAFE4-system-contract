@@ -7,8 +7,13 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import "./interfaces/IProperty.sol";
+import "./interfaces/IAccountManager.sol";
 import "./interfaces/IMasterNode.sol";
 import "./interfaces/ISuperNode.sol";
+import "../interfaces/ISNVote.sol";
+import "../interfaces/INodeState.sol";
+import "../interfaces/IProposal.sol";
+import "../interfaces/ISystemReward.sol";
 
 contract System is Initializable, OwnableUpgradeable{
     address internal constant PROPERTY_ADDR = 0x0000000000000000000000000000000000001000;
@@ -88,13 +93,38 @@ contract System is Initializable, OwnableUpgradeable{
         _;
     }
 
+    modifier onlyAccountManagerContract {
+        require(msg.sender == ACCOUNT_MANAGER_PROXY_ADDR, "No account manager contract");
+        _;
+    }
+
     modifier onlyMnOrSnContract {
         require(msg.sender == MASTERNODE_PROXY_ADDR || msg.sender == SUPERNODE_PROXY_ADDR, "No masternode and supernode contract");
         _;
     }
 
+    modifier onlySNVoteContract {
+        require(msg.sender == SNVOTE_PROXY_ADDR, "No supernode vote contract");
+        _;
+    }
+
+    modifier onlyMasterNodeStateContract {
+        require(msg.sender == MASTERNODE_STATE_PROXY_ADDR, "No masternode state contract");
+        _;
+    }
+
+    modifier onlySuperNodeStateContract {
+        require(msg.sender == SUPERNODE_STATE_PROXY_ADDR, "No supernode state contract");
+        _;
+    }
+
     modifier onlySafe3Contract {
         require(msg.sender == SAFE3_PROXY_ADDR, "No SAFE3 contract");
+        _;
+    }
+
+    modifier onlySystemRewardContract {
+        require(msg.sender == SYSTEM_REWARD_PROXY_ADDR, "No system reward contract");
         _;
     }
 
