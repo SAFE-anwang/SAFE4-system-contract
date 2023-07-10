@@ -2,8 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./System.sol";
-import "./interfaces/IProposal.sol";
-import "./interfaces/IAccountManager.sol";
 
 contract Proposal is IProposal, System {
     uint pp_no;
@@ -28,8 +26,7 @@ contract Proposal is IProposal, System {
         require(msg.value >= 1, "need pay 1 SAFE");
 
         // burn 1 SAFE at least
-        IAccountManager am = IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
-        am.deposit{value: msg.value}(0x0000000000000000000000000000000000000000, 0);
+        getAccountManger().deposit{value: msg.value}(0x0000000000000000000000000000000000000000, 0);
 
         ProposalInfo storage pp = proposals[++pp_no];
         pp.id = pp_no;
