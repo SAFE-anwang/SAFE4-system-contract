@@ -52,13 +52,12 @@ contract AccountManager is IAccountManager, System {
         }
         if(amount != 0) {
             payable(msg.sender).transfer(amount);
-            ISNVote snVote = ISNVote(SNVOTE_PROXY_ADDR);
             for(uint i = 0; i < _ids.length; i++) {
                 if(_ids[i] != 0) {
                     AccountRecord memory record = getRecordByID(_ids[i]);
                     RecordUseInfo memory useinfo = id2useinfo[_ids[i]];
                     if(record.addr == msg.sender && block.number >= record.unlockHeight && block.number >= useinfo.unfreezeHeight) {
-                        snVote.removeVoteOrApproval(msg.sender, _ids[i]);
+                        getSNVote().removeVoteOrApproval(msg.sender, _ids[i]);
                         delRecord(_ids[i]);
                     }
                 } else {
@@ -93,11 +92,10 @@ contract AccountManager is IAccountManager, System {
         }
         sortRecordByAmount(temp_records, 0, temp_records.length - 1);
         uint usedAmount = 0;
-        ISNVote snVote = ISNVote(SNVOTE_PROXY_ADDR);
         for(uint i = 0; i < temp_records.length; i++) {
             if(usedAmount + temp_records[i].amount <= _amount) {
                 if(temp_records[i].id != 0) {
-                    snVote.removeVoteOrApproval(msg.sender, temp_records[i].id);
+                    getSNVote().removeVoteOrApproval(msg.sender, temp_records[i].id);
                     delRecord(temp_records[i].id);
                 } else {
                     balances[msg.sender] = 0;
@@ -108,7 +106,7 @@ contract AccountManager is IAccountManager, System {
                 }
             } else {
                 if(temp_records[i].id != 0) {
-                    snVote.removeVoteOrApproval(msg.sender, temp_records[i].id);
+                    getSNVote().removeVoteOrApproval(msg.sender, temp_records[i].id);
                     addr2records[msg.sender][id2index[temp_records[i].id]].amount = usedAmount + temp_records[i].amount - _amount;
                 } else {
                     balances[msg.sender] = usedAmount + temp_records[i].amount - _amount;

@@ -128,20 +128,39 @@ contract System is Initializable, OwnableUpgradeable{
         _;
     }
 
+    function getAccountManger() internal pure returns (IAccountManager) {
+        return IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
+    }
+
+    function getMasterNode() internal pure returns (IMasterNode) {
+        return IMasterNode(MASTERNODE_PROXY_ADDR);
+    }
+
+    function getSuperNode() internal pure returns (ISuperNode) {
+        return ISuperNode(SUPERNODE_PROXY_ADDR);
+    }
+
+    function getSNVote() internal pure returns (ISNVote) {
+        return ISNVote(SNVOTE_PROXY_ADDR);
+    }
+
+    function getMasterNodeState() internal pure returns (INodeState) {
+        return INodeState(MASTERNODE_STATE_PROXY_ADDR);
+    }
+
+    function getSuperNodeState() internal pure returns (INodeState) {
+        return INodeState(SUPERNODE_STATE_PROXY_ADDR);
+    }
+
     function getSNNum() internal view returns (uint) {
-        ISuperNode sn = ISuperNode(SUPERNODE_PROXY_ADDR);
-        return sn.getNum();
+        return getSuperNode().getNum();
     }
 
     function existNodeAddress(address _addr) internal view returns (bool) {
-        IMasterNode mn = IMasterNode(MASTERNODE_PROXY_ADDR);
-        ISuperNode sn = ISuperNode(SUPERNODE_PROXY_ADDR);
-        return mn.exist(_addr) || sn.exist(_addr);
+        return getMasterNode().exist(_addr) || getSuperNode().exist(_addr);
     }
 
     function existNodeIP(string memory _ip) internal view returns (bool) {
-        IMasterNode mn = IMasterNode(MASTERNODE_PROXY_ADDR);
-        ISuperNode sn = ISuperNode(SUPERNODE_PROXY_ADDR);
-        return mn.existIP(_ip) || sn.existIP(_ip);
+        return getMasterNode().existIP(_ip) || getSuperNode().existIP(_ip);
     }
 }
