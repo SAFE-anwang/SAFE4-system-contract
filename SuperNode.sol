@@ -364,10 +364,11 @@ contract SuperNode is ISuperNode, System {
         sn.enode = _enode;
         sn.ip = _ip;
         sn.description = _description;
+        sn.isOfficial = false;
         sn.stateInfo = StateInfo(STATE_INIT, block.number + 1);
         sn.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number + 1));
         sn.incentivePlan = _incentivePlan;
-        sn.lastRewardHeight = STATE_INIT;
+        sn.lastRewardHeight = 0;
         sn.createHeight = block.number + 1;
         sn.updateHeight = 0;
         snIDs.push(sn.id);

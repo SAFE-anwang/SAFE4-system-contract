@@ -288,6 +288,7 @@ contract MasterNode is IMasterNode, System {
         mn.enode = _enode;
         mn.ip = _ip;
         mn.description = _description;
+        mn.isOfficial = false;
         mn.stateInfo = StateInfo(STATE_INIT, block.number + 1);
         mn.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number + 1));
         mn.incentivePlan = plan;
