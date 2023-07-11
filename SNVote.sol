@@ -36,7 +36,7 @@ contract SNVote is ISNVote, System {
             id = _recordIDs[i];
             if(_recordIDs[i] == 0) {
                 // generate new record id
-                id = getAccountManger().moveID0(msg.sender);
+                id = getAccountManager().moveID0(msg.sender);
             }
             remove(msg.sender, id);
             add(msg.sender, _dstAddr, id);
@@ -288,10 +288,10 @@ contract SNVote is ISNVote, System {
     }
 
     function add(address _voterAddr, address _dstAddr, uint _recordID) internal {
-        IAccountManager.AccountRecord memory record = getAccountManger().getRecordByID(_recordID);
+        IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_recordID);
         require(record.addr == _voterAddr, "caller isn't owner of record");
 
-        IAccountManager.RecordUseInfo memory useinfo = getAccountManger().getRecordUseInfo(_recordID);
+        IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_recordID);
         require(block.number >= useinfo.releaseHeight, "record is voted, need wait for release");
 
         uint amount = record.amount;
@@ -313,7 +313,7 @@ contract SNVote is ISNVote, System {
 
         // freeze record
         if(isSN(_dstAddr)) { // vote
-            getAccountManger().setRecordVote(_recordID, _voterAddr, _dstAddr, 1);
+            getAccountManager().setRecordVote(_recordID, _voterAddr, _dstAddr, 1);
             getSuperNode().changeVoteInfo(_dstAddr, amount, num, 1);
             emit SNVOTE_VOTE(_voterAddr, _dstAddr, _recordID, num);
         } else { // approval
@@ -469,10 +469,10 @@ contract SNVote is ISNVote, System {
     }
 
     function remove(address _voterAddr, uint _recordID) internal {
-        IAccountManager.AccountRecord memory record = getAccountManger().getRecordByID(_recordID);
+        IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_recordID);
         require(record.addr == _voterAddr, "caller isn't owner of record");
 
-        IAccountManager.RecordUseInfo memory useinfo = getAccountManger().getRecordUseInfo(_recordID);
+        IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_recordID);
         require(block.number >= useinfo.releaseHeight, "record is voted, need wait for release");
 
         VoteRecord memory voteRecord = id2record[_recordID];
@@ -495,7 +495,7 @@ contract SNVote is ISNVote, System {
 
         // unfreeze record
         if(isSN(dstAddr)) { // vote
-            getAccountManger().setRecordVote(_recordID, _voterAddr, dstAddr, 0);
+            getAccountManager().setRecordVote(_recordID, _voterAddr, dstAddr, 0);
             getSuperNode().changeVoteInfo(dstAddr, amount, num, 0);
             emit SNVOTE_REMOVE_VOTE(_voterAddr, dstAddr, _recordID, num);
         } else { // proxy

@@ -118,7 +118,7 @@ contract System is Initializable, OwnableUpgradeable{
         return IProperty(PROPERTY_PROXY_ADDR);
     }
 
-    function getAccountManger() internal pure returns (IAccountManager) {
+    function getAccountManager() internal pure returns (IAccountManager) {
         return IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
     }
 

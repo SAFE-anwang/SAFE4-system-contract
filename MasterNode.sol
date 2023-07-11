@@ -34,31 +34,31 @@ contract MasterNode is IMasterNode, System {
         string memory ip = NodeUtil.check(1, _isUnion, _addr, _lockDay, _enode, _description, _creatorIncentive, _partnerIncentive, 0);
         require(!existNodeAddress(_addr), "existent address");
         require(!existNodeIP(ip), "existent ip");
-        uint lockID = getAccountManger().deposit{value: msg.value}(msg.sender, _lockDay);
+        uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         create(_addr, lockID, msg.value, _enode, ip, _description, IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
-        getAccountManger().setRecordFreeze(lockID, msg.sender, _addr, _lockDay); // creator's lock id can't register other masternode again
+        getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, _lockDay); // creator's lock id can't register other masternode again
         emit MNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
     function appendRegister(address _addr, uint _lockDay) public payable {
         require(msg.value >= APPEND_AMOUNT, "masternode need append lock 100 SAFE at least");
         require(exist(_addr), "non-existent masternode");
-        uint lockID = getAccountManger().deposit{value: msg.value}(msg.sender, _lockDay);
+        uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         append(_addr, lockID, msg.value);
-        getAccountManger().setRecordFreeze(lockID, msg.sender, _addr, 30); // partner's lock id can register other masternode after 30 days
+        getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, 30); // partner's lock id can register other masternode after 30 days
         emit MNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
     function turnRegister(address _addr, uint _lockID) public {
         require(exist(_addr), "non-existent masternode");
-        IAccountManager.AccountRecord memory record = getAccountManger().getRecordByID(_lockID);
+        IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_lockID);
         require(record.addr == msg.sender, "you aren't record owner");
         require(record.amount >= APPEND_AMOUNT, "masternode need append lock 100 SAFE at least");
         require(block.number < record.unlockHeight, "record isn't locked");
-        IAccountManager.RecordUseInfo memory useinfo = getAccountManger().getRecordUseInfo(_lockID);
+        IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight, "record is freezen");
         append(_addr, _lockID, record.amount);
-        getAccountManger().setRecordFreeze(_lockID, msg.sender, _addr, 30); // partner's lock id can register other masternode after 30 days
+        getAccountManager().setRecordFreeze(_lockID, msg.sender, _addr, 30); // partner's lock id can register other masternode after 30 days
         emit MNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
 
@@ -121,7 +121,7 @@ contract MasterNode is IMasterNode, System {
         }
         // reward to address
         for(uint i = 0; i < count; i++) {
-            getAccountManger().reward{value: tempAmounts[i]}(tempAddrs[i]);
+            getAccountManager().reward{value: tempAmounts[i]}(tempAddrs[i]);
             emit SystemReward(_addr, 2, tempAddrs[i], tempRewardTypes[i], tempAmounts[i]);
         }
         info.lastRewardHeight = block.number + 1;
@@ -131,7 +131,7 @@ contract MasterNode is IMasterNode, System {
         require(_amount >= TOTAL_CREATE_AMOUNT, "masternode need lock 1000 SAFE at least");
         require(!existNodeAddress(_addr), "existent address");
         create(_addr, _lockID, _amount, "", "", "", IncentivePlan(100, 0, 0));
-        getAccountManger().setRecordFreeze(_lockID, _addr, _addr, _lockDay); // creator's lock id can't register other masternode again
+        getAccountManager().setRecordFreeze(_lockID, _addr, _addr, _lockDay); // creator's lock id can't register other masternode again
         emit MNRegister(_addr, msg.sender, _amount, _lockDay, _lockID);
     }
 

@@ -69,7 +69,7 @@ contract Safe3 is ISafe3, System {
                 }
                 remainLockHeight = info.unlockHeight - SAFE3_END_HEIGHT;
             }
-            uint lockID = getAccountManger().fromSafe3(safe4Addr, info.amount, lockDay, remainLockHeight);
+            uint lockID = getAccountManager().fromSafe3(safe4Addr, info.amount, lockDay, remainLockHeight);
             if(info.isMN) {
                 getMasterNode().fromSafe3(safe4Addr, info.amount, lockDay, lockID);
             }
