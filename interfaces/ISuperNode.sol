@@ -35,8 +35,7 @@ interface ISuperNode is INode {
     event SNStateUpdate(address _addr, uint8 _newState, uint8 _oldState);
 
     function register(bool _isUnion, address _addr, uint _lockDay, string memory _name, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) external payable;
-    function changeVoter(address _addr, address _voter, uint _recordID, uint _amount, uint _type) external;
-    function changeVoteInfo(address _addr, uint _amount, uint _num, uint _type) external;
+    function changeVoteInfo(address _addr, address _voter, uint _recordID, uint _amount, uint _num, uint _type) external;
     function getInfo(address _addr) external view returns (SuperNodeInfo memory);
     function getAll() external view returns (SuperNodeInfo[] memory);
     function getTop() external view returns (SuperNodeInfo[] memory);

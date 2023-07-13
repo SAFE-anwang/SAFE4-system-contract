@@ -205,40 +205,27 @@ contract SuperNode is ISuperNode, System {
         emit SNStateUpdate(sn.addr, _state, oldState);
     }
 
-    function changeVoter(address _addr, address _voter, uint _recordID, uint _amount, uint _type) public onlySNVoteContract {
+    function changeVoteInfo(address _addr, address _voter, uint _recordID, uint _amount, uint _num, uint _type) public onlySNVoteContract {
         SuperNodeInfo storage info = supernodes[_addr];
         if(supernodes[_addr].id == 0) {
             return;
         }
-
         VoteInfo storage voteInfo = info.voteInfo;
         uint pos = 0;
         bool flag = false;
         for(uint i = 0; i < voteInfo.voters.length; i++) {
-            if(_voter == voteInfo.voters[i].addr) {
+            if(_voter == voteInfo.voters[i].addr && _recordID == voteInfo.voters[i].lockID) {
                 pos = i;
                 flag = true;
+                break;
             }
         }
 
-        if(_type == 0 && flag) { // remove voter
-            voteInfo.voters[pos] = voteInfo.voters[voteInfo.voters.length - 1];
-            voteInfo.voters.pop();
-            return;
-        }
-        if(_type == 1 && !flag) { // add voter
-            voteInfo.voters.push(MemberInfo(_recordID, _voter, _amount, block.number + 1));
-        }
-    }
-
-    function changeVoteInfo(address _addr, uint _amount, uint _num, uint _type) public onlySNVoteContract {
-        SuperNodeInfo storage info = supernodes[_addr];
-        if(supernodes[_addr].id == 0) {
-            return;
-        }
-
-        VoteInfo storage voteInfo = info.voteInfo;
         if(_type == 0) { // reduce vote
+            if(flag) {
+                voteInfo.voters[pos] = voteInfo.voters[voteInfo.voters.length - 1];
+                voteInfo.voters.pop();
+            }
             if(voteInfo.totalAmount <= _amount) {
                 voteInfo.totalAmount = 0;
             } else {
@@ -250,6 +237,9 @@ contract SuperNode is ISuperNode, System {
                 voteInfo.totalNum -= _num;
             }
         } else { // increase vote
+            if(!flag) {
+                voteInfo.voters.push(MemberInfo(_recordID, _voter, _amount, block.number + 1));
+            }
             voteInfo.totalAmount += _amount;
             voteInfo.totalNum += _num;
             voteInfo.height = block.number + 1;

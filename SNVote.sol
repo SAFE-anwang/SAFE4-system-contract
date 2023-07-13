@@ -273,9 +273,6 @@ contract SNVote is ISNVote, System {
         (flag, pos) = existVoter4Dst(_dstAddr, _voterAddr);
         if(!flag) {
             dst2voters[_dstAddr].push(_voterAddr);
-            if(isSN(_dstAddr)) {
-                getSuperNode().changeVoter(_dstAddr, _voterAddr, _recordID, _amount, 1);
-            }
         }
 
         // update record list
@@ -313,8 +310,8 @@ contract SNVote is ISNVote, System {
 
         // freeze record
         if(isSN(_dstAddr)) { // vote
-            getAccountManager().setRecordVote(_recordID, _voterAddr, _dstAddr, 1);
-            getSuperNode().changeVoteInfo(_dstAddr, amount, num, 1);
+            getAccountManager().setRecordVote(_recordID, _voterAddr, _dstAddr, 7);
+            getSuperNode().changeVoteInfo(_dstAddr, _voterAddr, _recordID, amount, num, 1);
             emit SNVOTE_VOTE(_voterAddr, _dstAddr, _recordID, num);
         } else { // approval
             emit SNVOTE_APPROVAL(_voterAddr, _dstAddr, _recordID, num);
@@ -422,9 +419,6 @@ contract SNVote is ISNVote, System {
         if(recordIDs.length == 0) {
             // remove detail
             delete dst2details[_dstAddr][_voterAddr];
-            if(isSN(_dstAddr)) {
-                getSuperNode().changeVoter(_dstAddr, _voterAddr, _recordID, _amount, 0);
-            }
         } else {
             // remove amount & votenum
             detail.totalAmount -= _amount;
@@ -496,7 +490,7 @@ contract SNVote is ISNVote, System {
         // unfreeze record
         if(isSN(dstAddr)) { // vote
             getAccountManager().setRecordVote(_recordID, _voterAddr, dstAddr, 0);
-            getSuperNode().changeVoteInfo(dstAddr, amount, num, 0);
+            getSuperNode().changeVoteInfo(dstAddr, _voterAddr, _recordID, amount, num, 0);
             emit SNVOTE_REMOVE_VOTE(_voterAddr, dstAddr, _recordID, num);
         } else { // proxy
             emit SNVOTE_REMOVE_APPROVAL(_voterAddr, dstAddr, _recordID, num);
