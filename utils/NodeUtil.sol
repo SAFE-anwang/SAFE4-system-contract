@@ -20,7 +20,8 @@ library NodeUtil {
     }
 
     function checkLockDay(uint _lockDay) internal pure {
-        require(_lockDay >= 720, "lock 2 years at least");
+        //require(_lockDay >= 720, "lock 2 years at least");
+        require(_lockDay >= 5, "lock 5 days at least"); // for test
     }
 
     function checkDescription(uint _nodeType, string memory _description) internal pure {

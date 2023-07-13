@@ -310,7 +310,8 @@ contract SNVote is ISNVote, System {
 
         // freeze record
         if(isSN(_dstAddr)) { // vote
-            getAccountManager().setRecordVote(_recordID, _voterAddr, _dstAddr, 7);
+            //getAccountManager().setRecordVote(_recordID, _voterAddr, _dstAddr, 7);
+            getAccountManager().setRecordVote(_recordID, _voterAddr, _dstAddr, 1); // for test
             getSuperNode().changeVoteInfo(_dstAddr, _voterAddr, _recordID, amount, num, 1);
             emit SNVOTE_VOTE(_voterAddr, _dstAddr, _recordID, num);
         } else { // approval

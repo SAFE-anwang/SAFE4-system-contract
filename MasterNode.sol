@@ -42,10 +42,13 @@ contract MasterNode is IMasterNode, System {
 
     function appendRegister(address _addr, uint _lockDay) public payable {
         require(msg.value >= APPEND_AMOUNT, "masternode need append lock 100 SAFE at least");
+        //require(_lockDay >= 360, "append need lock 1 year at least");
+        require(_lockDay >= 3, "append need lock 3 days at least"); // for test
         require(exist(_addr), "non-existent masternode");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         append(_addr, lockID, msg.value);
-        getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, 30); // partner's lock id can register other masternode after 30 days
+        //getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, 30); // partner's lock id can register other masternode after 30 days
+        getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, 2); // for test
         emit MNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -55,10 +58,13 @@ contract MasterNode is IMasterNode, System {
         require(record.addr == msg.sender, "you aren't record owner");
         require(record.amount >= APPEND_AMOUNT, "masternode need append lock 100 SAFE at least");
         require(block.number < record.unlockHeight, "record isn't locked");
+        //require(record.lockDay >= 360, "record need lock 1 year at least");
+        require(record.lockDay >= 3, "record need lock 3 days at least"); // for test
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight, "record is freezen");
         append(_addr, _lockID, record.amount);
-        getAccountManager().setRecordFreeze(_lockID, msg.sender, _addr, 30); // partner's lock id can register other masternode after 30 days
+        //getAccountManager().setRecordFreeze(_lockID, msg.sender, _addr, 30); // partner's lock id can register other masternode after 30 days
+        getAccountManager().setRecordFreeze(_lockID, msg.sender, _addr, 2); // for test
         emit MNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
 
@@ -131,7 +137,8 @@ contract MasterNode is IMasterNode, System {
         require(_amount >= TOTAL_CREATE_AMOUNT, "masternode need lock 1000 SAFE at least");
         require(!existNodeAddress(_addr), "existent address");
         create(_addr, _lockID, _amount, "", "", "", IncentivePlan(100, 0, 0));
-        getAccountManager().setRecordFreeze(_lockID, _addr, _addr, _lockDay); // creator's lock id can't register other masternode again
+        //getAccountManager().setRecordFreeze(_lockID, _addr, _addr, _lockDay); // creator's lock id can't register other masternode again
+        getAccountManager().setRecordFreeze(_lockID, _addr, _addr, 2); // for test
         emit MNRegister(_addr, msg.sender, _amount, _lockDay, _lockID);
     }
 
