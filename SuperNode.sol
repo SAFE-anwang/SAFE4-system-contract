@@ -257,6 +257,10 @@ contract SuperNode is ISuperNode, System {
         return supernodes[_addr];
     }
 
+    function getInfo(uint _id) public view returns (SuperNodeInfo memory) {
+        return supernodes[snID2addr[_id]];
+    }
+
     function getAll() public view returns (SuperNodeInfo[] memory) {
         SuperNodeInfo[] memory ret = new SuperNodeInfo[](snIDs.length);
         for(uint i = 0; i < snIDs.length; i++) {
