@@ -36,12 +36,14 @@ contract SuperNodeState is INodeState, System {
         }
     }
 
-    function getAllState() public view returns (uint[] memory, uint8[] memory) {
-        uint8[] memory states = new uint8[](ids.length);
-        for(uint i = 0; i < ids.length; i++) {
-            states[i] = id2state[ids[i]];
+    function getAllState() public view returns (StateInfo[] memory) {
+        StateInfo[] memory infos = new StateInfo[](ids.length);
+        for(uint i = 0; i < infos.length; i++) {
+            uint id = ids[i];
+            ISuperNode.SuperNodeInfo memory sn = getSuperNode().getInfo(id);
+            infos[i] = StateInfo(sn.addr, id, id2state[id]);
         }
-        return (ids, states);
+        return infos;
     }
 
     function getEntries(uint _id) public view returns (StateEntry[] memory) {

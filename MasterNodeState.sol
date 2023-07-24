@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "./System.sol";
 
 contract MasterNodeState is INodeState, System {
-
     uint[] ids; // all node id
     mapping(uint => uint) id2index; // index in ids
     mapping(uint => uint8) id2state; // id to state
@@ -36,12 +35,14 @@ contract MasterNodeState is INodeState, System {
         }
     }
 
-    function getAllState() public view returns (uint[] memory, uint8[] memory) {
-        uint8[] memory states = new uint8[](ids.length);
-        for(uint i = 0; i < ids.length; i++) {
-            states[i] = id2state[ids[i]];
+    function getAllState() public view returns (StateInfo[] memory) {
+        StateInfo[] memory infos = new StateInfo[](ids.length);
+        for(uint i = 0; i < infos.length; i++) {
+            uint id = ids[i];
+            IMasterNode.MasterNodeInfo memory mn = getMasterNode().getInfo(id);
+            infos[i] = StateInfo(mn.addr, id, id2state[id]);
         }
-        return (ids, states);
+        return infos;
     }
 
     function getEntries(uint _id) public view returns (StateEntry[] memory) {

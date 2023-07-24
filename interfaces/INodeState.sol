@@ -7,7 +7,13 @@ interface INodeState {
         uint8 state;
     }
 
+    struct StateInfo {
+        address addr;
+        uint id;
+        uint8 state;
+    }
+
     function uploadState(uint[] memory _ids, uint8[] memory _states) external;
-    function getAllState() external view returns (uint[] memory, uint8[] memory);
+    function getAllState() external view returns (StateInfo[] memory);
     function getEntries(uint _id) external view returns (StateEntry[] memory);
 }
