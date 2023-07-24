@@ -24,7 +24,7 @@ interface ISNVote {
 
     function voteOrApproval(bool _isVote, address _dstAddr, uint[] memory _recordIDs) external;
     function removeVoteOrApproval(uint[] memory _recordIDs) external;
-    function removeVoteOrApproval(address _voterAddr, uint _recordID) external;
+    function removeVoteOrApproval2(address _voterAddr, uint _recordID) external;
     function proxyVote(address _snAddr) external;
     function getSuperNodes4Voter(address _voterAddr) external view returns (address[] memory, uint[] memory);
     function getRecordIDs4Voter(address _voterAddr) external view returns (uint[] memory);

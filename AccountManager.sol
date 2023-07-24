@@ -32,11 +32,11 @@ contract AccountManager is IAccountManager, System {
         uint[] memory ids;
         (amount, ids) = getAvailableAmount(msg.sender);
         require(amount > 0, "insufficient amount");
-        return withdraw(ids);
+        return withdrawByID(ids);
     }
 
     // withdraw by specify amount
-    function withdraw(uint[] memory _ids) public returns (uint) {
+    function withdrawByID(uint[] memory _ids) public returns (uint) {
         require(_ids.length > 0, "invalid record ids");
         uint amount = 0;
         for(uint i = 0; i < _ids.length; i++) {
@@ -57,7 +57,7 @@ contract AccountManager is IAccountManager, System {
                     AccountRecord memory record = getRecordByID(_ids[i]);
                     RecordUseInfo memory useinfo = id2useinfo[_ids[i]];
                     if(record.addr == msg.sender && block.number >= record.unlockHeight && block.number >= useinfo.unfreezeHeight) {
-                        getSNVote().removeVoteOrApproval(msg.sender, _ids[i]);
+                        getSNVote().removeVoteOrApproval2(msg.sender, _ids[i]);
                         delRecord(_ids[i]);
                     }
                 } else {
@@ -95,7 +95,7 @@ contract AccountManager is IAccountManager, System {
         for(uint i = 0; i < temp_records.length; i++) {
             if(usedAmount + temp_records[i].amount <= _amount) {
                 if(temp_records[i].id != 0) {
-                    getSNVote().removeVoteOrApproval(msg.sender, temp_records[i].id);
+                    getSNVote().removeVoteOrApproval2(msg.sender, temp_records[i].id);
                     delRecord(temp_records[i].id);
                 } else {
                     balances[msg.sender] = 0;
@@ -106,7 +106,7 @@ contract AccountManager is IAccountManager, System {
                 }
             } else {
                 if(temp_records[i].id != 0) {
-                    getSNVote().removeVoteOrApproval(msg.sender, temp_records[i].id);
+                    getSNVote().removeVoteOrApproval2(msg.sender, temp_records[i].id);
                     addr2records[msg.sender][id2index[temp_records[i].id]].amount = usedAmount + temp_records[i].amount - _amount;
                 } else {
                     balances[msg.sender] = usedAmount + temp_records[i].amount - _amount;

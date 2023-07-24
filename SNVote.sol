@@ -53,7 +53,7 @@ contract SNVote is ISNVote, System {
         }
     }
 
-    function removeVoteOrApproval(address _voterAddr, uint _recordID) public onlyAccountManagerContract {
+    function removeVoteOrApproval2(address _voterAddr, uint _recordID) public onlyAccountManagerContract {
         if(_recordID == 0) {
             return;
         }

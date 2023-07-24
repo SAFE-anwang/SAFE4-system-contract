@@ -10,7 +10,7 @@ contract SuperNodeState is INodeState, System {
     mapping(uint => uint8) id2state; // id to state
     mapping(uint => StateEntry[]) id2entries; // id to upload informations
 
-    function uploadState(uint[] memory _ids, uint8[] memory _states) public {
+    function uploadState(uint[] memory _ids, uint8[] memory _states) public onlySN {
         require(_ids.length == _states.length, "id list isn't matched with state list");
 
         bool flag = false;
@@ -40,7 +40,7 @@ contract SuperNodeState is INodeState, System {
         StateInfo[] memory infos = new StateInfo[](ids.length);
         for(uint i = 0; i < infos.length; i++) {
             uint id = ids[i];
-            ISuperNode.SuperNodeInfo memory sn = getSuperNode().getInfo(id);
+            ISuperNode.SuperNodeInfo memory sn = getSuperNode().getInfoByID(id);
             infos[i] = StateInfo(sn.addr, id, id2state[id]);
         }
         return infos;

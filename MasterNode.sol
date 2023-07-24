@@ -197,7 +197,7 @@ contract MasterNode is IMasterNode, System {
         return masternodes[_addr];
     }
 
-    function getInfo(uint _id) public view returns (MasterNodeInfo memory) {
+    function getInfoByID(uint _id) public view returns (MasterNodeInfo memory) {
         return masternodes[mnID2addr[_id]];
     }
 
