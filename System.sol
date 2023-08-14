@@ -10,11 +10,11 @@ import "./interfaces/IProperty.sol";
 import "./interfaces/IAccountManager.sol";
 import "./interfaces/IMasterNode.sol";
 import "./interfaces/ISuperNode.sol";
-import "../interfaces/ISNVote.sol";
-import "../interfaces/INodeState.sol";
-import "../interfaces/IProposal.sol";
-import "../interfaces/ISystemReward.sol";
-import "../interfaces/ISafe3.sol";
+import "./interfaces/ISNVote.sol";
+import "./interfaces/INodeState.sol";
+import "./interfaces/IProposal.sol";
+import "./interfaces/ISystemReward.sol";
+import "./interfaces/ISafe3.sol";
 
 contract System is Initializable, OwnableUpgradeable{
     address internal constant PROPERTY_ADDR = 0x0000000000000000000000000000000000001000;
