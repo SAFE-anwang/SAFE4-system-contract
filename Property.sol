@@ -84,7 +84,6 @@ contract Property is IProperty, System {
     }
 
     function getUnconfirmedInfo(string memory _name) public view returns (UnconfirmedPropertyInfo memory) {
-        require(!exist(_name), "non-existent property");
         require(existUnconfirmed(_name), "non-existent unconfirmed property");
         return unconfirmedProperties[_name];
     }
