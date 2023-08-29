@@ -89,7 +89,7 @@ contract Proposal is IProposal, System {
         }
     }
 
-    function changTitile(uint _id, string memory _title) public {
+    function changeTitle(uint _id, string memory _title) public {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(bytes(_title).length != 0, "invalid title");
@@ -116,7 +116,7 @@ contract Proposal is IProposal, System {
         proposals[_id].updateHeight = block.number;
     }
 
-    function changeStartPayTimes(uint _id, uint _startPayTime) public {
+    function changeStartPayTime(uint _id, uint _startPayTime) public {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(_startPayTime > proposals[_id].startPayTime && _startPayTime > block.timestamp, "invalid start pay time");

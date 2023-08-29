@@ -21,10 +21,10 @@ interface IProposal {
 
     function create(string memory _title, uint _payAmount, uint _payTimes, uint _startPayTime, uint _endPayTime, string memory _description, string memory _detail) external payable returns (uint);
     function vote(uint _id, uint _voteResult) external;
-    function changTitile(uint _id, string memory _title) external;
+    function changeTitle(uint _id, string memory _title) external;
     function changePayAmount(uint _id, uint _payAmount) external;
     function changePayTimes(uint _id, uint _payTimes) external;
-    function changeStartPayTimes(uint _id, uint _startPayTime) external;
+    function changeStartPayTime(uint _id, uint _startPayTime) external;
     function changeEndPayTime(uint _id, uint _endPayTime) external;
     function changeDescription(uint _id, string memory _description) external;
     function changeDetail(uint _id, string memory _detail) external;
