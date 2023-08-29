@@ -175,9 +175,9 @@ contract MasterNode is IMasterNode, System {
         masternodes[_addr].updateHeight = block.number + 1;
     }
 
-    function changeOfficial(address _addr) public onlyOwner {
+    function changeOfficial(address _addr, bool flag) public onlyOwner {
         require(exist(_addr), "non-existent masternode");
-        masternodes[_addr].isOfficial = true;
+        masternodes[_addr].isOfficial = flag;
         masternodes[_addr].updateHeight = block.number + 1;
     }
 

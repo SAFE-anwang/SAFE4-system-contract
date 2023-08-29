@@ -195,9 +195,10 @@ contract SuperNode is ISuperNode, System {
         supernodes[_addr].updateHeight = block.number + 1;
     }
 
-    function changeOfficial(address _addr) public onlyOwner {
+    function changeOfficial(address _addr, bool flag) public onlyOwner {
         require(exist(_addr), "non-existent supernode");
-        supernodes[_addr].isOfficial = true;
+        supernodes[_addr].isOfficial = flag;
+        supernodes[_addr].updateHeight = block.number + 1;
     }
 
     function changeState(uint _id, uint8 _state) public onlySuperNodeStateContract {
