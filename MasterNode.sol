@@ -8,9 +8,7 @@ import "./utils/NodeUtil.sol";
 contract MasterNode is IMasterNode, System {
     using SafeMath for uint;
 
-    uint internal constant TOTAL_CREATE_AMOUNT  = 1000000000000000000000;
-    uint internal constant UNION_CREATE_AMOUNT  = 200000000000000000000; // 20%
-    uint internal constant APPEND_AMOUNT        = 100000000000000000000; // 10%
+    uint internal constant COIN = 1000000000000000000;
 
     uint8 internal constant STATE_INIT   = 0;
     uint8 internal constant STATE_START  = 1;
@@ -26,13 +24,15 @@ contract MasterNode is IMasterNode, System {
     fallback() external payable {}
 
     function register(bool _isUnion, address _addr, uint _lockDay, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive) public payable {
-        if(!_isUnion) {
-            require(msg.value >= TOTAL_CREATE_AMOUNT, "masternode need lock 1000 SAFE at least");
-        } else {
-            require(msg.value >= UNION_CREATE_AMOUNT, "masternode need lock 200 SAFE at least");
-        }
-        string memory ip = NodeUtil.check(1, _isUnion, _addr, _lockDay, _enode, _description, _creatorIncentive, _partnerIncentive, 0);
+        require(_addr != msg.sender, "address can't be caller");
         require(!existNodeAddress(_addr), "existent address");
+        if(!_isUnion) {
+            require(msg.value >= getPropertyValue("masternode_min_amount") * COIN, "less than min lock amount");
+        } else {
+            require(msg.value >= getPropertyValue("masternode_min_union_amount") * COIN, "less than min union lock amount");
+        }
+        require(_lockDay >= getPropertyValue("masternode_min_lockday"), "less than min lock day");
+        string memory ip = NodeUtil.check(1, _isUnion, _addr, _enode, _description, _creatorIncentive, _partnerIncentive, 0);
         require(!existNodeIP(ip), "existent ip");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         create(_addr, lockID, msg.value, _enode, ip, _description, IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
@@ -41,14 +41,12 @@ contract MasterNode is IMasterNode, System {
     }
 
     function appendRegister(address _addr, uint _lockDay) public payable {
-        require(msg.value >= APPEND_AMOUNT, "masternode need append lock 100 SAFE at least");
-        //require(_lockDay >= 360, "append need lock 1 year at least");
-        require(_lockDay >= 3, "append need lock 3 days at least"); // for test
         require(exist(_addr), "non-existent masternode");
+        require(msg.value >= getPropertyValue("masternode_min_append_amount") * COIN, "less than min append lock amount");
+        require(_lockDay >= getPropertyValue("masternode_min_append_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         append(_addr, lockID, msg.value);
-        //getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, 30); // partner's lock id can register other masternode after 30 days
-        getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, 2); // for test
+        getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, getPropertyValue("masternode_freezeday")); // partner's lock id can‘t register other masternode until unfreeze it
         emit MNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -56,15 +54,13 @@ contract MasterNode is IMasterNode, System {
         require(exist(_addr), "non-existent masternode");
         IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_lockID);
         require(record.addr == msg.sender, "you aren't record owner");
-        require(record.amount >= APPEND_AMOUNT, "masternode need append lock 100 SAFE at least");
         require(block.number < record.unlockHeight, "record isn't locked");
-        //require(record.lockDay >= 360, "record need lock 1 year at least");
-        require(record.lockDay >= 3, "record need lock 3 days at least"); // for test
+        require(record.amount >= getPropertyValue("masternode_min_append_amount") * COIN, "less than min append lock amount");
+        require(record.lockDay >= getPropertyValue("masternode_min_append_lockday"), "less than min append lock day");
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight, "record is freezen");
         append(_addr, _lockID, record.amount);
-        //getAccountManager().setRecordFreeze(_lockID, msg.sender, _addr, 30); // partner's lock id can register other masternode after 30 days
-        getAccountManager().setRecordFreeze(_lockID, msg.sender, _addr, 2); // for test
+        getAccountManager().setRecordFreeze(_lockID, msg.sender, _addr, getPropertyValue("masternode_freezeday")); // partner's lock id can't register other masternode until unfreeze it
         emit MNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
 
@@ -86,13 +82,15 @@ contract MasterNode is IMasterNode, System {
             tempRewardTypes[count] = 1;
             count++;
         }
+
+        uint minAmount = getPropertyValue("masternode_min_amount") * COIN;
         // reward to partner
         if(partnerReward != 0) {
             uint total = 0;
             for(uint i = 0; i < info.founders.length; i++) {
                 MemberInfo memory partner = info.founders[i];
-                if(total.add(partner.amount) <= TOTAL_CREATE_AMOUNT) {
-                    uint tempAmount = partnerReward.mul(partner.amount).div(TOTAL_CREATE_AMOUNT);
+                if(total.add(partner.amount) <= minAmount) {
+                    uint tempAmount = partnerReward.mul(partner.amount).div(minAmount);
                     if(tempAmount != 0) {
                         int pos = NodeUtil.find(tempAddrs, partner.addr);
                         if(pos == -1) {
@@ -105,11 +103,11 @@ contract MasterNode is IMasterNode, System {
                         }
                     }
                     total = total.add(partner.amount);
-                    if(total == TOTAL_CREATE_AMOUNT) {
+                    if(total == minAmount) {
                         break;
                     }
                 } else {
-                    uint tempAmount = partnerReward.mul(TOTAL_CREATE_AMOUNT.sub(total)).div(TOTAL_CREATE_AMOUNT);
+                    uint tempAmount = partnerReward.mul(minAmount.sub(total)).div(minAmount);
                     if(tempAmount != 0) {
                         int pos = NodeUtil.find(tempAddrs, partner.addr);
                         if(pos == -1) {
@@ -134,11 +132,10 @@ contract MasterNode is IMasterNode, System {
     }
 
     function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID) public onlySafe3Contract {
-        require(_amount >= TOTAL_CREATE_AMOUNT, "masternode need lock 1000 SAFE at least");
+        require(_amount >= getPropertyValue("masternode_min_amount") * COIN, "less than min lock amount");
         require(!existNodeAddress(_addr), "existent address");
         create(_addr, _lockID, _amount, "", "", "", IncentivePlan(100, 0, 0));
-        //getAccountManager().setRecordFreeze(_lockID, _addr, _addr, _lockDay); // creator's lock id can't register other masternode again
-        getAccountManager().setRecordFreeze(_lockID, _addr, _addr, 2); // for test
+        getAccountManager().setRecordFreeze(_lockID, _addr, _addr, _lockDay);
         emit MNRegister(_addr, msg.sender, _amount, _lockDay, _lockID);
     }
 
@@ -155,9 +152,9 @@ contract MasterNode is IMasterNode, System {
         mnIP2addr[masternodes[_newAddr].ip] = _newAddr;
     }
 
-    function changeEnode(address _addr, string memory _newEnode) public {
+    function changeEnode(address _addr, string memory _enode) public {
         require(exist(_addr), "non-existent masternode");
-        string memory ip = NodeUtil.checkEnode(_newEnode);
+        string memory ip = NodeUtil.checkEnode(_enode);
         require(!existNodeIP(ip), "existent ip of new enode");
         require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
         string memory oldIP = masternodes[_addr].ip;
@@ -175,9 +172,9 @@ contract MasterNode is IMasterNode, System {
         masternodes[_addr].updateHeight = block.number + 1;
     }
 
-    function changeOfficial(address _addr, bool flag) public onlyOwner {
+    function changeOfficial(address _addr, bool _flag) public onlyOwner {
         require(exist(_addr), "non-existent masternode");
-        masternodes[_addr].isOfficial = flag;
+        masternodes[_addr].isOfficial = _flag;
         masternodes[_addr].updateHeight = block.number + 1;
     }
 
@@ -202,10 +199,11 @@ contract MasterNode is IMasterNode, System {
     }
 
     function getNext() public view returns (address) {
+        uint minAmount = getPropertyValue("masternode_min_amount") * COIN;
         uint count = 0;
         for(uint i = 0; i < mnIDs.length; i++) {
             MasterNodeInfo memory mn = masternodes[mnID2addr[mnIDs[i]]];
-            if(mn.amount < TOTAL_CREATE_AMOUNT) {
+            if(mn.amount < minAmount) {
                 continue;
             }
             if(mn.stateInfo.state != STATE_START) {
@@ -218,7 +216,7 @@ contract MasterNode is IMasterNode, System {
             uint index = 0;
             for(uint i = 0; i < mns.length; i++) {
                 MasterNodeInfo memory mn = masternodes[mnID2addr[mnIDs[i]]];
-                if(mn.amount < TOTAL_CREATE_AMOUNT) {
+                if(mn.amount < minAmount) {
                     continue;
                 }
                 if(mn.stateInfo.state != STATE_START) {

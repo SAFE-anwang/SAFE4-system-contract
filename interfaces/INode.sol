@@ -29,7 +29,7 @@ interface INode {
     function changeAddress(address _addr, address _newAddr) external;
     function changeEnode(address _addr, string memory _newEnode) external;
     function changeDescription(address _addr, string memory _newDescription) external;
-    function changeOfficial(address _addr, bool flag) external;
+    function changeOfficial(address _addr, bool _flag) external;
     function changeState(uint _id, uint8 _state) external;
 
     function getNum() external view returns (uint);
