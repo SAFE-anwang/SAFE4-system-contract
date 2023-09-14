@@ -29,7 +29,7 @@ contract MasterNode is IMasterNode, System {
         if(!_isUnion) {
             require(msg.value >= getPropertyValue("masternode_min_amount") * COIN, "less than min lock amount");
         } else {
-            require(msg.value >= getPropertyValue("masternode_min_union_amount") * COIN, "less than min union lock amount");
+            require(msg.value >= getPropertyValue("masternode_union_min_amount") * COIN, "less than min union lock amount");
         }
         require(_lockDay >= getPropertyValue("masternode_min_lockday"), "less than min lock day");
         string memory ip = NodeUtil.check(1, _isUnion, _addr, _enode, _description, _creatorIncentive, _partnerIncentive, 0);
@@ -42,11 +42,11 @@ contract MasterNode is IMasterNode, System {
 
     function appendRegister(address _addr, uint _lockDay) public payable {
         require(exist(_addr), "non-existent masternode");
-        require(msg.value >= getPropertyValue("masternode_min_append_amount") * COIN, "less than min append lock amount");
-        require(_lockDay >= getPropertyValue("masternode_min_append_lockday"), "less than min append lock day");
+        require(msg.value >= getPropertyValue("masternode_append_min_amount") * COIN, "less than min append lock amount");
+        require(_lockDay >= getPropertyValue("masternode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         append(_addr, lockID, msg.value);
-        getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, getPropertyValue("masternode_freezeday")); // partner's lock id can‘t register other masternode until unfreeze it
+        getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, getPropertyValue("record_masternode_freezeday")); // partner's lock id can‘t register other masternode until unfreeze it
         emit MNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -55,12 +55,12 @@ contract MasterNode is IMasterNode, System {
         IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_lockID);
         require(record.addr == msg.sender, "you aren't record owner");
         require(block.number < record.unlockHeight, "record isn't locked");
-        require(record.amount >= getPropertyValue("masternode_min_append_amount") * COIN, "less than min append lock amount");
-        require(record.lockDay >= getPropertyValue("masternode_min_append_lockday"), "less than min append lock day");
+        require(record.amount >= getPropertyValue("masternode_append_min_amount") * COIN, "less than min append lock amount");
+        require(record.lockDay >= getPropertyValue("masternode_append_min_lockday"), "less than min append lock day");
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight, "record is freezen");
         append(_addr, _lockID, record.amount);
-        getAccountManager().setRecordFreeze(_lockID, msg.sender, _addr, getPropertyValue("masternode_freezeday")); // partner's lock id can't register other masternode until unfreeze it
+        getAccountManager().setRecordFreeze(_lockID, msg.sender, _addr, getPropertyValue("record_masternode_freezeday")); // partner's lock id can't register other masternode until unfreeze it
         emit MNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
 

@@ -30,7 +30,7 @@ contract SuperNode is ISuperNode, System {
         if(!_isUnion) {
             require(msg.value >= getPropertyValue("supernode_min_amount") * COIN, "less than min lock amount");
         } else {
-            require(msg.value >= getPropertyValue("supernode_min_union_amount") * COIN, "less than min union lock amount");
+            require(msg.value >= getPropertyValue("supernode_union_min_amount") * COIN, "less than min union lock amount");
         }
         require(_lockDay >= getPropertyValue("supernode_min_lockday"), "less than min lock day");
         require(bytes(_name).length > 0 && bytes(_name).length <= 1024, "invalid name");
@@ -46,11 +46,11 @@ contract SuperNode is ISuperNode, System {
 
     function appendRegister(address _addr, uint _lockDay) public payable {
         require(exist(_addr), "non-existent supernode");
-        require(msg.value >= getPropertyValue("supernode_min_append_amount") * COIN, "less than min append lock amount");
-        require(_lockDay >= getPropertyValue("supernode_min_append_lockday"), "less than min append lock day");
+        require(msg.value >= getPropertyValue("supernode_append_min_amount") * COIN, "less than min append lock amount");
+        require(_lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         append(_addr, lockID, msg.value);
-        getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, getPropertyValue("supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
+        getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, getPropertyValue("record_supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
         emit SNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -59,12 +59,12 @@ contract SuperNode is ISuperNode, System {
         IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_lockID);
         require(record.addr == msg.sender, "you aren't record owner");
         require(block.number < record.unlockHeight, "record isn't locked");
-        require(record.amount >= getPropertyValue("supernode_min_append_amount") * COIN, "less than min append lock amount");
-        require(record.lockDay >= getPropertyValue("supernode_min_append_lockday"), "less than min append lock day");
+        require(record.amount >= getPropertyValue("supernode_append_min_amount") * COIN, "less than min append lock amount");
+        require(record.lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight, "record is freezen");
         append(_addr, _lockID, record.amount);
-        getAccountManager().setRecordFreeze(_lockID, msg.sender, _addr, getPropertyValue("supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
+        getAccountManager().setRecordFreeze(_lockID, msg.sender, _addr, getPropertyValue("record_supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
         emit SNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
 
