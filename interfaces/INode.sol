@@ -27,8 +27,8 @@ interface INode {
     function reward(address _addr) external payable;
 
     function changeAddress(address _addr, address _newAddr) external;
-    function changeEnode(address _addr, string memory _newEnode) external;
-    function changeDescription(address _addr, string memory _newDescription) external;
+    function changeEnode(address _addr, string memory _enode) external;
+    function changeDescription(address _addr, string memory _description) external;
     function changeOfficial(address _addr, bool _flag) external;
     function changeState(uint _id, uint8 _state) external;
 
