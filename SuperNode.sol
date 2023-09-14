@@ -64,7 +64,7 @@ contract SuperNode is ISuperNode, System {
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight, "record is freezen");
         append(_addr, _lockID, record.amount);
-        getAccountManager().setRecordFreeze(_lockID, msg.sender, _addr, getPropertyValue("supernode_freezeday")); // partner's lock id can't register other masternode until unfreeze it
+        getAccountManager().setRecordFreeze(_lockID, msg.sender, _addr, getPropertyValue("supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
         emit SNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
 
@@ -88,7 +88,7 @@ contract SuperNode is ISuperNode, System {
             count++;
         }
 
-        uint minAmount = getPropertyValue("masternode_min_amount") * COIN;
+        uint minAmount = getPropertyValue("supernode_min_amount") * COIN;
         // reward to partner
         if(partnerReward != 0) {
             uint total = 0;
@@ -196,11 +196,11 @@ contract SuperNode is ISuperNode, System {
         delete snIP2addr[oldIP];
     }
 
-    function changeDescription(address _addr, string memory _newDescription) public {
+    function changeDescription(address _addr, string memory _description) public {
         require(exist(_addr), "non-existent supernode");
-        require(bytes(_newDescription).length > 0, "invalid description");
+        require(bytes(_description).length > 0, "invalid description");
         require(msg.sender == supernodes[_addr].creator, "caller isn't creator");
-        supernodes[_addr].description = _newDescription;
+        supernodes[_addr].description = _description;
         supernodes[_addr].updateHeight = block.number + 1;
     }
 
@@ -302,7 +302,8 @@ contract SuperNode is ISuperNode, System {
         sortByVoteNum(snAddrs, 0, snAddrs.length - 1);
 
         // get top, max: MAX_NUM
-        if(snAddrs.length < getPropertyValue("supernode_max_num")) {
+        num = getPropertyValue("supernode_max_num");
+        if(snAddrs.length < num) {
             num = snAddrs.length;
         }
         SuperNodeInfo[] memory ret = new SuperNodeInfo[](num);
