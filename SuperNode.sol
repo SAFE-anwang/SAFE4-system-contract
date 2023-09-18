@@ -156,7 +156,7 @@ contract SuperNode is ISuperNode, System {
             getAccountManager().reward{value: tempAmounts[i]}(tempAddrs[i]);
             emit SystemReward(_addr, 1, tempAddrs[i], tempRewardTypes[i], tempAmounts[i]);
         }
-        info.lastRewardHeight = block.number + 1;
+        supernodes[_addr].lastRewardHeight = block.number + 1;
     }
 
     function changeAddress(address _addr, address _newAddr) public {
