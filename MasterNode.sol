@@ -214,7 +214,7 @@ contract MasterNode is IMasterNode, System {
         if(count != 0) {
             MasterNodeInfo[] memory mns = new MasterNodeInfo[](count);
             uint index = 0;
-            for(uint i = 0; i < mns.length; i++) {
+            for(uint i = 0; i < mnIDs.length; i++) {
                 MasterNodeInfo memory mn = masternodes[mnID2addr[mnIDs[i]]];
                 if(mn.amount < minAmount) {
                     continue;
@@ -303,7 +303,7 @@ contract MasterNode is IMasterNode, System {
         mn.incentivePlan = plan;
         mn.lastRewardHeight = 0;
         mn.createHeight = block.number + 1;
-        mn.createHeight = 0;
+        mn.updateHeight = 0;
         mnIDs.push(mn.id);
         mnID2addr[mn.id] = _addr;
         mnIP2addr[mn.ip] = _addr;
