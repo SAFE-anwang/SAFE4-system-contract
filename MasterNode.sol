@@ -128,7 +128,7 @@ contract MasterNode is IMasterNode, System {
             getAccountManager().reward{value: tempAmounts[i]}(tempAddrs[i]);
             emit SystemReward(_addr, 2, tempAddrs[i], tempRewardTypes[i], tempAmounts[i]);
         }
-        info.lastRewardHeight = block.number + 1;
+        info.lastRewardHeight = block.number;
     }
 
     function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID) public onlySafe3Contract {
@@ -159,7 +159,7 @@ contract MasterNode is IMasterNode, System {
         require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
         string memory oldIP = masternodes[_addr].ip;
         masternodes[_addr].ip = ip;
-        masternodes[_addr].updateHeight = block.number + 1;
+        masternodes[_addr].updateHeight = block.number;
         delete mnIP2addr[oldIP];
         mnIP2addr[ip] = _addr;
     }
@@ -169,13 +169,13 @@ contract MasterNode is IMasterNode, System {
         require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
         require(bytes(_description).length > 0, "invalid description");
         masternodes[_addr].description = _description;
-        masternodes[_addr].updateHeight = block.number + 1;
+        masternodes[_addr].updateHeight = block.number;
     }
 
     function changeOfficial(address _addr, bool _flag) public onlyOwner {
         require(exist(_addr), "non-existent masternode");
         masternodes[_addr].isOfficial = _flag;
-        masternodes[_addr].updateHeight = block.number + 1;
+        masternodes[_addr].updateHeight = block.number;
     }
 
     function changeState(uint _id, uint8 _state) public onlyMasterNodeStateContract {
@@ -185,7 +185,7 @@ contract MasterNode is IMasterNode, System {
         }
         MasterNodeInfo storage mn = masternodes[addr];
         uint8 oldState = mn.stateInfo.state;
-        mn.stateInfo = StateInfo(_state, block.number + 1);
+        mn.stateInfo = StateInfo(_state, block.number);
         emit MNStateUpdate(mn.addr, _state, oldState);
     }
 
@@ -298,11 +298,11 @@ contract MasterNode is IMasterNode, System {
         mn.ip = _ip;
         mn.description = _description;
         mn.isOfficial = false;
-        mn.stateInfo = StateInfo(STATE_INIT, block.number + 1);
-        mn.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number + 1));
+        mn.stateInfo = StateInfo(STATE_INIT, block.number);
+        mn.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
         mn.incentivePlan = plan;
         mn.lastRewardHeight = 0;
-        mn.createHeight = block.number + 1;
+        mn.createHeight = block.number;
         mn.updateHeight = 0;
         mnIDs.push(mn.id);
         mnID2addr[mn.id] = _addr;
@@ -316,9 +316,9 @@ contract MasterNode is IMasterNode, System {
         require(!existLockID(_addr, _lockID), "lock ID has been used");
         require(_lockID != 0, "invalid lock id");
         require(_amount >= 100, "append lock 100 SAFE at least");
-        masternodes[_addr].founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number + 1));
+        masternodes[_addr].founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
         masternodes[_addr].amount += _amount;
-        masternodes[_addr].updateHeight = block.number + 1;
+        masternodes[_addr].updateHeight = block.number;
     }
 
     // ASC by lastRewardHeight

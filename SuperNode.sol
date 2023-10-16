@@ -156,7 +156,7 @@ contract SuperNode is ISuperNode, System {
             getAccountManager().reward{value: tempAmounts[i]}(tempAddrs[i]);
             emit SystemReward(_addr, 1, tempAddrs[i], tempRewardTypes[i], tempAmounts[i]);
         }
-        supernodes[_addr].lastRewardHeight = block.number + 1;
+        supernodes[_addr].lastRewardHeight = block.number;
     }
 
     function changeAddress(address _addr, address _newAddr) public {
@@ -179,7 +179,7 @@ contract SuperNode is ISuperNode, System {
         require(msg.sender == supernodes[_addr].creator, "caller isn't creator");
         string memory oldName = supernodes[_addr].name;
         supernodes[_addr].name = _name;
-        supernodes[_addr].updateHeight = block.number + 1;
+        supernodes[_addr].updateHeight = block.number;
         snName2addr[_name] = _addr;
         delete snName2addr[oldName];
     }
@@ -191,7 +191,7 @@ contract SuperNode is ISuperNode, System {
         require(msg.sender == supernodes[_addr].creator, "caller isn't creator");
         string memory oldIP = supernodes[_addr].ip;
         supernodes[_addr].ip = ip;
-        supernodes[_addr].updateHeight = block.number + 1;
+        supernodes[_addr].updateHeight = block.number;
         snIP2addr[ip] = _addr;
         delete snIP2addr[oldIP];
     }
@@ -201,13 +201,13 @@ contract SuperNode is ISuperNode, System {
         require(bytes(_description).length > 0, "invalid description");
         require(msg.sender == supernodes[_addr].creator, "caller isn't creator");
         supernodes[_addr].description = _description;
-        supernodes[_addr].updateHeight = block.number + 1;
+        supernodes[_addr].updateHeight = block.number;
     }
 
     function changeOfficial(address _addr, bool _flag) public onlyOwner {
         require(exist(_addr), "non-existent supernode");
         supernodes[_addr].isOfficial = _flag;
-        supernodes[_addr].updateHeight = block.number + 1;
+        supernodes[_addr].updateHeight = block.number;
     }
 
     function changeState(uint _id, uint8 _state) public onlySuperNodeStateContract {
@@ -217,7 +217,7 @@ contract SuperNode is ISuperNode, System {
         }
         SuperNodeInfo storage sn = supernodes[addr];
         uint8 oldState = sn.stateInfo.state;
-        sn.stateInfo = StateInfo(_state, block.number + 1);
+        sn.stateInfo = StateInfo(_state, block.number);
         emit SNStateUpdate(sn.addr, _state, oldState);
     }
 
@@ -254,11 +254,11 @@ contract SuperNode is ISuperNode, System {
             }
         } else { // increase vote
             if(!flag) {
-                voteInfo.voters.push(MemberInfo(_recordID, _voter, _amount, block.number + 1));
+                voteInfo.voters.push(MemberInfo(_recordID, _voter, _amount, block.number));
             }
             voteInfo.totalAmount += _amount;
             voteInfo.totalNum += _num;
-            voteInfo.height = block.number + 1;
+            voteInfo.height = block.number;
         }
     }
 
@@ -382,11 +382,11 @@ contract SuperNode is ISuperNode, System {
         sn.ip = _ip;
         sn.description = _description;
         sn.isOfficial = false;
-        sn.stateInfo = StateInfo(STATE_INIT, block.number + 1);
-        sn.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number + 1));
+        sn.stateInfo = StateInfo(STATE_INIT, block.number);
+        sn.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
         sn.incentivePlan = _incentivePlan;
         sn.lastRewardHeight = 0;
-        sn.createHeight = block.number + 1;
+        sn.createHeight = block.number;
         sn.updateHeight = 0;
         snIDs.push(sn.id);
         snID2addr[sn.id] = _addr;
@@ -395,9 +395,9 @@ contract SuperNode is ISuperNode, System {
     }
 
     function append(address _addr, uint _lockID, uint _amount) internal {
-        supernodes[_addr].founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number + 1));
+        supernodes[_addr].founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
         supernodes[_addr].amount += _amount;
-        supernodes[_addr].updateHeight = block.number + 1;
+        supernodes[_addr].updateHeight = block.number;
     }
 
     function sortByVoteNum(address[] memory _arr, uint _left, uint _right) internal view {

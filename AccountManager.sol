@@ -141,7 +141,7 @@ contract AccountManager is IAccountManager, System {
         require(_addr != address(0), "reward to the zero address");
         require(_lockDay > 0, "invalid lock day");
         require(_remainLockHeight > 0, "invalid remain lock height");
-        uint startHeight = block.number + 1;
+        uint startHeight = block.number;
         uint unlockHeight = startHeight + _remainLockHeight.mul(30).div(getPropertyValue("block_space"));
         uint id = ++record_no;
         AccountRecord[] storage records = addr2records[_addr];
@@ -169,7 +169,7 @@ contract AccountManager is IAccountManager, System {
                 emit SafeUnfreeze(_id, useinfo.specialAddr);
             }
             useinfo.specialAddr = _target;
-            useinfo.freezeHeight = block.number + 1;
+            useinfo.freezeHeight = block.number;
             useinfo.unfreezeHeight = useinfo.freezeHeight + _day.mul(86400).div(getPropertyValue("block_space"));
             emit SafeFreeze(_id, _target, _day);
         }
@@ -193,7 +193,7 @@ contract AccountManager is IAccountManager, System {
                 emit SafeRelease(_id, useinfo.votedAddr);
             }
             useinfo.votedAddr = _target;
-            useinfo.voteHeight = block.number + 1;
+            useinfo.voteHeight = block.number;
             useinfo.releaseHeight = useinfo.voteHeight + _day.mul(86400).div(getPropertyValue("block_space"));
             emit SafeVote(_id, _target, _day);
         }
@@ -208,7 +208,7 @@ contract AccountManager is IAccountManager, System {
         uint oldLockDay = record.lockDay;
         if(block.number >= record.unlockHeight) {
             record.lockDay = _day;
-            record.startHeight = block.number + 1;
+            record.startHeight = block.number;
         } else {
             record.lockDay += _day;
         }
@@ -366,7 +366,7 @@ contract AccountManager is IAccountManager, System {
             balances[_addr] += _amount;
             return 0;
         }
-        uint startHeight = block.number + 1;
+        uint startHeight = block.number;
         uint unlockHeight = startHeight + _lockDay.mul(86400).div(getPropertyValue("block_space"));
         uint id = ++record_no;
         AccountRecord[] storage records = addr2records[_addr];

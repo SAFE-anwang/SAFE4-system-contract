@@ -19,8 +19,8 @@ contract Proposal is IProposal, System {
         require(bytes(_title).length != 0, "invalid title");
         require(_payAmount > 0, "invalid pay amount");
         require(_payTimes > 0, "invalid pay times");
-        require(_startPayTime > block.timestamp, "invalid start pay time");
-        require(_endPayTime > _startPayTime, "invalid end pay time");
+        require(_startPayTime >= block.timestamp, "invalid start pay time");
+        require(_endPayTime >= _startPayTime, "invalid end pay time");
         require(bytes(_description).length != 0, "invalid description");
         require(bytes(_detail).length != 0, "invalid detail");
         require(msg.value >= 1, "need pay 1 SAFE");
@@ -39,6 +39,7 @@ contract Proposal is IProposal, System {
         pp.description = _description;
         pp.detail = _detail;
         pp.createHeight = block.number;
+        pp.updateHeight = 0;
         addr2ids[msg.sender].push(pp.id);
         id2addr[pp.id] = msg.sender;
         ids.push(pp.id);
@@ -119,7 +120,7 @@ contract Proposal is IProposal, System {
     function changeStartPayTime(uint _id, uint _startPayTime) public {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
-        require(_startPayTime > proposals[_id].startPayTime && _startPayTime > block.timestamp, "invalid start pay time");
+        require(_startPayTime >= proposals[_id].startPayTime && _startPayTime >= block.timestamp, "invalid start pay time");
         require(proposals[_id].state == 0, "confirmed proposal can't update pay times");
         proposals[_id].startPayTime = _startPayTime;
         proposals[_id].updateHeight = block.number;
@@ -128,7 +129,7 @@ contract Proposal is IProposal, System {
     function changeEndPayTime(uint _id, uint _endPayTime) public {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
-        require(_endPayTime > proposals[_id].startPayTime && _endPayTime > block.timestamp, "invalid end pay time");
+        require(_endPayTime >= proposals[_id].startPayTime && _endPayTime >= block.timestamp, "invalid end pay time");
         require(proposals[_id].state == 0, "confirmed proposal can't update pay times");
         proposals[_id].endPayTime = _endPayTime;
         proposals[_id].updateHeight = block.number;

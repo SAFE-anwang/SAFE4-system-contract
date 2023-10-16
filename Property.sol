@@ -64,7 +64,7 @@ contract Property is IProperty, System {
             if(agreeCount > snCount * 2 / 3) {
                 PropertyInfo storage info2 = properties[_name];
                 info2.value = info.value;
-                info2.updateHeight = block.timestamp;
+                info2.updateHeight = block.number;
                 removeUnconfirmedName(_name);
                 emit PropertyUpdateAgree(_name, info.value);
                 return;

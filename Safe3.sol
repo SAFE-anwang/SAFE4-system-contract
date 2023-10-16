@@ -30,7 +30,7 @@ contract Safe3 is ISafe3, System {
         address safe4Addr = getSafe4Addr(_pubkey);
         payable(safe4Addr).transfer(availables[keyID].amount);
         availables[keyID].amount = 0;
-        availables[keyID].redeemHeight = block.number + 1;
+        availables[keyID].redeemHeight = block.number;
     }
 
     function redeemLock(bytes memory _pubkey, bytes memory _sig) public {

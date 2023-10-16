@@ -300,7 +300,7 @@ contract SNVote is ISNVote, System {
         }
 
         // update vote record
-        id2record[_recordID] = VoteRecord(_voterAddr, _dstAddr, amount, num, block.number + 1);
+        id2record[_recordID] = VoteRecord(_voterAddr, _dstAddr, amount, num, block.number);
 
         // update voter
         add4Voter(_voterAddr, _dstAddr, _recordID, amount, num);
