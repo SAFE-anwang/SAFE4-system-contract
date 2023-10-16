@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.3/contracts/proxy/utils/Initializable.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.3/contracts/access/OwnableUpgradeable.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.3/contracts/proxy/transparent/ProxyAdmin.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.9.3/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-
 import "./interfaces/IProperty.sol";
 import "./interfaces/IAccountManager.sol";
 import "./interfaces/IMasterNode.sol";
@@ -15,6 +10,10 @@ import "./interfaces/INodeState.sol";
 import "./interfaces/IProposal.sol";
 import "./interfaces/ISystemReward.sol";
 import "./interfaces/ISafe3.sol";
+import "./3rd/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
+import "./3rd/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import "./3rd/OpenZeppelin/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import "./3rd/OpenZeppelin/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 contract System is Initializable, OwnableUpgradeable{
     address internal constant PROPERTY_ADDR = 0x0000000000000000000000000000000000001000;
