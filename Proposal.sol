@@ -24,6 +24,7 @@ contract Proposal is IProposal, System {
         require(bytes(_title).length > 0 && bytes(_title).length < MAX_PP_TITLE_LEN, "invalid title");
         require(_payAmount > 0 && _payAmount <= getBalance(), "invalid pay amount");
         require(_payTimes > 0 && _payTimes < MAX_PP_PAY_TIMES, "invalid pay times");
+        require(_payAmount / _payTimes == 0, "invalid pay amount and times");
         require(_startPayTime >= block.timestamp, "invalid start pay time");
         require(_endPayTime >= _startPayTime, "invalid end pay time");
         require(bytes(_description).length > 0 && bytes(_description).length < MAX_PP_DESCRIPTIO_LEN, "invalid description");
@@ -53,6 +54,7 @@ contract Proposal is IProposal, System {
     function vote(uint _id, uint _voteResult) public onlySN {
         require(existUnconfirmed(_id), "non-existent proprosal or proposal has been confirmed");
         require(_voteResult == VOTE_AGREE || _voteResult == VOTE_REJECT || _voteResult == VOTE_ABSTAIN, "invalue vote result, must be agree(1), reject(2), abstain(3)");
+        require(block.timestamp > proposals[_id].startPayTime, "proposal is out of day");
         address[] storage voters = proposals[_id].voters;
         uint i = 0;
         bool flag = false;
@@ -86,6 +88,7 @@ contract Proposal is IProposal, System {
                 rejectCount++;
             }
             if(agreeCount > snCount * 2 / 3) {
+                handle(_id);
                 proposals[_id].state = VOTE_AGREE;
                 emit ProposalState(_id, 1);
                 return;
@@ -111,6 +114,7 @@ contract Proposal is IProposal, System {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(_payAmount > 0 && _payAmount <= getBalance(), "invalid pay amount");
+        require(_payAmount / proposals[_id].payTimes == 0, "pay amount is too small");
         require(proposals[_id].voters.length == 0, "voted proposal can't update pay-amount");
         proposals[_id].payAmount = _payAmount;
         proposals[_id].updateHeight = block.number;
@@ -120,6 +124,7 @@ contract Proposal is IProposal, System {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(_payTimes > 0 && _payTimes < MAX_PP_PAY_TIMES, "invalid pay times");
+        require(proposals[_id].payAmount / _payTimes == 0, "pay times is too big");
         require(proposals[_id].voters.length == 0, "voted proposal can't update pay-times");
         proposals[_id].payTimes = _payTimes;
         proposals[_id].updateHeight = block.number;
@@ -157,7 +162,7 @@ contract Proposal is IProposal, System {
     }
 
     function getAll() public view returns (ProposalInfo[] memory) {
-        ProposalInfo[] memory  pps = new ProposalInfo[](ids.length);
+        ProposalInfo[] memory pps = new ProposalInfo[](ids.length);
         for(uint i = 0; i < ids.length; i++) {
             pps[i] = proposals[ids[i]];
         }
@@ -179,5 +184,18 @@ contract Proposal is IProposal, System {
 
     function existUnconfirmed(uint _id) internal view returns (bool) {
         return proposals[_id].createHeight != 0 && proposals[_id].state == 0;
+    }
+
+    function handle(uint _id) internal {
+        ProposalInfo memory pp = proposals[_id];
+        if(pp.payTimes == 1) {
+            getAccountManager().deposit2{value: pp.payAmount}(pp.creator, pp.startPayTime);
+            return;
+        }
+        uint space = (pp.endPayTime - pp.startPayTime) / (pp.payTimes - 1);
+        for(uint i = 0; i < pp.payTimes - 1; i++) {
+            getAccountManager().deposit2{value: pp.payAmount / pp.payTimes}(pp.creator, pp.startPayTime + space * i - block.timestamp);
+        }
+        getAccountManager().deposit2{value: pp.payAmount / pp.payTimes + pp.payAmount % pp.payTimes}(pp.creator, pp.endPayTime - block.timestamp);
     }
 }

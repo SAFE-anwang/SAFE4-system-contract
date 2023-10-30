@@ -21,6 +21,7 @@ interface IAccountManager {
     }
 
     function deposit(address _to, uint _lockDay) external payable returns (uint);
+    function deposit2(address _to, uint _lockSecond) external payable returns (uint);
     function withdraw() external returns (uint);
     function withdrawByID(uint[] memory _ids) external returns(uint);
     function transfer(address _to, uint _amount, uint _lockDay) external returns (uint);

@@ -29,6 +29,27 @@ contract AccountManager is IAccountManager, System {
         return id;
     }
 
+    function deposit2(address _to, uint _lockSecond) public payable returns (uint) {
+        require(msg.value > 0, "invalid amount");
+        if(_lockSecond == 0) {
+            balances[_to] += msg.value;
+            return 0;
+        }
+        uint space = getPropertyValue("block_space");
+        uint unlockHeight = block.number + _lockSecond / space;
+        uint lockDay = _lockSecond / SECONDS_IN_DAY;
+        if(_lockSecond % space != 0) {
+            unlockHeight += 1;
+            lockDay += 1;
+        }
+        uint id = ++record_no;
+        AccountRecord[] storage records = addr2records[_to];
+        records.push(AccountRecord(id, _to, msg.value, lockDay, block.number, unlockHeight));
+        id2index[id] = records.length - 1;
+        id2addr[id] = _to;
+        return id;
+    }
+
     // withdraw all
     function withdraw() public returns (uint) {
         uint amount = 0;
