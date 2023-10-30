@@ -86,17 +86,15 @@ contract Property is IProperty, System {
     }
 
     function getInfo(string memory _name) public view returns (PropertyInfo memory) {
-        require(exist(_name), "non-existent property");
         return properties[_name];
     }
 
     function getUnconfirmedInfo(string memory _name) public view returns (UnconfirmedPropertyInfo memory) {
-        require(existUnconfirmed(_name), "non-existent unconfirmed property");
         return unconfirmedProperties[_name];
     }
 
     function getValue(string memory _name) public view returns (uint) {
-        return getInfo(_name).value;
+        return properties[_name].value;
     }
 
     function getAll() public view returns (PropertyInfo[] memory) {
