@@ -7,22 +7,19 @@ contract SuperNodeState is INodeState, System {
 
     uint[] ids; // all node id
     mapping(uint => uint) id2index; // index in ids
-    mapping(uint => uint8) id2state; // id to state
+    mapping(uint => uint) id2state; // id to state
     mapping(uint => StateEntry[]) id2entries; // id to upload informations
 
-    function uploadState(uint[] memory _ids, uint8[] memory _states) public onlySN {
+    function uploadState(uint[] memory _ids, uint[] memory _states) public onlySN {
         require(_ids.length == _states.length, "id list isn't matched with state list");
-
         bool flag = false;
         uint pos = 0;
-
         for(uint i = 0; i < _ids.length; i++) {
             uint id = _ids[i];
             if(!getSuperNode().existID(id)) {
                 continue;
             }
-
-            uint8 state = _states[i];
+            uint state = _states[i];
             flag = false;
             pos = 0;
             (flag, pos) = existCaller(id, msg.sender);
@@ -31,7 +28,6 @@ contract SuperNodeState is INodeState, System {
             } else {
                 id2entries[id].push(StateEntry(msg.sender, state));
             }
-
             updateState(id, state);
         }
     }
@@ -59,7 +55,7 @@ contract SuperNodeState is INodeState, System {
         return (false, 0);
     }
 
-    function updateState(uint _id, uint8 _state) internal {
+    function updateState(uint _id, uint _state) internal {
         StateEntry[] storage entries = id2entries[_id];
         uint num = 0;
         for(uint i = 0; i < entries.length; i++) {
