@@ -24,7 +24,7 @@ interface IAccountManager {
     function withdraw() external returns (uint);
     function withdrawByID(uint[] memory _ids) external returns(uint);
     function transfer(address _to, uint _amount, uint _lockDay) external returns (uint);
-    function reward(address _to) external payable returns (uint);
+    function reward(address[] memory _addrs, uint[] memory _amounts) external payable;
     function moveID0(address _addr) external returns (uint);
     function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _remainLockHeight) external returns (uint);
     function setRecordFreeze(uint _id, address _addr, address _target, uint _day) external;

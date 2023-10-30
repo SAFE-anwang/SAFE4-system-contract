@@ -123,10 +123,8 @@ contract MasterNode is IMasterNode, System {
             }
         }
         // reward to address
-        for(uint i = 0; i < count; i++) {
-            getAccountManager().reward{value: tempAmounts[i]}(tempAddrs[i]);
-            emit SystemReward(_addr, REWARD_MN, tempAddrs[i], tempRewardTypes[i], tempAmounts[i]);
-        }
+        getAccountManager().reward{value: msg.value}(tempAddrs, tempAmounts);
+        emit SystemReward(_addr, REWARD_MN, tempAddrs, tempRewardTypes, tempAmounts);
         info.lastRewardHeight = block.number;
     }
 

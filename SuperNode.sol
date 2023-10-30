@@ -148,11 +148,9 @@ contract SuperNode is ISuperNode, System {
                 tempAmounts[0] += voterReward;
             }
         }
-
-        for(uint i = 0; i < count; i++) {
-            getAccountManager().reward{value: tempAmounts[i]}(tempAddrs[i]);
-            emit SystemReward(_addr, REWARD_SN, tempAddrs[i], tempRewardTypes[i], tempAmounts[i]);
-        }
+        // reward to address
+        getAccountManager().reward{value: msg.value}(tempAddrs, tempAmounts);
+        emit SystemReward(_addr, REWARD_SN, tempAddrs, tempRewardTypes, tempAmounts);
         supernodes[_addr].lastRewardHeight = block.number;
     }
 

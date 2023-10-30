@@ -120,10 +120,12 @@ contract AccountManager is IAccountManager, System {
         return id;
     }
 
-    function reward(address _to) public payable onlyMnOrSnContract returns (uint) {
-        require(_to != address(0), "reward to the zero address");
+    function reward(address[] memory _addrs, uint[] memory _amounts) public payable onlyMnOrSnContract {
         require(msg.value > 0, "invalid amount");
-        return addRecord(_to, msg.value, 0);
+        require(_addrs.length == _amounts.length, "invalid addrs and amounts");
+        for(uint i = 0; i < _addrs.length; i++) {
+            addRecord(_addrs[i], _amounts[i], 0);
+        }
     }
 
     // move balance of id0 to new id

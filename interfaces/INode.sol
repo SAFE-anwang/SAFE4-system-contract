@@ -20,7 +20,7 @@ interface INode {
         uint height;
     }
 
-    event SystemReward(address _nodeAddr, uint _nodeType, address _addr, uint _rewardType, uint _amount);
+    event SystemReward(address _nodeAddr, uint _nodeType, address[] _addrs, uint[] _rewardTypes, uint[] _amounts);
 
     function appendRegister(address _addr, uint _lockDay) external payable;
     function turnRegister(address _addr, uint _lockID) external;
