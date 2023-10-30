@@ -24,6 +24,11 @@ contract SNVote is ISNVote, System {
     mapping(address => address[]) dst2voters; // supernode or proxy to voter list
     mapping(address => uint[]) dst2ids; // supernode or proxy to record list
 
+    event SNVOTE_VOTE(address _voterAddr, address _snAddr, uint _recordID, uint _voteNum);
+    event SNVOTE_APPROVAL(address _voterAddr, address _proxyAddr, uint _recordID, uint _voteNum);
+    event SNVOTE_REMOVE_VOTE(address _voterAddr, address _snAddr, uint _recordID, uint _voteNum);
+    event SNVOTE_REMOVE_APPROVAL(address _voterAddr, address _proxyAddr, uint _recordID, uint _voteNum);
+
     function voteOrApproval(bool _isVote, address _dstAddr, uint[] memory _recordIDs) public {
         require(!isSN(msg.sender), "caller can't be supernode");
         if(_isVote) {
