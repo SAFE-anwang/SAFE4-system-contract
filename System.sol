@@ -165,7 +165,7 @@ contract System is Initializable, OwnableUpgradeable{
         return getMasterNode().exist(_addr) || getSuperNode().exist(_addr);
     }
 
-    function existNodeIP(string memory _ip) internal view returns (bool) {
-        return getMasterNode().existIP(_ip) || getSuperNode().existIP(_ip);
+    function existNodeEnode(string memory _enode) internal view returns (bool) {
+        return getMasterNode().existEnode(_enode) || getSuperNode().existEnode(_enode);
     }
 }
