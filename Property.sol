@@ -13,8 +13,16 @@ contract Property is IProperty, System {
     mapping(string => UnconfirmedPropertyInfo) unconfirmedProperties;
     string[] unconfirmedNames;
 
+    event PropertyAdd(string _name, uint _value);
+    event PropertyUpdateApply(string _name, uint _newValue, uint _oldValue);
+    event PropertyUpdateReject(string _name, uint _newValue);
+    event PropertyUpdateAgree(string _name, uint _newValue);
+    event PropertyUpdateVote(string _name, uint _newValue, address _voter, uint _voteResult);
+
     function add(string memory _name, uint _value, string memory _description) public onlyOwner {
+        require(bytes(_name).length > 0 && bytes(_name).length < 64, "invalid name");
         require(!exist(_name), "existent property");
+        require(bytes(_description).length <= 256, "invalid description");
         properties[_name] = PropertyInfo(_name, _value, _description, block.number, 0);
         confirmedNames.push(_name);
         emit PropertyAdd(_name, _value);
@@ -23,7 +31,7 @@ contract Property is IProperty, System {
     function applyUpdate(string memory _name, uint _value, string memory _reason) public onlySN {
         require(exist(_name), "non-existent property");
         require(!existUnconfirmed(_name), "existent unconfirmed property");
-        require(_value != properties[_name].value, "same property value");
+        require(bytes(_reason).length > 0 && bytes(_reason).length <= 512, "invalid reason");
         UnconfirmedPropertyInfo storage info = unconfirmedProperties[_name];
         info.name = _name;
         info.value = _value;
@@ -62,9 +70,8 @@ contract Property is IProperty, System {
                 rejectCount++;
             }
             if(agreeCount > snCount * 2 / 3) {
-                PropertyInfo storage info2 = properties[_name];
-                info2.value = info.value;
-                info2.updateHeight = block.number;
+                properties[_name].value = info.value;
+                properties[_name].updateHeight = block.number;
                 removeUnconfirmedName(_name);
                 emit PropertyUpdateAgree(_name, info.value);
                 return;
@@ -92,7 +99,7 @@ contract Property is IProperty, System {
         return getInfo(_name).value;
     }
 
-    function getAllConfirmed() public view returns (PropertyInfo[] memory) {
+    function getAll() public view returns (PropertyInfo[] memory) {
         PropertyInfo[] memory ret = new PropertyInfo[](confirmedNames.length);
         for(uint i = 0; i < confirmedNames.length; i++) {
             ret[i] = properties[confirmedNames[i]];
@@ -100,7 +107,7 @@ contract Property is IProperty, System {
         return ret;
     }
 
-    function getAllUnConfirmed() public view returns (UnconfirmedPropertyInfo[] memory) {
+    function getAllUnconfirmed() public view returns (UnconfirmedPropertyInfo[] memory) {
         UnconfirmedPropertyInfo[] memory ret = new UnconfirmedPropertyInfo[](unconfirmedNames.length);
         for(uint i = 0; i < unconfirmedNames.length; i++) {
             ret[i] = unconfirmedProperties[unconfirmedNames[i]];
@@ -108,11 +115,11 @@ contract Property is IProperty, System {
         return ret;
     }
 
-    function exist(string memory _name) internal view returns (bool) {
+    function exist(string memory _name) public view returns (bool) {
         return bytes(properties[_name].name).length != 0;
     }
 
-    function existUnconfirmed(string memory _name) internal view returns (bool) {
+    function existUnconfirmed(string memory _name) public view returns (bool) {
         return bytes(unconfirmedProperties[_name].name).length != 0;
     }
 

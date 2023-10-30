@@ -20,18 +20,14 @@ interface IProperty {
         uint applyHeight;
     }
 
-    event PropertyAdd(string _name, uint _value);
-    event PropertyUpdateApply(string _name, uint _newValue, uint _oldValue);
-    event PropertyUpdateReject(string _name, uint _newValue);
-    event PropertyUpdateAgree(string _name, uint _newValue);
-    event PropertyUpdateVote(string _name, uint _newValue, address _voter, uint _voteResult);
-
     function add(string memory _name, uint _value, string memory _description) external;
     function applyUpdate(string memory _name, uint _value, string memory _reason) external;
     function vote4Update(string memory _name, uint _result) external;
     function getInfo(string memory _name) external view returns (PropertyInfo memory);
     function getUnconfirmedInfo(string memory _name) external view returns (UnconfirmedPropertyInfo memory);
     function getValue(string memory _name) external view returns (uint);
-    function getAllConfirmed() external view returns (PropertyInfo[] memory);
-    function getAllUnConfirmed() external view returns (UnconfirmedPropertyInfo[] memory);
+    function getAll() external view returns (PropertyInfo[] memory);
+    function getAllUnconfirmed() external view returns (UnconfirmedPropertyInfo[] memory);
+    function exist(string memory _name) external view returns (bool);
+    function existUnconfirmed(string memory _name) external view returns (bool);
 }
