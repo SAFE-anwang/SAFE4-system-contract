@@ -17,9 +17,6 @@ interface ISafe3 {
         bool isMN;
         uint redeemHeight;
     }
-    
-    event Safe3AvailableRedeem(string _safe3Addr, address _safe4Addr, uint _amount);
-    event Safe3LockRedeem(string _safe3Addr, address _safe4Addr, uint _amount, uint _newLockHeight, uint _newUnlockHeight, uint _lockID);
 
     function redeemAvaiable(bytes memory _pubkey, bytes memory _sig) external;
     function redeemLock(bytes memory _pubkey, bytes memory _sig) external;
