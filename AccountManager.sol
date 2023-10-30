@@ -2,21 +2,24 @@
 pragma solidity ^0.8.0;
 
 import "./System.sol";
-import "./utils/SafeMath.sol";
 
 contract AccountManager is IAccountManager, System {
-    using SafeMath for uint;
-
-    mapping(address => uint) balances;
-
+    mapping(address => uint) balances; // for available, id = 0
     uint record_no; // record no.
-    mapping(address => AccountRecord[]) addr2records;
+    mapping(address => AccountRecord[]) addr2records; // for locked or available(unlocked)
     mapping(uint => uint) id2index;
     mapping(uint => address) id2addr;
     mapping(uint => RecordUseInfo) id2useinfo;
 
-    receive() external payable {}
-    fallback() external payable {}
+    event SafeDeposit(address _addr, uint _amount, uint _lockDay, uint _id);
+    event SafeWithdraw(address _addr, uint _amount, uint[] _ids);
+    event SafeTransfer(address _from, address _to, uint _amount, uint _lockDay, uint _id);
+    event SafeMoveID0(address _addr, uint _amount, uint _id);
+    event SafeFreeze(uint _id, address _addr, uint _day);
+    event SafeUnfreeze(uint _id, address _addr);
+    event SafeVote(uint _id, address _addr, uint _day);
+    event SafeRelease(uint _id, address _addr); // remove vote
+    event SafeAddLockDay(uint _id, uint _oldLockDay, uint _newLockDay);
 
     // deposit
     function deposit(address _to, uint _lockDay) public payable returns (uint) {
@@ -90,7 +93,7 @@ contract AccountManager is IAccountManager, System {
                 temp_records[i] = AccountRecord(0, msg.sender, balances[msg.sender], 0, 0, 0);
             }
         }
-        sortRecordByAmount(temp_records, 0, temp_records.length - 1);
+        //sortRecordByAmount(temp_records, 0, temp_records.length - 1);
         uint usedAmount = 0;
         for(uint i = 0; i < temp_records.length; i++) {
             if(usedAmount + temp_records[i].amount <= _amount) {
@@ -142,7 +145,7 @@ contract AccountManager is IAccountManager, System {
         require(_lockDay > 0, "invalid lock day");
         require(_remainLockHeight > 0, "invalid remain lock height");
         uint startHeight = block.number;
-        uint unlockHeight = startHeight + _remainLockHeight.mul(30).div(getPropertyValue("block_space"));
+        uint unlockHeight = startHeight + _remainLockHeight * 30 / getPropertyValue("block_space");
         uint id = ++record_no;
         AccountRecord[] storage records = addr2records[_addr];
         records.push(AccountRecord(id, _addr, _amount, _lockDay, startHeight, unlockHeight));
@@ -170,7 +173,7 @@ contract AccountManager is IAccountManager, System {
             }
             useinfo.specialAddr = _target;
             useinfo.freezeHeight = block.number;
-            useinfo.unfreezeHeight = useinfo.freezeHeight + _day.mul(86400).div(getPropertyValue("block_space"));
+            useinfo.unfreezeHeight = useinfo.freezeHeight + _day * 86400 / getPropertyValue("block_space");
             emit SafeFreeze(_id, _target, _day);
         }
     }
@@ -194,7 +197,7 @@ contract AccountManager is IAccountManager, System {
             }
             useinfo.votedAddr = _target;
             useinfo.voteHeight = block.number;
-            useinfo.releaseHeight = useinfo.voteHeight + _day.mul(86400).div(getPropertyValue("block_space"));
+            useinfo.releaseHeight = useinfo.voteHeight + _day * 86400 / getPropertyValue("block_space");
             emit SafeVote(_id, _target, _day);
         }
     }
@@ -212,7 +215,7 @@ contract AccountManager is IAccountManager, System {
         } else {
             record.lockDay += _day;
         }
-        record.unlockHeight = record.startHeight + record.lockDay.mul(86400).div(getPropertyValue("block_space"));
+        record.unlockHeight = record.startHeight + record.lockDay * 86400 / getPropertyValue("block_space");
         emit SafeAddLockDay(_id, oldLockDay, record.lockDay);
     }
 
@@ -367,7 +370,7 @@ contract AccountManager is IAccountManager, System {
             return 0;
         }
         uint startHeight = block.number;
-        uint unlockHeight = startHeight + _lockDay.mul(86400).div(getPropertyValue("block_space"));
+        uint unlockHeight = startHeight + _lockDay * 86400 / getPropertyValue("block_space");
         uint id = ++record_no;
         AccountRecord[] storage records = addr2records[_addr];
         records.push(AccountRecord(id, _addr, _amount, _lockDay, startHeight, unlockHeight));
@@ -394,24 +397,24 @@ contract AccountManager is IAccountManager, System {
         delete id2useinfo[_id];
     }
 
-    // sort by amount
-    function sortRecordByAmount(AccountRecord[] memory _arr, uint _left, uint _right) internal pure {
-        uint i = _left;
-        uint j = _right;
-        if (i == j) return;
-        AccountRecord memory middle = _arr[_left + (_right - _left) / 2];
-        while(i <= j) {
-            while(_arr[i].amount < middle.amount) i++;
-            while(middle.amount < _arr[j].amount && j > 0) j--;
-            if(i <= j) {
-                (_arr[i], _arr[j]) = (_arr[j], _arr[i]);
-                i++;
-                if(j != 0) j--;
-            }
-        }
-        if(_left < j)
-            sortRecordByAmount(_arr, _left, j);
-        if(i < _right)
-            sortRecordByAmount(_arr, i, _right);
-    }
+    // // sort by amount
+    // function sortRecordByAmount(AccountRecord[] memory _arr, uint _left, uint _right) internal pure {
+    //     uint i = _left;
+    //     uint j = _right;
+    //     if (i == j) return;
+    //     AccountRecord memory middle = _arr[_left + (_right - _left) / 2];
+    //     while(i <= j) {
+    //         while(_arr[i].amount < middle.amount) i++;
+    //         while(middle.amount < _arr[j].amount && j > 0) j--;
+    //         if(i <= j) {
+    //             (_arr[i], _arr[j]) = (_arr[j], _arr[i]);
+    //             i++;
+    //             if(j != 0) j--;
+    //         }
+    //     }
+    //     if(_left < j)
+    //         sortRecordByAmount(_arr, _left, j);
+    //     if(i < _right)
+    //         sortRecordByAmount(_arr, i, _right);
+    // }
 }

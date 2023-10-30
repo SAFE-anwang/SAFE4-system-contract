@@ -20,16 +20,6 @@ interface IAccountManager {
         uint releaseHeight; // release height after vote
     }
 
-    event SafeDeposit(address _addr, uint _amount, uint _lockDay, uint _id);
-    event SafeWithdraw(address _addr, uint _amount, uint[] _ids);
-    event SafeTransfer(address _from, address _to, uint _amount, uint _lockDay, uint _id);
-    event SafeMoveID0(address _addr, uint _amount, uint _id);
-    event SafeFreeze(uint _id, address _addr, uint _day);
-    event SafeUnfreeze(uint _id, address _addr);
-    event SafeVote(uint _id, address _addr, uint _day);
-    event SafeRelease(uint _id, address _addr); // remove vote
-    event SafeAddLockDay(uint _id, uint _oldLockDay, uint _newLockDay);
-
     function deposit(address _to, uint _lockDay) external payable returns (uint);
     function withdraw() external returns (uint);
     function withdrawByID(uint[] memory _ids) external returns(uint);
