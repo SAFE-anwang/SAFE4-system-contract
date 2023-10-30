@@ -11,7 +11,6 @@ interface ISuperNode is INode {
         address creator; // creator address
         uint amount; // total amount
         string enode; // supernode enode, contain node id & node ip & node port
-        string ip; // supernode ip
         string description; // supernode description
         bool isOfficial; // official or not
         StateInfo stateInfo; // masternode state information
@@ -29,10 +28,6 @@ interface ISuperNode is INode {
         uint totalNum; // total vote number
         uint height; // last vote height
     }
-
-    event SNRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _reocrdID);
-    event SNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _recordID);
-    event SNStateUpdate(address _addr, uint8 _newState, uint8 _oldState);
 
     function register(bool _isUnion, address _addr, uint _lockDay, string memory _name, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) external payable;
     function changeName(address _addr, string memory _name) external;

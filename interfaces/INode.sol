@@ -16,7 +16,7 @@ interface INode {
     }
 
     struct StateInfo {
-        uint8 state;
+        uint state;
         uint height;
     }
 
@@ -30,12 +30,12 @@ interface INode {
     function changeEnode(address _addr, string memory _enode) external;
     function changeDescription(address _addr, string memory _description) external;
     function changeOfficial(address _addr, bool _flag) external;
-    function changeState(uint _id, uint8 _state) external;
+    function changeState(uint _id, uint _state) external;
 
     function getNum() external view returns (uint);
 
     function exist(address _addr) external view returns (bool);
     function existID(uint _id) external view returns (bool);
-    function existIP(string memory _ip) external view returns (bool);
+    function existEnode(string memory _enode) external view returns (bool);
     function existLockID(address _addr, uint _lockID) external view returns (bool);
 }
