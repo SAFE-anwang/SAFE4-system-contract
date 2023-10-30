@@ -141,6 +141,10 @@ contract System is Initializable, OwnableUpgradeable{
         return INodeState(SUPERNODE_STATE_PROXY_ADDR);
     }
 
+    function getProposal() internal pure returns (IProposal) {
+        return IProposal(PROPOSAL_PROXY_ADDR);
+    }
+
     function getPropertyValue(string memory _name) internal view returns (uint) {
         return getProperty().getValue(_name);
     }
