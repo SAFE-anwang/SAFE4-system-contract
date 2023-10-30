@@ -5,11 +5,6 @@ import "./System.sol";
 import "./utils/ArrayUtil.sol";
 
 contract MasterNode is IMasterNode, System {
-    uint internal constant COIN = 1000000000000000000;
-    uint internal constant STATE_INIT   = 0;
-    uint internal constant STATE_START  = 1;
-    uint internal constant STATE_STOP   = 2;
-
     uint mn_no; // masternode no.
     mapping(address => MasterNodeInfo) masternodes;
     uint[] mnIDs;
@@ -29,10 +24,14 @@ contract MasterNode is IMasterNode, System {
             require(msg.value >= getPropertyValue("masternode_union_min_amount") * COIN, "less than min union lock amount");
         }
         require(_lockDay >= getPropertyValue("masternode_min_lockday"), "less than min lock day");
-        require(bytes(_enode).length >= 150, "invalid enode");
+        require(bytes(_enode).length >= MIN_NODE_ENODE_LEN, "invalid enode");
         require(!existNodeEnode(_enode), "existent enode");
-        require(bytes(_description).length <= 4096, "invalid description");
-        require(_creatorIncentive > 0 && _creatorIncentive <= 50 && _creatorIncentive + _partnerIncentive == 100, "invalid incentive");
+        require(bytes(_description).length <= MAX_NODE_DESCRIPTION_LEN, "invalid description");
+        if(!_isUnion) {
+            require(_creatorIncentive == MAX_INCENTIVE && _partnerIncentive == 0, "invalid incentive");
+        } else {
+            require(_creatorIncentive > 0 && _creatorIncentive <= MAX_MN_CREATOR_INCENTIVE && _creatorIncentive + _partnerIncentive == MAX_INCENTIVE, "invalid incentive");
+        }
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         create(_addr, lockID, msg.value, _enode, _description, IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
         getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, _lockDay); // creator's lock id can't register other masternode again
@@ -67,8 +66,8 @@ contract MasterNode is IMasterNode, System {
         require(exist(_addr), "non-existent masternode");
         require(msg.value > 0, "invalid reward");
         MasterNodeInfo memory info = masternodes[_addr];
-        uint creatorReward = msg.value * info.incentivePlan.creator / 100;
-        uint partnerReward = msg.value* info.incentivePlan.partner / 100;
+        uint creatorReward = msg.value * info.incentivePlan.creator / MAX_INCENTIVE;
+        uint partnerReward = msg.value* info.incentivePlan.partner / MAX_INCENTIVE;
 
         uint maxCount = info.founders.length;
         address[] memory tempAddrs = new address[](maxCount);
@@ -79,7 +78,7 @@ contract MasterNode is IMasterNode, System {
         if(creatorReward != 0) {
             tempAddrs[count] = info.creator;
             tempAmounts[count] = creatorReward;
-            tempRewardTypes[count] = 1;
+            tempRewardTypes[count] = REWARD_CREATOR;
             count++;
         }
 
@@ -96,7 +95,7 @@ contract MasterNode is IMasterNode, System {
                         if(pos == -1) {
                             tempAddrs[count] = partner.addr;
                             tempAmounts[count] = tempAmount;
-                            tempRewardTypes[count] = 2;
+                            tempRewardTypes[count] = REWARD_PARTNER;
                             count++;
                         } else {
                             tempAmounts[uint(pos)] += tempAmount;
@@ -113,7 +112,7 @@ contract MasterNode is IMasterNode, System {
                         if(pos == -1) {
                             tempAddrs[count] = partner.addr;
                             tempAmounts[count] = tempAmount;
-                            tempRewardTypes[count] = 2;
+                            tempRewardTypes[count] = REWARD_PARTNER;
                             count++;
                         } else {
                             tempAmounts[uint(pos)] += tempAmount;
@@ -126,7 +125,7 @@ contract MasterNode is IMasterNode, System {
         // reward to address
         for(uint i = 0; i < count; i++) {
             getAccountManager().reward{value: tempAmounts[i]}(tempAddrs[i]);
-            emit SystemReward(_addr, 2, tempAddrs[i], tempRewardTypes[i], tempAmounts[i]);
+            emit SystemReward(_addr, REWARD_MN, tempAddrs[i], tempRewardTypes[i], tempAmounts[i]);
         }
         info.lastRewardHeight = block.number;
     }
@@ -134,7 +133,7 @@ contract MasterNode is IMasterNode, System {
     function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID) public onlySafe3Contract {
         require(!existNodeAddress(_addr), "existent address");
         require(_amount >= getPropertyValue("masternode_min_amount") * COIN, "less than min lock amount");
-        create(_addr, _lockID, _amount, "", "", IncentivePlan(100, 0, 0));
+        create(_addr, _lockID, _amount, "", "", IncentivePlan(MAX_INCENTIVE, 0, 0));
         getAccountManager().setRecordFreeze(_lockID, _addr, _addr, _lockDay);
         emit MNRegister(_addr, msg.sender, _amount, _lockDay, _lockID);
     }
@@ -154,7 +153,7 @@ contract MasterNode is IMasterNode, System {
 
     function changeEnode(address _addr, string memory _enode) public {
         require(exist(_addr), "non-existent masternode");
-        require(bytes(_enode).length >= 150, "invalid enode");
+        require(bytes(_enode).length >= MIN_NODE_ENODE_LEN, "invalid enode");
         require(!existNodeEnode(_enode), "existent enode");
         require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
         string memory oldEnode = masternodes[_addr].enode;
@@ -166,7 +165,7 @@ contract MasterNode is IMasterNode, System {
 
     function changeDescription(address _addr, string memory _description) public {
         require(exist(_addr), "non-existent masternode");
-        require(bytes(_description).length <= 4096, "invalid description");
+        require(bytes(_description).length <= MAX_NODE_DESCRIPTION_LEN, "invalid description");
         require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
         masternodes[_addr].description = _description;
         masternodes[_addr].updateHeight = block.number;
@@ -204,7 +203,7 @@ contract MasterNode is IMasterNode, System {
             if(mn.amount < minAmount) {
                 continue;
             }
-            if(mn.stateInfo.state != STATE_START) {
+            if(mn.stateInfo.state != NODE_STATE_START) {
                 continue;
             }
             count++;
@@ -217,7 +216,7 @@ contract MasterNode is IMasterNode, System {
                 if(mn.amount < minAmount) {
                     continue;
                 }
-                if(mn.stateInfo.state != STATE_START) {
+                if(mn.stateInfo.state != NODE_STATE_START) {
                     continue;
                 }
                 mns[index++] = mn;
@@ -295,7 +294,7 @@ contract MasterNode is IMasterNode, System {
         mn.enode = _enode;
         mn.description = _description;
         mn.isOfficial = false;
-        mn.stateInfo = StateInfo(STATE_INIT, block.number);
+        mn.stateInfo = StateInfo(NODE_STATE_INIT, block.number);
         mn.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
         mn.incentivePlan = plan;
         mn.lastRewardHeight = 0;

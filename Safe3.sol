@@ -61,7 +61,7 @@ contract Safe3 is ISafe3, System {
                         lockDay += (SPOS_HEIGHT - info.lockHeight) / 576;
                         lockDay += (info.unlockHeight - SPOS_HEIGHT) / 2880;
                     }
-                    if((info.unlockHeight - info.lockHeight) % 30 != 0) {
+                    if((info.unlockHeight - info.lockHeight) % DAYS_IN_MONTH != 0) {
                         lockDay += 1;
                     }
                 } else {

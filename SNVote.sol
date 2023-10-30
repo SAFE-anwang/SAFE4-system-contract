@@ -2,11 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./System.sol";
-import "./utils/SafeMath.sol";
 
 contract SNVote is ISNVote, System {
-    using SafeMath for uint;
-
     // for records
     mapping(uint => VoteRecord) id2record; // voter's record to supernode or proxy vote
 
@@ -299,9 +296,9 @@ contract SNVote is ISNVote, System {
         uint amount = record.amount;
         uint num = amount;
         if(isMN(useinfo.specialAddr)) {
-             num = record.amount.mul(2);
+             num = record.amount * 2;
         } else if(block.number < record.unlockHeight) {
-            num = record.amount.mul(15).div(10);
+            num = record.amount * 15 / 10;
         }
 
         // update vote record

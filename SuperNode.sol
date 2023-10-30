@@ -5,12 +5,6 @@ import "./System.sol";
 import "./utils/ArrayUtil.sol";
 
 contract SuperNode is ISuperNode, System {
-    uint internal constant COIN = 1000000000000000000;
-
-    uint internal constant STATE_INIT   = 0;
-    uint internal constant STATE_START  = 1;
-    uint internal constant STATE_STOP   = 2;
-
     uint sn_no; // supernode no.
     mapping(address => SuperNodeInfo) supernodes;
     uint[] snIDs;
@@ -31,15 +25,15 @@ contract SuperNode is ISuperNode, System {
             require(msg.value >= getPropertyValue("supernode_union_min_amount") * COIN, "less than min union lock amount");
         }
         require(_lockDay >= getPropertyValue("supernode_min_lockday"), "less than min lock day");
-        require(bytes(_name).length > 0 && bytes(_name).length <= 64, "invalid name");
+        require(bytes(_name).length > 0 && bytes(_name).length <= MAX_SN_NAME_LEN, "invalid name");
         require(!existName(_name), "existent name");
-        require(bytes(_enode).length >= 150, "invalid enode");
+        require(bytes(_enode).length >= MIN_NODE_ENODE_LEN, "invalid enode");
         require(!existNodeEnode(_enode), "existent enode");
-        require(bytes(_description).length > 0 && bytes(_description).length <= 4096, "invalid description");
-        require(_creatorIncentive + _partnerIncentive + _voterIncentive == 100, "invalid incentive");
-        require(_creatorIncentive > 0 && _creatorIncentive <= 10, "creator incentive exceed 10%");
-        require(_partnerIncentive >= 40 && _partnerIncentive <= 50, "partner incentive is 40% - 50%");
-        require(_voterIncentive >= 40 && _voterIncentive <= 50, "creator incentive is 40% - 50%");
+        require(bytes(_description).length > 0 && bytes(_description).length <= MAX_NODE_DESCRIPTION_LEN, "invalid description");
+        require(_creatorIncentive + _partnerIncentive + _voterIncentive == MAX_INCENTIVE, "invalid incentive");
+        require(_creatorIncentive > 0 && _creatorIncentive <= MAX_SN_CREATOR_INCENTIVE, "creator incentive exceed 10%");
+        require(_partnerIncentive >= MIN_SN_PARTNER_INCENTIVE && _partnerIncentive <= MAX_SN_PARTNER_INCENTIVE, "partner incentive is 40% - 50%");
+        require(_voterIncentive >= MIN_SN_VOTER_INCENTIVE && _voterIncentive <= MAX_SN_VOTER_INCENTIVE, "creator incentive is 40% - 50%");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         create(_addr, lockID, msg.value, _name, _enode, _description, IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive));
         getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, _lockDay); // creator's lock id can't register other supernode again
@@ -74,8 +68,8 @@ contract SuperNode is ISuperNode, System {
         require(exist(_addr), "non-existent supernode");
         require(msg.value > 0, "invalid reward");
         SuperNodeInfo memory info = supernodes[_addr];
-        uint creatorReward = msg.value * info.incentivePlan.creator / 100;
-        uint partnerReward = msg.value * info.incentivePlan.partner / 100;
+        uint creatorReward = msg.value * info.incentivePlan.creator / MAX_INCENTIVE;
+        uint partnerReward = msg.value * info.incentivePlan.partner / MAX_INCENTIVE;
         uint voterReward = msg.value - creatorReward - partnerReward;
 
         uint maxCount = info.founders.length + info.voteInfo.voters.length;
@@ -87,7 +81,7 @@ contract SuperNode is ISuperNode, System {
         if(creatorReward != 0) {
             tempAddrs[count] = info.creator;
             tempAmounts[count] = creatorReward;
-            tempRewardTypes[count] = 1;
+            tempRewardTypes[count] = REWARD_CREATOR;
             count++;
         }
 
@@ -104,7 +98,7 @@ contract SuperNode is ISuperNode, System {
                         if(pos == -1) {
                             tempAddrs[count] = partner.addr;
                             tempAmounts[count] = tempAmount;
-                            tempRewardTypes[count] = 2;
+                            tempRewardTypes[count] = REWARD_PARTNER;
                             count++;
                         } else {
                             tempAmounts[uint(pos)] += tempAmount;
@@ -121,7 +115,7 @@ contract SuperNode is ISuperNode, System {
                         if(pos == -1) {
                             tempAddrs[count] = partner.addr;
                             tempAmounts[count] = tempAmount;
-                            tempRewardTypes[count] = 2;
+                            tempRewardTypes[count] = REWARD_PARTNER;
                             count++;
                         } else {
                             tempAmounts[uint(pos)] += tempAmount;
@@ -142,7 +136,7 @@ contract SuperNode is ISuperNode, System {
                         if(pos == -1) {
                             tempAddrs[count] = voter.addr;
                             tempAmounts[count] = tempAmount;
-                            tempRewardTypes[count] = 3;
+                            tempRewardTypes[count] = REWARD_VOTER;
                             count++;
                         } else {
                             tempAmounts[uint(pos)] += tempAmount;
@@ -157,7 +151,7 @@ contract SuperNode is ISuperNode, System {
 
         for(uint i = 0; i < count; i++) {
             getAccountManager().reward{value: tempAmounts[i]}(tempAddrs[i]);
-            emit SystemReward(_addr, 1, tempAddrs[i], tempRewardTypes[i], tempAmounts[i]);
+            emit SystemReward(_addr, REWARD_SN, tempAddrs[i], tempRewardTypes[i], tempAmounts[i]);
         }
         supernodes[_addr].lastRewardHeight = block.number;
     }
@@ -177,7 +171,7 @@ contract SuperNode is ISuperNode, System {
 
     function changeName(address _addr, string memory _name) public {
         require(exist(_addr), "non-existent supernode");
-        require(bytes(_name).length > 0 && bytes(_name).length <= 64, "invalid name");
+        require(bytes(_name).length > 0 && bytes(_name).length <= MAX_SN_NAME_LEN, "invalid name");
         require(!existName(_name), "existent name");
         require(msg.sender == supernodes[_addr].creator, "caller isn't creator");
         string memory oldName = supernodes[_addr].name;
@@ -189,7 +183,7 @@ contract SuperNode is ISuperNode, System {
 
     function changeEnode(address _addr, string memory _enode) public {
         require(exist(_addr), "non-existent supernode");
-        require(bytes(_enode).length >= 150, "invalid enode");
+        require(bytes(_enode).length >= MIN_NODE_ENODE_LEN, "invalid enode");
         require(!existNodeEnode(_enode), "existent enode");
         require(msg.sender == supernodes[_addr].creator, "caller isn't creator");
         string memory oldEnode = supernodes[_addr].enode;
@@ -201,7 +195,7 @@ contract SuperNode is ISuperNode, System {
 
     function changeDescription(address _addr, string memory _description) public {
         require(exist(_addr), "non-existent supernode");
-        require(bytes(_description).length > 0 && bytes(_description).length <= 4096, "invalid description");
+        require(bytes(_description).length > 0 && bytes(_description).length <= MAX_NODE_DESCRIPTION_LEN, "invalid description");
         require(msg.sender == supernodes[_addr].creator, "caller isn't creator");
         supernodes[_addr].description = _description;
         supernodes[_addr].updateHeight = block.number;
@@ -382,7 +376,7 @@ contract SuperNode is ISuperNode, System {
         sn.enode = _enode;
         sn.description = _description;
         sn.isOfficial = false;
-        sn.stateInfo = StateInfo(STATE_INIT, block.number);
+        sn.stateInfo = StateInfo(NODE_STATE_INIT, block.number);
         sn.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
         sn.incentivePlan = _incentivePlan;
         sn.lastRewardHeight = 0;

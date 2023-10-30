@@ -4,8 +4,6 @@ pragma solidity ^0.8.0;
 import "./System.sol";
 
 contract Proposal is IProposal, System {
-    uint internal constant COIN = 1000000000000000000;
-
     uint pp_no;
     mapping(uint => ProposalInfo) proposals;
     mapping(address => uint[]) addr2ids;
@@ -23,12 +21,12 @@ contract Proposal is IProposal, System {
     }
 
     function create(string memory _title, uint _payAmount, uint _payTimes, uint _startPayTime, uint _endPayTime, string memory _description) public payable returns (uint) {
-        require(bytes(_title).length > 0 && bytes(_title).length < 128, "invalid title");
+        require(bytes(_title).length > 0 && bytes(_title).length < MAX_PP_TITLE_LEN, "invalid title");
         require(_payAmount > 0 && _payAmount <= getBalance(), "invalid pay amount");
-        require(_payTimes > 0 && _payTimes < 1000, "invalid pay times");
+        require(_payTimes > 0 && _payTimes < MAX_PP_PAY_TIMES, "invalid pay times");
         require(_startPayTime >= block.timestamp, "invalid start pay time");
         require(_endPayTime >= _startPayTime, "invalid end pay time");
-        require(bytes(_description).length > 0 && bytes(_description).length < 512, "invalid description");
+        require(bytes(_description).length > 0 && bytes(_description).length < MAX_PP_DESCRIPTIO_LEN, "invalid description");
         require(msg.value >= 1 * COIN, "need pay 1 SAFE");
 
         // burn 1 SAFE at least
@@ -54,7 +52,7 @@ contract Proposal is IProposal, System {
 
     function vote(uint _id, uint _voteResult) public onlySN {
         require(existUnconfirmed(_id), "non-existent proprosal or proposal has been confirmed");
-        require(_voteResult == 1 || _voteResult == 2 || _voteResult == 3, "invalue vote result, must be agree(1), reject(2), abstain(3)");
+        require(_voteResult == VOTE_AGREE || _voteResult == VOTE_REJECT || _voteResult == VOTE_ABSTAIN, "invalue vote result, must be agree(1), reject(2), abstain(3)");
         address[] storage voters = proposals[_id].voters;
         uint i = 0;
         bool flag = false;
@@ -81,19 +79,19 @@ contract Proposal is IProposal, System {
         uint rejectCount = 0;
         uint snCount = getSNNum();
         for(i = 0; i < voteResults.length; i++) {
-             if(voteResults[i] == 1) {
+             if(voteResults[i] == VOTE_AGREE) {
                 agreeCount++;
             }
-            else if(voteResults[i] == 2) {
+            else if(voteResults[i] == VOTE_REJECT) {
                 rejectCount++;
             }
             if(agreeCount > snCount * 2 / 3) {
-                proposals[_id].state == 1;
+                proposals[_id].state = VOTE_AGREE;
                 emit ProposalState(_id, 1);
                 return;
             }
             if(rejectCount >= snCount * 1 / 3) {
-                proposals[_id].state = 2;
+                proposals[_id].state = VOTE_REJECT;
                 emit ProposalState(_id, 2);
                 return;
             }
@@ -103,7 +101,7 @@ contract Proposal is IProposal, System {
     function changeTitle(uint _id, string memory _title) public {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
-        require(bytes(_title).length > 0 && bytes(_title).length < 128, "invalid title");
+        require(bytes(_title).length > 0 && bytes(_title).length < MAX_PP_TITLE_LEN, "invalid title");
         require(proposals[_id].voters.length == 0, "voted proposal can't update title");
         proposals[_id].title = _title;
         proposals[_id].updateHeight = block.number;
@@ -112,7 +110,7 @@ contract Proposal is IProposal, System {
     function changePayAmount(uint _id, uint _payAmount) public {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
-        require(_payAmount <= getBalance(), "invalid pay amount");
+        require(_payAmount > 0 && _payAmount <= getBalance(), "invalid pay amount");
         require(proposals[_id].voters.length == 0, "voted proposal can't update pay-amount");
         proposals[_id].payAmount = _payAmount;
         proposals[_id].updateHeight = block.number;
@@ -121,7 +119,7 @@ contract Proposal is IProposal, System {
     function changePayTimes(uint _id, uint _payTimes) public {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
-        require(_payTimes != 0, "invalid pay times");
+        require(_payTimes > 0 && _payTimes < MAX_PP_PAY_TIMES, "invalid pay times");
         require(proposals[_id].voters.length == 0, "voted proposal can't update pay-times");
         proposals[_id].payTimes = _payTimes;
         proposals[_id].updateHeight = block.number;
@@ -130,7 +128,7 @@ contract Proposal is IProposal, System {
     function changeStartPayTime(uint _id, uint _startPayTime) public {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
-        require(_startPayTime >= proposals[_id].startPayTime && _startPayTime >= block.timestamp, "invalid start pay time");
+        require(_startPayTime >= proposals[_id].startPayTime && _startPayTime >= block.timestamp && _startPayTime <= proposals[_id].endPayTime, "invalid start pay time");
         require(proposals[_id].voters.length == 0, "voted proposal can't update start-pay-time");
         proposals[_id].startPayTime = _startPayTime;
         proposals[_id].updateHeight = block.number;
@@ -148,7 +146,7 @@ contract Proposal is IProposal, System {
     function changeDescription(uint _id, string memory _description) public {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
-        require(bytes(_description).length != 0, "invalid description");
+        require(bytes(_description).length > 0 && bytes(_description).length < MAX_PP_DESCRIPTIO_LEN, "invalid description");
         require(proposals[_id].voters.length == 0, "voted proposal can't update description");
         proposals[_id].description = _description;
         proposals[_id].updateHeight = block.number;
