@@ -257,10 +257,12 @@ contract SuperNode is ISuperNode, System {
     }
 
     function getInfo(address _addr) public view override returns (SuperNodeInfo memory) {
+        require(exist(_addr), "non-existent supernode");
         return supernodes[_addr];
     }
 
     function getInfoByID(uint _id) public view override returns (SuperNodeInfo memory) {
+        require(existID(_id), "non-existent supernode");
         return supernodes[snID2addr[_id]];
     }
 

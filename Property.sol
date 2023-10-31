@@ -66,7 +66,7 @@ contract Property is IProperty, System {
         for(i = 0; i < info.voters.length; i++) {
             if(info.voteResults[i] == VOTE_AGREE) {
                 agreeCount++;
-            } else if(info.voteResults[i] == VOTE_REJECT) {
+            } else { // reject or abstain
                 rejectCount++;
             }
             if(agreeCount > snCount * 2 / 3) {
@@ -86,10 +86,12 @@ contract Property is IProperty, System {
     }
 
     function getInfo(string memory _name) public view override returns (PropertyInfo memory) {
+        require(exist(_name), "non-existent property");
         return properties[_name];
     }
 
     function getUnconfirmedInfo(string memory _name) public view override returns (UnconfirmedPropertyInfo memory) {
+        require(existUnconfirmed(_name), "non-existent unconfirmed property");
         return unconfirmedProperties[_name];
     }
 

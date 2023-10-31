@@ -52,7 +52,8 @@ contract Proposal is IProposal, System {
     }
 
     function vote(uint _id, uint _voteResult) public override onlySN {
-        require(existUnconfirmed(_id), "non-existent proprosal or proposal has been confirmed");
+        require(exist(_id), "non-existent proprosal");
+        require(proposals[_id].state == 0, "proposal has been confirmed");
         require(_voteResult == VOTE_AGREE || _voteResult == VOTE_REJECT || _voteResult == VOTE_ABSTAIN, "invalue vote result, must be agree(1), reject(2), abstain(3)");
         require(block.timestamp > proposals[_id].startPayTime, "proposal is out of day");
         address[] storage voters = proposals[_id].voters;
@@ -83,19 +84,18 @@ contract Proposal is IProposal, System {
         for(i = 0; i < voteResults.length; i++) {
              if(voteResults[i] == VOTE_AGREE) {
                 agreeCount++;
-            }
-            else if(voteResults[i] == VOTE_REJECT) {
+            } else { // reject or abstain
                 rejectCount++;
             }
             if(agreeCount > snCount * 2 / 3) {
                 handle(_id);
                 proposals[_id].state = VOTE_AGREE;
-                emit ProposalState(_id, 1);
+                emit ProposalState(_id, VOTE_AGREE);
                 return;
             }
             if(rejectCount >= snCount * 1 / 3) {
                 proposals[_id].state = VOTE_REJECT;
-                emit ProposalState(_id, 2);
+                emit ProposalState(_id, VOTE_REJECT);
                 return;
             }
         }
@@ -158,6 +158,7 @@ contract Proposal is IProposal, System {
     }
 
     function getInfo(uint _id) public view override returns (ProposalInfo memory) {
+        require(exist(_id), "non-existent proposal");
         return proposals[_id];
     }
 
@@ -179,11 +180,7 @@ contract Proposal is IProposal, System {
     }
 
     function exist(uint _id) public view override returns (bool) {
-        return proposals[_id].createHeight != 0;
-    }
-
-    function existUnconfirmed(uint _id) internal view returns (bool) {
-        return proposals[_id].createHeight != 0 && proposals[_id].state == 0;
+        return proposals[_id].creator != address(0);
     }
 
     function handle(uint _id) internal {

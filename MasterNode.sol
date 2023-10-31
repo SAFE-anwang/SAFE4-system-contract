@@ -186,10 +186,12 @@ contract MasterNode is IMasterNode, System {
     }
 
     function getInfo(address _addr) public view override returns (MasterNodeInfo memory) {
+        require(exist(_addr), "non-existent masternode");
         return masternodes[_addr];
     }
 
     function getInfoByID(uint _id) public view override returns (MasterNodeInfo memory) {
+        require(existID(_id), "non-existent masternode");
         return masternodes[mnID2addr[_id]];
     }
 
