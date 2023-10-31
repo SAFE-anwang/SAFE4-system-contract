@@ -4,9 +4,13 @@ pragma solidity >=0.5.0;
 pragma experimental ABIEncoderV2;
 
 import "./System.sol";
-import "./interfaces/IMulticall.sol";
 
-contract Multicall is IMulticall, System{
+contract Multicall is System {
+    struct Call {
+        address target;
+        bytes callData;
+    }
+
     function aggregate(Call[] memory calls) public returns (uint256 blockNumber, bytes[] memory returnData) {
         blockNumber = block.number;
         returnData = new bytes[](calls.length);

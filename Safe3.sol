@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity >= 0.8.2;
 
 import "./System.sol";
 import "./utils/Base58.sol";
@@ -18,7 +18,7 @@ contract Safe3 is ISafe3, System {
     bytes20[] lockedKeyIDs;
     mapping(bytes20 => Safe3LockInfo[]) locks;
 
-    function redeemAvaiable(bytes memory _pubkey, bytes memory _sig) public {
+    function redeemAvaiable(bytes memory _pubkey, bytes memory _sig) public override {
         bytes20 keyID = getKeyIDFromPubkey(_pubkey);
         require(availables[keyID].amount > 0, "non-existent avaiable amount");
         require(availables[keyID].redeemHeight == 0, "has redeemed");
@@ -33,7 +33,7 @@ contract Safe3 is ISafe3, System {
         availables[keyID].redeemHeight = block.number;
     }
 
-    function redeemLock(bytes memory _pubkey, bytes memory _sig) public {
+    function redeemLock(bytes memory _pubkey, bytes memory _sig) public override {
         bytes20 keyID = getKeyIDFromPubkey(_pubkey);
         for(uint i = 0; i < locks[keyID].length; i++) {
             Safe3LockInfo memory info = locks[keyID][i];
@@ -76,17 +76,17 @@ contract Safe3 is ISafe3, System {
         }
     }
 
-    function getAvailable(string memory _safe3Addr) public view returns (Safe3Info memory) {
+    function getAvailable(string memory _safe3Addr) public view override returns (Safe3Info memory) {
         bytes20 keyID = bytesToBytes20(getKeyIDFromAddress(_safe3Addr), 0);
         return availables[keyID];
     }
 
-    function getLocked(string memory _safe3Addr) public view returns (Safe3LockInfo[] memory) {
+    function getLocked(string memory _safe3Addr) public view override returns (Safe3LockInfo[] memory) {
         bytes20 keyID = bytesToBytes20(getKeyIDFromAddress(_safe3Addr), 0);
         return locks[keyID];
     }
 
-    function getAllAvailable() public view returns (Safe3Info[] memory) {
+    function getAllAvailable() public view override returns (Safe3Info[] memory) {
         Safe3Info[] memory ret = new Safe3Info[](num);
         for(uint i = 0; i < keyIDs.length; i++) {
             ret[i] = availables[keyIDs[i]];
@@ -94,7 +94,7 @@ contract Safe3 is ISafe3, System {
         return ret;
     }
 
-    function getAllLocked() public view returns (Safe3LockInfo[] memory) {
+    function getAllLocked() public view override returns (Safe3LockInfo[] memory) {
         Safe3LockInfo[] memory ret = new Safe3LockInfo[](lockedNum);
         uint pos = 0;
         for(uint i = 0; i < lockedKeyIDs.length; i++) {

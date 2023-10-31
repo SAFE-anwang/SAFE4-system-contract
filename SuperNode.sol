@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity >= 0.8.2;
 
 import "./System.sol";
 import "./utils/ArrayUtil.sol";
@@ -16,7 +16,7 @@ contract SuperNode is ISuperNode, System {
     event SNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _recordID);
     event SNStateUpdate(address _addr, uint _newState, uint _oldState);
 
-    function register(bool _isUnion, address _addr, uint _lockDay, string memory _name, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable {
+    function register(bool _isUnion, address _addr, uint _lockDay, string memory _name, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable override {
         require(_addr != address(0), "invalid address");
         require(!existNodeAddress(_addr), "existent address");
         if(!_isUnion) {
@@ -40,7 +40,7 @@ contract SuperNode is ISuperNode, System {
         emit SNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
-    function appendRegister(address _addr, uint _lockDay) public payable {
+    function appendRegister(address _addr, uint _lockDay) public payable override {
         require(exist(_addr), "non-existent supernode");
         require(msg.value >= getPropertyValue("supernode_append_min_amount") * COIN, "less than min append lock amount");
         require(_lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
@@ -50,7 +50,7 @@ contract SuperNode is ISuperNode, System {
         emit SNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
-    function turnRegister(address _addr, uint _lockID) public {
+    function turnRegister(address _addr, uint _lockID) public override {
         require(exist(_addr), "non-existent supernode");
         IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_lockID);
         require(record.addr == msg.sender, "you aren't record owner");
@@ -64,7 +64,7 @@ contract SuperNode is ISuperNode, System {
         emit SNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
 
-    function reward(address _addr) public payable onlySystemRewardContract {
+    function reward(address _addr) public payable override onlySystemRewardContract {
         require(exist(_addr), "non-existent supernode");
         require(msg.value > 0, "invalid reward");
         SuperNodeInfo memory info = supernodes[_addr];
@@ -154,7 +154,7 @@ contract SuperNode is ISuperNode, System {
         supernodes[_addr].lastRewardHeight = block.number;
     }
 
-    function changeAddress(address _addr, address _newAddr) public {
+    function changeAddress(address _addr, address _newAddr) public override {
         require(exist(_addr), "non-existent supernode");
         require(_newAddr != address(0), "invalid new address");
         require(!existNodeAddress(_newAddr), "existent new address");
@@ -167,7 +167,7 @@ contract SuperNode is ISuperNode, System {
         snEnode2addr[supernodes[_newAddr].enode] = _newAddr;
     }
 
-    function changeName(address _addr, string memory _name) public {
+    function changeName(address _addr, string memory _name) public override {
         require(exist(_addr), "non-existent supernode");
         require(bytes(_name).length > 0 && bytes(_name).length <= MAX_SN_NAME_LEN, "invalid name");
         require(!existName(_name), "existent name");
@@ -179,7 +179,7 @@ contract SuperNode is ISuperNode, System {
         delete snName2addr[oldName];
     }
 
-    function changeEnode(address _addr, string memory _enode) public {
+    function changeEnode(address _addr, string memory _enode) public override {
         require(exist(_addr), "non-existent supernode");
         require(bytes(_enode).length >= MIN_NODE_ENODE_LEN, "invalid enode");
         require(!existNodeEnode(_enode), "existent enode");
@@ -191,7 +191,7 @@ contract SuperNode is ISuperNode, System {
         delete snEnode2addr[oldEnode];
     }
 
-    function changeDescription(address _addr, string memory _description) public {
+    function changeDescription(address _addr, string memory _description) public override {
         require(exist(_addr), "non-existent supernode");
         require(bytes(_description).length > 0 && bytes(_description).length <= MAX_NODE_DESCRIPTION_LEN, "invalid description");
         require(msg.sender == supernodes[_addr].creator, "caller isn't creator");
@@ -199,13 +199,13 @@ contract SuperNode is ISuperNode, System {
         supernodes[_addr].updateHeight = block.number;
     }
 
-    function changeOfficial(address _addr, bool _flag) public onlyOwner {
+    function changeOfficial(address _addr, bool _flag) public override onlyOwner {
         require(exist(_addr), "non-existent supernode");
         supernodes[_addr].isOfficial = _flag;
         supernodes[_addr].updateHeight = block.number;
     }
 
-    function changeState(uint _id, uint _state) public onlySuperNodeStateContract {
+    function changeState(uint _id, uint _state) public override onlySuperNodeStateContract {
         address addr = snID2addr[_id];
         if(snID2addr[_id] == address(0)) {
             return;
@@ -215,7 +215,7 @@ contract SuperNode is ISuperNode, System {
         emit SNStateUpdate(supernodes[addr].addr, _state, oldState);
     }
 
-    function changeVoteInfo(address _addr, address _voter, uint _recordID, uint _amount, uint _num, uint _type) public onlySNVoteContract {
+    function changeVoteInfo(address _addr, address _voter, uint _recordID, uint _amount, uint _num, uint _type) public override onlySNVoteContract {
         SuperNodeInfo storage info = supernodes[_addr];
         if(supernodes[_addr].id == 0) {
             return;
@@ -256,15 +256,15 @@ contract SuperNode is ISuperNode, System {
         }
     }
 
-    function getInfo(address _addr) public view returns (SuperNodeInfo memory) {
+    function getInfo(address _addr) public view override returns (SuperNodeInfo memory) {
         return supernodes[_addr];
     }
 
-    function getInfoByID(uint _id) public view returns (SuperNodeInfo memory) {
+    function getInfoByID(uint _id) public view override returns (SuperNodeInfo memory) {
         return supernodes[snID2addr[_id]];
     }
 
-    function getAll() public view returns (SuperNodeInfo[] memory) {
+    function getAll() public view override returns (SuperNodeInfo[] memory) {
         SuperNodeInfo[] memory ret = new SuperNodeInfo[](snIDs.length);
         for(uint i = 0; i < snIDs.length; i++) {
             ret[i] = supernodes[snID2addr[snIDs[i]]];
@@ -272,7 +272,7 @@ contract SuperNode is ISuperNode, System {
         return ret;
     }
 
-    function getTop() public view returns (SuperNodeInfo[] memory) {
+    function getTop() public view override returns (SuperNodeInfo[] memory) {
         uint minAmount = getPropertyValue("supernode_min_amount") * COIN;
         uint num = 0;
         for(uint i = 0; i < snIDs.length; i++) {
@@ -306,7 +306,7 @@ contract SuperNode is ISuperNode, System {
         return ret;
     }
 
-    function getOfficials() public view returns (SuperNodeInfo[] memory) {
+    function getOfficials() public view override returns (SuperNodeInfo[] memory) {
         uint count;
         for(uint i = 0; i < snIDs.length; i++) {
             if(supernodes[snID2addr[snIDs[i]]].isOfficial) {
@@ -323,7 +323,7 @@ contract SuperNode is ISuperNode, System {
         return ret;
     }
 
-    function getNum() public view returns (uint) {
+    function getNum() public view override returns (uint) {
         uint minAmount = getPropertyValue("supernode_min_amount") * COIN;
         uint maxNum = getPropertyValue("supernode_max_num");
         uint num = 0;
@@ -339,23 +339,23 @@ contract SuperNode is ISuperNode, System {
         return num;
     }
 
-    function exist(address _addr) public view returns (bool) {
+    function exist(address _addr) public view override returns (bool) {
         return supernodes[_addr].id != 0;
     }
 
-    function existID(uint _id) public view returns (bool) {
+    function existID(uint _id) public view override returns (bool) {
         return snID2addr[_id] != address(0);
     }
 
-    function existName(string memory _name) public view returns (bool) {
+    function existName(string memory _name) public view override returns (bool) {
         return snName2addr[_name] != address(0);
     }
 
-    function existEnode(string memory _enode) public view returns (bool) {
+    function existEnode(string memory _enode) public view override returns (bool) {
         return snEnode2addr[_enode] != address(0);
     }
 
-    function existLockID(address _addr, uint _lockID) public view returns (bool) {
+    function existLockID(address _addr, uint _lockID) public view override returns (bool) {
         for(uint i = 0; i < supernodes[_addr].founders.length; i++) {
             if(supernodes[_addr].founders[i].lockID == _lockID) {
                 return true;

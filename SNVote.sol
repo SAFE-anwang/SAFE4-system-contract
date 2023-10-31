@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity >= 0.8.2;
 
 import "./System.sol";
 
@@ -26,7 +26,7 @@ contract SNVote is ISNVote, System {
     event SNVOTE_REMOVE_VOTE(address _voterAddr, address _snAddr, uint _recordID, uint _voteNum);
     event SNVOTE_REMOVE_APPROVAL(address _voterAddr, address _proxyAddr, uint _recordID, uint _voteNum);
 
-    function voteOrApproval(bool _isVote, address _dstAddr, uint[] memory _recordIDs) public {
+    function voteOrApproval(bool _isVote, address _dstAddr, uint[] memory _recordIDs) public override {
         require(!isSN(msg.sender), "caller can't be supernode");
         if(_isVote) {
             require(isSN(_dstAddr), "invalid supernode address");
@@ -45,7 +45,7 @@ contract SNVote is ISNVote, System {
         }
     }
 
-    function removeVoteOrApproval(uint[] memory _recordIDs) public {
+    function removeVoteOrApproval(uint[] memory _recordIDs) public override {
         require(!isSN(msg.sender), "caller can't be supernode");
         for(uint i = 0; i < _recordIDs.length; i++) {
             if(_recordIDs[i] == 0) {
@@ -55,14 +55,14 @@ contract SNVote is ISNVote, System {
         }
     }
 
-    function removeVoteOrApproval2(address _voterAddr, uint _recordID) public onlyAccountManagerContract {
+    function removeVoteOrApproval2(address _voterAddr, uint _recordID) public override onlyAccountManagerContract {
         if(_recordID == 0) {
             return;
         }
         remove(_voterAddr, _recordID);
     }
 
-    function proxyVote(address _snAddr) public {
+    function proxyVote(address _snAddr) public override {
         require(isMN(msg.sender), "caller isn't proxy");
         require(isSN(_snAddr), "invalid supernode");
         uint recordID;
@@ -77,7 +77,7 @@ contract SNVote is ISNVote, System {
     }
 
     // get voter's supernode
-    function getSuperNodes4Voter(address _voterAddr) public view returns (address[] memory retAddrs, uint[] memory retNums) {
+    function getSuperNodes4Voter(address _voterAddr) public view override returns (address[] memory retAddrs, uint[] memory retNums) {
         uint count = 0;
         address[] memory dsts = voter2dsts[_voterAddr];
         for(uint i = 0; i < dsts.length; i++) {
@@ -101,12 +101,12 @@ contract SNVote is ISNVote, System {
     }
 
     // get voter's records
-    function getRecordIDs4Voter(address _voterAddr) public view returns (uint[] memory) {
+    function getRecordIDs4Voter(address _voterAddr) public view override returns (uint[] memory) {
         return voter2ids[_voterAddr];
     }
 
     // get supernode's voters
-    function getVoters4SN(address _snAddr) public view returns (address[] memory retAddrs, uint[] memory retNums) {
+    function getVoters4SN(address _snAddr) public view override returns (address[] memory retAddrs, uint[] memory retNums) {
         require(isSN(_snAddr), "invalid supernode");
         retAddrs = dst2voters[_snAddr];
         retNums = new uint[](retAddrs.length);
@@ -116,13 +116,13 @@ contract SNVote is ISNVote, System {
     }
 
     // get supernode's votenum
-    function getVoteNum4SN(address _snAddr) public view returns (uint) {
+    function getVoteNum4SN(address _snAddr) public view override returns (uint) {
         require(isSN(_snAddr), "invalid supernode");
         return dst2num[_snAddr];
     }
 
     // get voter's proxy
-    function getProxies4Voter(address _voterAddr) public view returns (address[] memory retAddrs, uint[] memory retNums) {
+    function getProxies4Voter(address _voterAddr) public view override returns (address[] memory retAddrs, uint[] memory retNums) {
         uint count = 0;
         address[] memory dsts = voter2dsts[_voterAddr];
         for(uint i = 0; i < dsts.length; i++) {
@@ -145,7 +145,7 @@ contract SNVote is ISNVote, System {
     }
 
     // get voter's proxied record
-    function getProxiedRecordIDs4Voter(address _voterAddr) public view returns (uint[] memory retIDs) {
+    function getProxiedRecordIDs4Voter(address _voterAddr) public view override returns (uint[] memory retIDs) {
         uint[] memory ids = voter2ids[_voterAddr];
         uint id = 0;
         uint count = 0;
@@ -169,7 +169,7 @@ contract SNVote is ISNVote, System {
     }
 
     // get proxy's voters
-    function getVoters4Proxy(address _proxyAddr) public view returns (address[] memory retAddrs, uint[] memory retNums) {
+    function getVoters4Proxy(address _proxyAddr) public view override returns (address[] memory retAddrs, uint[] memory retNums) {
         require(isMN(_proxyAddr), "invalid proxy");
         retAddrs = dst2voters[_proxyAddr];
         retNums = new uint[](retAddrs.length);
@@ -179,7 +179,7 @@ contract SNVote is ISNVote, System {
     }
 
     // get proxy's votenum
-    function getVoteNum4Proxy(address _proxyAddr) public view returns (uint) {
+    function getVoteNum4Proxy(address _proxyAddr) public view override returns (uint) {
         require(isMN(_proxyAddr), "invalid proxy");
         return dst2num[_proxyAddr];
     }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.2;
 
 import "./System.sol";
 
@@ -22,14 +22,14 @@ contract AccountManager is IAccountManager, System {
     event SafeAddLockDay(uint _id, uint _oldLockDay, uint _newLockDay);
 
     // deposit
-    function deposit(address _to, uint _lockDay) public payable returns (uint) {
+    function deposit(address _to, uint _lockDay) public payable override returns (uint) {
         require(msg.value > 0, "invalid amount");
         uint id = addRecord(_to, msg.value, _lockDay);
         emit SafeDeposit(_to, msg.value, _lockDay, id);
         return id;
     }
 
-    function deposit2(address _to, uint _lockSecond) public payable returns (uint) {
+    function deposit2(address _to, uint _lockSecond) public payable override returns (uint) {
         require(msg.value > 0, "invalid amount");
         if(_lockSecond == 0) {
             balances[_to] += msg.value;
@@ -51,7 +51,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     // withdraw all
-    function withdraw() public returns (uint) {
+    function withdraw() public override returns (uint) {
         uint amount = 0;
         uint[] memory ids;
         (amount, ids) = getAvailableAmount(msg.sender);
@@ -60,7 +60,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     // withdraw by specify amount
-    function withdrawByID(uint[] memory _ids) public returns (uint) {
+    function withdrawByID(uint[] memory _ids) public override returns (uint) {
         require(_ids.length > 0, "invalid record ids");
         uint amount = 0;
         for(uint i = 0; i < _ids.length; i++) {
@@ -93,7 +93,7 @@ contract AccountManager is IAccountManager, System {
         return amount;
     }
 
-    function transfer(address _to, uint _amount, uint _lockDay) public returns (uint) {
+    function transfer(address _to, uint _amount, uint _lockDay) public override returns (uint) {
         require(_to != address(0), "transfer to the zero address");
         require(_amount > 0, "invalid amount");
 
@@ -141,7 +141,7 @@ contract AccountManager is IAccountManager, System {
         return id;
     }
 
-    function reward(address[] memory _addrs, uint[] memory _amounts) public payable onlyMnOrSnContract {
+    function reward(address[] memory _addrs, uint[] memory _amounts) public payable override onlyMnOrSnContract {
         require(msg.value > 0, "invalid amount");
         require(_addrs.length == _amounts.length, "invalid addrs and amounts");
         for(uint i = 0; i < _addrs.length; i++) {
@@ -150,7 +150,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     // move balance of id0 to new id
-    function moveID0(address _addr) public onlySNVoteContract returns (uint) {
+    function moveID0(address _addr) public override onlySNVoteContract returns (uint) {
         uint amount = balances[_addr];
         require(amount != 0, "balance of id(0) is zero");
         uint id = ++record_no;
@@ -163,7 +163,7 @@ contract AccountManager is IAccountManager, System {
         return id;
     }
 
-    function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _remainLockHeight) public onlySafe3Contract returns (uint) {
+    function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _remainLockHeight) public override onlySafe3Contract returns (uint) {
         require(_addr != address(0), "reward to the zero address");
         require(_lockDay > 0, "invalid lock day");
         require(_remainLockHeight > 0, "invalid remain lock height");
@@ -177,7 +177,7 @@ contract AccountManager is IAccountManager, System {
         return id;
     }
 
-    function setRecordFreeze(uint _id, address _addr, address _target, uint _day) public onlyMnOrSnContract {
+    function setRecordFreeze(uint _id, address _addr, address _target, uint _day) public override onlyMnOrSnContract {
         if(_id == 0) {
             return;
         }
@@ -201,7 +201,7 @@ contract AccountManager is IAccountManager, System {
         }
     }
 
-    function setRecordVote(uint _id, address _addr, address _target, uint _day) public onlySNVoteContract {
+    function setRecordVote(uint _id, address _addr, address _target, uint _day) public override onlySNVoteContract {
         if(_id == 0) {
             return;
         }
@@ -225,7 +225,7 @@ contract AccountManager is IAccountManager, System {
         }
     }
 
-    function addLockDay(uint _id, uint _day) public {
+    function addLockDay(uint _id, uint _day) public override {
         if(_id == 0 || _day == 0) {
             return;
         }
@@ -243,7 +243,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     // get total amount
-    function getTotalAmount(address _addr) public view returns (uint, uint[] memory) {
+    function getTotalAmount(address _addr) public view override returns (uint, uint[] memory) {
         AccountRecord[] memory records = addr2records[_addr];
         uint count = records.length;
         uint tempAmount = balances[_addr];
@@ -265,7 +265,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     // get avaiable amount
-    function getAvailableAmount(address _addr) public view returns (uint, uint[] memory) {
+    function getAvailableAmount(address _addr) public view override returns (uint, uint[] memory) {
         uint curHeight = block.number;
         AccountRecord[] memory records = addr2records[_addr];
         uint tempAmount = balances[_addr];
@@ -300,7 +300,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     // get locked amount
-    function getLockAmount(address _addr) public view returns (uint, uint[] memory) {
+    function getLockAmount(address _addr) public view override returns (uint, uint[] memory) {
         uint curHeight = block.number;
         AccountRecord[] memory records = addr2records[_addr];
 
@@ -326,7 +326,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     // get bind amount
-    function getFreezeAmount(address _addr) public view returns (uint, uint[] memory) {
+    function getFreezeAmount(address _addr) public view override returns (uint, uint[] memory) {
         uint curHeight = block.number;
         AccountRecord[] memory records = addr2records[_addr];
 
@@ -352,7 +352,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     // get account records
-    function getRecords(address _addr) public view returns (AccountRecord[] memory) {
+    function getRecords(address _addr) public view override returns (AccountRecord[] memory) {
         AccountRecord[] memory records = addr2records[_addr];
         uint count = records.length;
         uint tempAmount = balances[_addr];
@@ -371,7 +371,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     // get record by id
-    function getRecordByID(uint _id) public view returns (AccountRecord memory) {
+    function getRecordByID(uint _id) public view override returns (AccountRecord memory) {
         if(_id == 0) {
             return AccountRecord(0, msg.sender, balances[msg.sender], 0, 0, 0);
         }
@@ -379,7 +379,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     // get record by id
-    function getRecordUseInfo(uint _id) public view returns (RecordUseInfo memory) {
+    function getRecordUseInfo(uint _id) public view override returns (RecordUseInfo memory) {
         if(_id == 0) {
             return RecordUseInfo(address(0), 0, 0, address(0), 0, 0);
         }

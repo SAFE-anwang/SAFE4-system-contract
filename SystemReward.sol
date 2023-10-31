@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity >= 0.8.2;
 
 import "./System.sol";
 
 contract SystemReward is ISystemReward, System {
-    function reward(address _snAddr, uint _snAmount, address _mnAddr, uint _mnAmount, address _ppAddr, uint _ppAmount) public payable onlySN {
+    function reward(address _snAddr, uint _snAmount, address _mnAddr, uint _mnAmount, address _ppAddr, uint _ppAmount) public payable override onlySN {
         require(isSN(msg.sender), "caller isn't supernode");
         require(isSN(_snAddr), "invalid supernode");
         require(isMN(_mnAddr), "invalid masternode");

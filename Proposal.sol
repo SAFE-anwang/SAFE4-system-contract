@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.2;
 
 import "./System.sol";
 
@@ -14,13 +14,13 @@ contract Proposal is IProposal, System {
     event ProposalVote(uint _id, address _voter, uint _voteResult);
     event ProposalState(uint _id, uint _state);
 
-    function reward() public payable {}
+    function reward() public payable override {}
 
-    function getBalance() public view returns (uint) {
+    function getBalance() public view override returns (uint) {
         return address(this).balance;
     }
 
-    function create(string memory _title, uint _payAmount, uint _payTimes, uint _startPayTime, uint _endPayTime, string memory _description) public payable returns (uint) {
+    function create(string memory _title, uint _payAmount, uint _payTimes, uint _startPayTime, uint _endPayTime, string memory _description) public payable override returns (uint) {
         require(bytes(_title).length > 0 && bytes(_title).length < MAX_PP_TITLE_LEN, "invalid title");
         require(_payAmount > 0 && _payAmount <= getBalance(), "invalid pay amount");
         require(_payTimes > 0 && _payTimes < MAX_PP_PAY_TIMES, "invalid pay times");
@@ -51,7 +51,7 @@ contract Proposal is IProposal, System {
         return pp.id;
     }
 
-    function vote(uint _id, uint _voteResult) public onlySN {
+    function vote(uint _id, uint _voteResult) public override onlySN {
         require(existUnconfirmed(_id), "non-existent proprosal or proposal has been confirmed");
         require(_voteResult == VOTE_AGREE || _voteResult == VOTE_REJECT || _voteResult == VOTE_ABSTAIN, "invalue vote result, must be agree(1), reject(2), abstain(3)");
         require(block.timestamp > proposals[_id].startPayTime, "proposal is out of day");
@@ -101,7 +101,7 @@ contract Proposal is IProposal, System {
         }
     }
 
-    function changeTitle(uint _id, string memory _title) public {
+    function changeTitle(uint _id, string memory _title) public override {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(bytes(_title).length > 0 && bytes(_title).length < MAX_PP_TITLE_LEN, "invalid title");
@@ -110,7 +110,7 @@ contract Proposal is IProposal, System {
         proposals[_id].updateHeight = block.number;
     }
 
-    function changePayAmount(uint _id, uint _payAmount) public {
+    function changePayAmount(uint _id, uint _payAmount) public override {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(_payAmount > 0 && _payAmount <= getBalance(), "invalid pay amount");
@@ -120,7 +120,7 @@ contract Proposal is IProposal, System {
         proposals[_id].updateHeight = block.number;
     }
 
-    function changePayTimes(uint _id, uint _payTimes) public {
+    function changePayTimes(uint _id, uint _payTimes) public override {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(_payTimes > 0 && _payTimes < MAX_PP_PAY_TIMES, "invalid pay times");
@@ -130,7 +130,7 @@ contract Proposal is IProposal, System {
         proposals[_id].updateHeight = block.number;
     }
 
-    function changeStartPayTime(uint _id, uint _startPayTime) public {
+    function changeStartPayTime(uint _id, uint _startPayTime) public override {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(_startPayTime >= proposals[_id].startPayTime && _startPayTime >= block.timestamp && _startPayTime <= proposals[_id].endPayTime, "invalid start pay time");
@@ -139,7 +139,7 @@ contract Proposal is IProposal, System {
         proposals[_id].updateHeight = block.number;
     }
 
-    function changeEndPayTime(uint _id, uint _endPayTime) public {
+    function changeEndPayTime(uint _id, uint _endPayTime) public override {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(_endPayTime >= proposals[_id].startPayTime && _endPayTime >= block.timestamp, "invalid end pay time");
@@ -148,7 +148,7 @@ contract Proposal is IProposal, System {
         proposals[_id].updateHeight = block.number;
     }
 
-    function changeDescription(uint _id, string memory _description) public {
+    function changeDescription(uint _id, string memory _description) public override {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(bytes(_description).length > 0 && bytes(_description).length < MAX_PP_DESCRIPTIO_LEN, "invalid description");
@@ -157,11 +157,11 @@ contract Proposal is IProposal, System {
         proposals[_id].updateHeight = block.number;
     }
 
-    function getInfo(uint _id) public view returns (ProposalInfo memory) {
+    function getInfo(uint _id) public view override returns (ProposalInfo memory) {
         return proposals[_id];
     }
 
-    function getAll() public view returns (ProposalInfo[] memory) {
+    function getAll() public view override returns (ProposalInfo[] memory) {
         ProposalInfo[] memory pps = new ProposalInfo[](ids.length);
         for(uint i = 0; i < ids.length; i++) {
             pps[i] = proposals[ids[i]];
@@ -169,7 +169,7 @@ contract Proposal is IProposal, System {
         return pps;
     }
 
-    function getMine() public view returns (ProposalInfo[] memory) {
+    function getMine() public view override returns (ProposalInfo[] memory) {
         uint[] memory mineIDs = addr2ids[msg.sender];
         ProposalInfo[] memory pps = new ProposalInfo[](mineIDs.length);
         for(uint i = 0; i < mineIDs.length; i++) {
@@ -178,7 +178,7 @@ contract Proposal is IProposal, System {
         return pps;
     }
 
-    function exist(uint _id) public view returns (bool) {
+    function exist(uint _id) public view override returns (bool) {
         return proposals[_id].createHeight != 0;
     }
 

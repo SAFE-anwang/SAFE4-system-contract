@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.2;
 
 import "./System.sol";
 import "./interfaces/IProperty.sol";
@@ -19,7 +19,7 @@ contract Property is IProperty, System {
     event PropertyUpdateAgree(string _name, uint _newValue);
     event PropertyUpdateVote(string _name, uint _newValue, address _voter, uint _voteResult);
 
-    function add(string memory _name, uint _value, string memory _description) public onlyOwner {
+    function add(string memory _name, uint _value, string memory _description) public override onlyOwner {
         require(bytes(_name).length > 0 && bytes(_name).length < MAX_PROPERTY_NAME_LEN, "invalid name");
         require(!exist(_name), "existent property");
         require(bytes(_description).length <= MAX_PROPERTY_DESCRIPTION_LEN, "invalid description");
@@ -28,7 +28,7 @@ contract Property is IProperty, System {
         emit PropertyAdd(_name, _value);
     }
 
-    function applyUpdate(string memory _name, uint _value, string memory _reason) public onlySN {
+    function applyUpdate(string memory _name, uint _value, string memory _reason) public override onlySN {
         require(exist(_name), "non-existent property");
         require(!existUnconfirmed(_name), "existent unconfirmed property");
         require(bytes(_reason).length > 0 && bytes(_reason).length <= MAX_PROPERTY_REASON_LEN, "invalid reason");
@@ -44,7 +44,7 @@ contract Property is IProperty, System {
         emit PropertyUpdateApply(_name, _value, properties[_name].value);
     }
 
-    function vote4Update(string memory _name, uint _voteResult) public onlySN {
+    function vote4Update(string memory _name, uint _voteResult) public override onlySN {
         require(existUnconfirmed(_name), "non-existent unconfirmed property");
         require(_voteResult == VOTE_AGREE || _voteResult == VOTE_REJECT || _voteResult == VOTE_ABSTAIN, "invalue vote result, must be agree(1), reject(2), abstain(3)");
         UnconfirmedPropertyInfo storage info = unconfirmedProperties[_name];
@@ -85,19 +85,19 @@ contract Property is IProperty, System {
         emit PropertyUpdateVote(_name, info.value, msg.sender, _voteResult);
     }
 
-    function getInfo(string memory _name) public view returns (PropertyInfo memory) {
+    function getInfo(string memory _name) public view override returns (PropertyInfo memory) {
         return properties[_name];
     }
 
-    function getUnconfirmedInfo(string memory _name) public view returns (UnconfirmedPropertyInfo memory) {
+    function getUnconfirmedInfo(string memory _name) public view override returns (UnconfirmedPropertyInfo memory) {
         return unconfirmedProperties[_name];
     }
 
-    function getValue(string memory _name) public view returns (uint) {
+    function getValue(string memory _name) public view override returns (uint) {
         return properties[_name].value;
     }
 
-    function getAll() public view returns (PropertyInfo[] memory) {
+    function getAll() public view override returns (PropertyInfo[] memory) {
         PropertyInfo[] memory ret = new PropertyInfo[](confirmedNames.length);
         for(uint i = 0; i < confirmedNames.length; i++) {
             ret[i] = properties[confirmedNames[i]];
@@ -105,7 +105,7 @@ contract Property is IProperty, System {
         return ret;
     }
 
-    function getAllUnconfirmed() public view returns (UnconfirmedPropertyInfo[] memory) {
+    function getAllUnconfirmed() public view override returns (UnconfirmedPropertyInfo[] memory) {
         UnconfirmedPropertyInfo[] memory ret = new UnconfirmedPropertyInfo[](unconfirmedNames.length);
         for(uint i = 0; i < unconfirmedNames.length; i++) {
             ret[i] = unconfirmedProperties[unconfirmedNames[i]];
@@ -113,11 +113,11 @@ contract Property is IProperty, System {
         return ret;
     }
 
-    function exist(string memory _name) public view returns (bool) {
+    function exist(string memory _name) public view override returns (bool) {
         return bytes(properties[_name].name).length != 0;
     }
 
-    function existUnconfirmed(string memory _name) public view returns (bool) {
+    function existUnconfirmed(string memory _name) public view override returns (bool) {
         return bytes(unconfirmedProperties[_name].name).length != 0;
     }
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.2;
 
 import "./System.sol";
 import "./utils/ArrayUtil.sol";
@@ -15,7 +15,7 @@ contract MasterNode is IMasterNode, System {
     event MNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _lockID);
     event MNStateUpdate(address _addr, uint _newState, uint _oldState);
 
-    function register(bool _isUnion, address _addr, uint _lockDay, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive) public payable {
+    function register(bool _isUnion, address _addr, uint _lockDay, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive) public payable override {
         require(_addr != address(0), "invalid address");
         require(!existNodeAddress(_addr), "existent address");
         if(!_isUnion) {
@@ -38,7 +38,7 @@ contract MasterNode is IMasterNode, System {
         emit MNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
-    function appendRegister(address _addr, uint _lockDay) public payable {
+    function appendRegister(address _addr, uint _lockDay) public payable override {
         require(exist(_addr), "non-existent masternode");
         require(msg.value >= getPropertyValue("masternode_append_min_amount") * COIN, "less than min append lock amount");
         require(_lockDay >= getPropertyValue("masternode_append_min_lockday"), "less than min append lock day");
@@ -48,7 +48,7 @@ contract MasterNode is IMasterNode, System {
         emit MNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
-    function turnRegister(address _addr, uint _lockID) public {
+    function turnRegister(address _addr, uint _lockID) public override {
         require(exist(_addr), "non-existent masternode");
         IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_lockID);
         require(record.addr == msg.sender, "you aren't record owner");
@@ -62,7 +62,7 @@ contract MasterNode is IMasterNode, System {
         emit MNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
 
-    function reward(address _addr) public payable onlySystemRewardContract {
+    function reward(address _addr) public payable override onlySystemRewardContract {
         require(exist(_addr), "non-existent masternode");
         require(msg.value > 0, "invalid reward");
         MasterNodeInfo memory info = masternodes[_addr];
@@ -128,7 +128,7 @@ contract MasterNode is IMasterNode, System {
         info.lastRewardHeight = block.number;
     }
 
-    function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID) public onlySafe3Contract {
+    function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID) public override onlySafe3Contract {
         require(!existNodeAddress(_addr), "existent address");
         require(_amount >= getPropertyValue("masternode_min_amount") * COIN, "less than min lock amount");
         create(_addr, _lockID, _amount, "", "", IncentivePlan(MAX_INCENTIVE, 0, 0));
@@ -136,7 +136,7 @@ contract MasterNode is IMasterNode, System {
         emit MNRegister(_addr, msg.sender, _amount, _lockDay, _lockID);
     }
 
-    function changeAddress(address _addr, address _newAddr) public {
+    function changeAddress(address _addr, address _newAddr) public override {
         require(exist(_addr), "non-existent masternode");
         require(_newAddr != address(0), "invalid new address");
         require(!existNodeAddress(_newAddr), "existent new address");
@@ -149,7 +149,7 @@ contract MasterNode is IMasterNode, System {
         mnEnode2addr[masternodes[_newAddr].enode] = _newAddr;
     }
 
-    function changeEnode(address _addr, string memory _enode) public {
+    function changeEnode(address _addr, string memory _enode) public override {
         require(exist(_addr), "non-existent masternode");
         require(bytes(_enode).length >= MIN_NODE_ENODE_LEN, "invalid enode");
         require(!existNodeEnode(_enode), "existent enode");
@@ -161,7 +161,7 @@ contract MasterNode is IMasterNode, System {
         delete mnEnode2addr[oldEnode];
     }
 
-    function changeDescription(address _addr, string memory _description) public {
+    function changeDescription(address _addr, string memory _description) public override {
         require(exist(_addr), "non-existent masternode");
         require(bytes(_description).length <= MAX_NODE_DESCRIPTION_LEN, "invalid description");
         require(msg.sender == masternodes[_addr].creator, "caller isn't masternode creator");
@@ -169,13 +169,13 @@ contract MasterNode is IMasterNode, System {
         masternodes[_addr].updateHeight = block.number;
     }
 
-    function changeOfficial(address _addr, bool _flag) public onlyOwner {
+    function changeOfficial(address _addr, bool _flag) public override onlyOwner {
         require(exist(_addr), "non-existent masternode");
         masternodes[_addr].isOfficial = _flag;
         masternodes[_addr].updateHeight = block.number;
     }
 
-    function changeState(uint _id, uint _state) public onlyMasterNodeStateContract {
+    function changeState(uint _id, uint _state) public override onlyMasterNodeStateContract {
         address addr = mnID2addr[_id];
         if(mnID2addr[_id] == address(0)) {
             return;
@@ -185,15 +185,15 @@ contract MasterNode is IMasterNode, System {
         emit MNStateUpdate(addr, _state, oldState);
     }
 
-    function getInfo(address _addr) public view returns (MasterNodeInfo memory) {
+    function getInfo(address _addr) public view override returns (MasterNodeInfo memory) {
         return masternodes[_addr];
     }
 
-    function getInfoByID(uint _id) public view returns (MasterNodeInfo memory) {
+    function getInfoByID(uint _id) public view override returns (MasterNodeInfo memory) {
         return masternodes[mnID2addr[_id]];
     }
 
-    function getNext() public view returns (address) {
+    function getNext() public view override returns (address) {
         uint minAmount = getPropertyValue("masternode_min_amount") * COIN;
         uint count = 0;
         for(uint i = 0; i < mnIDs.length; i++) {
@@ -232,7 +232,7 @@ contract MasterNode is IMasterNode, System {
         }
     }
 
-    function getAll() public view returns (MasterNodeInfo[] memory) {
+    function getAll() public view override returns (MasterNodeInfo[] memory) {
         MasterNodeInfo[] memory ret = new MasterNodeInfo[](mnIDs.length);
         for(uint i = 0; i < mnIDs.length; i++) {
             ret[i] = masternodes[mnID2addr[mnIDs[i]]];
@@ -240,7 +240,7 @@ contract MasterNode is IMasterNode, System {
         return ret;
     }
 
-    function getOfficials() public view returns (MasterNodeInfo[] memory) {
+    function getOfficials() public view override returns (MasterNodeInfo[] memory) {
         uint count;
         for(uint i = 0; i < mnIDs.length; i++) {
             if(masternodes[mnID2addr[mnIDs[i]]].isOfficial) {
@@ -257,23 +257,23 @@ contract MasterNode is IMasterNode, System {
         return ret;
     }
 
-    function getNum() public view returns (uint) {
+    function getNum() public view override returns (uint) {
         return mnIDs.length;
     }
 
-    function exist(address _addr) public view returns (bool) {
+    function exist(address _addr) public view override returns (bool) {
         return masternodes[_addr].id != 0;
     }
 
-    function existID(uint _id) public view returns (bool) {
+    function existID(uint _id) public view override returns (bool) {
         return mnID2addr[_id] != address(0);
     }
 
-    function existEnode(string memory _enode) public view returns (bool) {
+    function existEnode(string memory _enode) public view override returns (bool) {
         return mnEnode2addr[_enode] != address(0);
     }
 
-    function existLockID(address _addr, uint _lokcID) public view returns (bool) {
+    function existLockID(address _addr, uint _lokcID) public view override returns (bool) {
         MasterNodeInfo memory mn = masternodes[_addr];
         for(uint i = 0; i < mn.founders.length; i++) {
             if(mn.founders[i].lockID == _lokcID) {

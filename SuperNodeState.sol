@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity >= 0.8.2;
 
 import "./System.sol";
 
 contract SuperNodeState is INodeState, System {
-
     uint[] ids; // all node id
     mapping(uint => uint) id2index; // index in ids
     mapping(uint => uint) id2state; // id to state
     mapping(uint => StateEntry[]) id2entries; // id to upload informations
 
-    function uploadState(uint[] memory _ids, uint[] memory _states) public onlySN {
+    function uploadState(uint[] memory _ids, uint[] memory _states) public override onlySN {
         require(_ids.length == _states.length, "id list isn't matched with state list");
         bool flag = false;
         uint pos = 0;
@@ -32,7 +31,7 @@ contract SuperNodeState is INodeState, System {
         }
     }
 
-    function getAllState() public view returns (StateInfo[] memory) {
+    function getAllState() public view override returns (StateInfo[] memory) {
         StateInfo[] memory infos = new StateInfo[](ids.length);
         for(uint i = 0; i < infos.length; i++) {
             uint id = ids[i];
@@ -42,7 +41,7 @@ contract SuperNodeState is INodeState, System {
         return infos;
     }
 
-    function getEntries(uint _id) public view returns (StateEntry[] memory) {
+    function getEntries(uint _id) public view override returns (StateEntry[] memory) {
         return id2entries[_id];
     }
 
