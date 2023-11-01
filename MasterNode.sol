@@ -125,7 +125,7 @@ contract MasterNode is IMasterNode, System {
         // reward to address
         getAccountManager().reward{value: msg.value}(tempAddrs, tempAmounts);
         emit SystemReward(_addr, REWARD_MN, tempAddrs, tempRewardTypes, tempAmounts);
-        info.lastRewardHeight = block.number;
+        masternodes[_addr].lastRewardHeight = block.number;
     }
 
     function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID) public override onlySafe3Contract {
