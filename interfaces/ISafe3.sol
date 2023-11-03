@@ -18,7 +18,7 @@ interface ISafe3 {
         uint redeemHeight;
     }
 
-    function redeemAvaiable(bytes memory _pubkey, bytes memory _sig) external;
+    function redeemAvailable(bytes memory _pubkey, bytes memory _sig) external;
     function redeemLock(bytes memory _pubkey, bytes memory _sig) external;
 
     function getAvailable(string memory _safe3Addr) external view returns (Safe3Info memory);

@@ -18,7 +18,7 @@ contract Safe3 is ISafe3, System {
     bytes20[] lockedKeyIDs;
     mapping(bytes20 => Safe3LockInfo[]) locks;
 
-    function redeemAvaiable(bytes memory _pubkey, bytes memory _sig) public override {
+    function redeemAvailable(bytes memory _pubkey, bytes memory _sig) public override {
         bytes20 keyID = getKeyIDFromPubkey(_pubkey);
         require(availables[keyID].amount > 0, "non-existent avaiable amount");
         require(availables[keyID].redeemHeight == 0, "has redeemed");
