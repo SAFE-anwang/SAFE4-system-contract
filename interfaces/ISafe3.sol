@@ -19,7 +19,7 @@ interface ISafe3 {
     }
 
     function redeemAvailable(bytes memory _pubkey, bytes memory _sig) external;
-    function redeemLock(bytes memory _pubkey, bytes memory _sig) external;
+    function redeemLocked(bytes memory _pubkey, bytes memory _sig) external;
 
     function getAvailable(string memory _safe3Addr) external view returns (Safe3Info memory);
     function getLocked(string memory _safe3Addr) external view returns (Safe3LockInfo[] memory);

@@ -170,7 +170,7 @@ contract Proposal is IProposal, System {
         return pps;
     }
 
-    function getMine() public view override returns (ProposalInfo[] memory) {
+    function getMines() public view override returns (ProposalInfo[] memory) {
         uint[] memory mineIDs = addr2ids[msg.sender];
         ProposalInfo[] memory pps = new ProposalInfo[](mineIDs.length);
         for(uint i = 0; i < mineIDs.length; i++) {
@@ -186,13 +186,13 @@ contract Proposal is IProposal, System {
     function handle(uint _id) internal {
         ProposalInfo memory pp = proposals[_id];
         if(pp.payTimes == 1) {
-            getAccountManager().deposit2{value: pp.payAmount}(pp.creator, pp.startPayTime);
+            getAccountManager().depositWithSecond{value: pp.payAmount}(pp.creator, pp.startPayTime);
             return;
         }
         uint space = (pp.endPayTime - pp.startPayTime) / (pp.payTimes - 1);
         for(uint i = 0; i < pp.payTimes - 1; i++) {
-            getAccountManager().deposit2{value: pp.payAmount / pp.payTimes}(pp.creator, pp.startPayTime + space * i - block.timestamp);
+            getAccountManager().depositWithSecond{value: pp.payAmount / pp.payTimes}(pp.creator, pp.startPayTime + space * i - block.timestamp);
         }
-        getAccountManager().deposit2{value: pp.payAmount / pp.payTimes + pp.payAmount % pp.payTimes}(pp.creator, pp.endPayTime - block.timestamp);
+        getAccountManager().depositWithSecond{value: pp.payAmount / pp.payTimes + pp.payAmount % pp.payTimes}(pp.creator, pp.endPayTime - block.timestamp);
     }
 }

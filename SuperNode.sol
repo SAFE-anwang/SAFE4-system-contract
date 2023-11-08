@@ -15,6 +15,7 @@ contract SuperNode is ISuperNode, System {
     event SNRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _reocrdID);
     event SNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _recordID);
     event SNStateUpdate(address _addr, uint _newState, uint _oldState);
+    event SystemReward(address _nodeAddr, uint _nodeType, address[] _addrs, uint[] _rewardTypes, uint[] _amounts);
 
     function register(bool _isUnion, address _addr, uint _lockDay, string memory _name, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable override {
         require(_addr != address(0), "invalid address");
@@ -36,7 +37,7 @@ contract SuperNode is ISuperNode, System {
         require(_voterIncentive >= MIN_SN_VOTER_INCENTIVE && _voterIncentive <= MAX_SN_VOTER_INCENTIVE, "creator incentive is 40% - 50%");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         create(_addr, lockID, msg.value, _name, _enode, _description, IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive));
-        getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, _lockDay); // creator's lock id can't register other supernode again
+        getAccountManager().setRecordFreezeInfo(lockID, msg.sender, _addr, _lockDay); // creator's lock id can't register other supernode again
         emit SNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -46,7 +47,7 @@ contract SuperNode is ISuperNode, System {
         require(_lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         append(_addr, lockID, msg.value);
-        getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, getPropertyValue("record_supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
+        getAccountManager().setRecordFreezeInfo(lockID, msg.sender, _addr, getPropertyValue("record_supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
         emit SNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -60,7 +61,7 @@ contract SuperNode is ISuperNode, System {
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight, "record is freezen");
         append(_addr, _lockID, record.amount);
-        getAccountManager().setRecordFreeze(_lockID, msg.sender, _addr, getPropertyValue("record_supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
+        getAccountManager().setRecordFreezeInfo(_lockID, msg.sender, _addr, getPropertyValue("record_supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
         emit SNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
 
@@ -199,7 +200,7 @@ contract SuperNode is ISuperNode, System {
         supernodes[_addr].updateHeight = block.number;
     }
 
-    function changeOfficial(address _addr, bool _flag) public override onlyOwner {
+    function changeIsOfficial(address _addr, bool _flag) public override onlyOwner {
         require(exist(_addr), "non-existent supernode");
         supernodes[_addr].isOfficial = _flag;
         supernodes[_addr].updateHeight = block.number;
@@ -274,7 +275,7 @@ contract SuperNode is ISuperNode, System {
         return ret;
     }
 
-    function getTop() public view override returns (SuperNodeInfo[] memory) {
+    function getTops() public view override returns (SuperNodeInfo[] memory) {
         uint minAmount = getPropertyValue("supernode_min_amount") * COIN;
         uint num = 0;
         for(uint i = 0; i < snIDs.length; i++) {

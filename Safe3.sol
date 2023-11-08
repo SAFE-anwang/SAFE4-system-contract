@@ -8,7 +8,7 @@ contract Safe3 is ISafe3, System {
     uint internal constant SPOS_HEIGHT = 1092826;
     uint internal constant SAFE3_END_HEIGHT = 5000000;
 
-    // avaiable safe3
+    // available safe3
     uint num;
     bytes20[] keyIDs;
     mapping(bytes20 => Safe3Info) availables;
@@ -20,7 +20,7 @@ contract Safe3 is ISafe3, System {
 
     function redeemAvailable(bytes memory _pubkey, bytes memory _sig) public override {
         bytes20 keyID = getKeyIDFromPubkey(_pubkey);
-        require(availables[keyID].amount > 0, "non-existent avaiable amount");
+        require(availables[keyID].amount > 0, "non-existent available amount");
         require(availables[keyID].redeemHeight == 0, "has redeemed");
 
         bytes32 h = sha256(abi.encodePacked(getSafe3Addr(_pubkey)));
@@ -33,7 +33,7 @@ contract Safe3 is ISafe3, System {
         availables[keyID].redeemHeight = block.number;
     }
 
-    function redeemLock(bytes memory _pubkey, bytes memory _sig) public override {
+    function redeemLocked(bytes memory _pubkey, bytes memory _sig) public override {
         bytes20 keyID = getKeyIDFromPubkey(_pubkey);
         for(uint i = 0; i < locks[keyID].length; i++) {
             Safe3LockInfo memory info = locks[keyID][i];

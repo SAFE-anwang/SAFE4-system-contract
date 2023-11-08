@@ -29,7 +29,7 @@ contract AccountManager is IAccountManager, System {
         return id;
     }
 
-    function deposit2(address _to, uint _lockSecond) public payable override returns (uint) {
+    function depositWithSecond(address _to, uint _lockSecond) public payable override onlyProposalContract returns (uint) {
         require(msg.value > 0, "invalid amount");
         if(_lockSecond == 0) {
             balances[_to] += msg.value;
@@ -177,31 +177,31 @@ contract AccountManager is IAccountManager, System {
         return id;
     }
 
-    function setRecordFreeze(uint _id, address _addr, address _target, uint _day) public override onlyMnOrSnContract {
+    function setRecordFreezeInfo(uint _id, address _addr, address _target, uint _day) public override onlyMnOrSnContract {
         if(_id == 0) {
             return;
         }
         require(id2addr[_id] == _addr, "invalid record id");
         RecordUseInfo storage useinfo = id2useinfo[_id];
         if(_day == 0) {
-            if(useinfo.specialAddr != address(0)) {
-                emit SafeUnfreeze(_id, useinfo.specialAddr);
+            if(useinfo.frozenAddr != address(0)) {
+                emit SafeUnfreeze(_id, useinfo.frozenAddr);
             }
-            useinfo.specialAddr = address(0);
+            useinfo.frozenAddr = address(0);
             useinfo.freezeHeight = 0;
             useinfo.unfreezeHeight = 0;
         } else {
-            if(useinfo.specialAddr != address(0)) {
-                emit SafeUnfreeze(_id, useinfo.specialAddr);
+            if(useinfo.frozenAddr != address(0)) {
+                emit SafeUnfreeze(_id, useinfo.frozenAddr);
             }
-            useinfo.specialAddr = _target;
+            useinfo.frozenAddr = _target;
             useinfo.freezeHeight = block.number;
             useinfo.unfreezeHeight = useinfo.freezeHeight + _day * SECONDS_IN_DAY / getPropertyValue("block_space");
             emit SafeFreeze(_id, _target, _day);
         }
     }
 
-    function setRecordVote(uint _id, address _addr, address _target, uint _day) public override onlySNVoteContract {
+    function setRecordVoteInfo(uint _id, address _addr, address _target, uint _day) public override onlySNVoteContract {
         if(_id == 0) {
             return;
         }
@@ -264,13 +264,13 @@ contract AccountManager is IAccountManager, System {
         return (amount, ids);
     }
 
-    // get avaiable amount
+    // get available amount
     function getAvailableAmount(address _addr) public view override returns (uint, uint[] memory) {
         uint curHeight = block.number;
         AccountRecord[] memory records = addr2records[_addr];
         uint tempAmount = balances[_addr];
 
-        // get avaiable count
+        // get available count
         uint count = 0;
         if(tempAmount != 0) {
             count++;
@@ -281,7 +281,7 @@ contract AccountManager is IAccountManager, System {
             }
         }
 
-        // get avaiable amount and id list
+        // get available amount and id list
         uint[] memory ids = new uint[](count);
         uint amount = 0;
         uint index = 0;
@@ -300,11 +300,11 @@ contract AccountManager is IAccountManager, System {
     }
 
     // get locked amount
-    function getLockAmount(address _addr) public view override returns (uint, uint[] memory) {
+    function getLockedAmount(address _addr) public view override returns (uint, uint[] memory) {
         uint curHeight = block.number;
         AccountRecord[] memory records = addr2records[_addr];
 
-        // get avaiable count
+        // get locked count
         uint count = 0;
         for(uint i = 0; i < records.length; i++) {
             if(curHeight < records[i].unlockHeight) {
@@ -325,12 +325,12 @@ contract AccountManager is IAccountManager, System {
         return (amount, ids);
     }
 
-    // get bind amount
-    function getFreezeAmount(address _addr) public view override returns (uint, uint[] memory) {
+    // get used amount
+    function getUsedAmount(address _addr) public view override returns (uint, uint[] memory) {
         uint curHeight = block.number;
         AccountRecord[] memory records = addr2records[_addr];
 
-        // get avaiable count
+        // get used count
         uint count = 0;
         for(uint i = 0; i < records.length; i++) {
             if(curHeight < id2useinfo[records[i].id].unfreezeHeight || curHeight < id2useinfo[records[i].id].releaseHeight) {
@@ -338,7 +338,7 @@ contract AccountManager is IAccountManager, System {
             }
         }
 
-        // get locked amount and id list
+        // get used amount and id list
         uint[] memory ids = new uint[](count);
         uint amount = 0;
         uint index = 0;
@@ -370,11 +370,13 @@ contract AccountManager is IAccountManager, System {
         return ret;
     }
 
+    function getRecord0(address _addr) public view override returns (AccountRecord memory) {
+        return AccountRecord(0, _addr, balances[_addr], 0, 0, 0);
+    }
+
     // get record by id
     function getRecordByID(uint _id) public view override returns (AccountRecord memory) {
-        if(_id == 0) {
-            return AccountRecord(0, msg.sender, balances[msg.sender], 0, 0, 0);
-        }
+        require(_id != 0, "id=0 please use getRecord0");
         return addr2records[id2addr[_id]][id2index[_id]];
     }
 

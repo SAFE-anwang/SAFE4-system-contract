@@ -6,10 +6,9 @@ import "./System.sol";
 contract SuperNodeState is INodeState, System {
     uint[] ids; // all node id
     mapping(uint => uint) id2index; // index in ids
-    mapping(uint => uint) id2state; // id to state
     mapping(uint => StateEntry[]) id2entries; // id to upload informations
 
-    function uploadState(uint[] memory _ids, uint[] memory _states) public override onlySN {
+    function upload(uint[] memory _ids, uint[] memory _states) public override onlySN {
         require(_ids.length == _states.length, "id list isn't matched with state list");
         bool flag = false;
         uint pos = 0;
@@ -31,17 +30,7 @@ contract SuperNodeState is INodeState, System {
         }
     }
 
-    function getAllState() public view override returns (StateInfo[] memory) {
-        StateInfo[] memory infos = new StateInfo[](ids.length);
-        for(uint i = 0; i < infos.length; i++) {
-            uint id = ids[i];
-            ISuperNode.SuperNodeInfo memory sn = getSuperNode().getInfoByID(id);
-            infos[i] = StateInfo(sn.addr, id, id2state[id]);
-        }
-        return infos;
-    }
-
-    function getEntries(uint _id) public view override returns (StateEntry[] memory) {
+    function get(uint _id) public view override returns (StateEntry[] memory) {
         return id2entries[_id];
     }
 
@@ -64,7 +53,6 @@ contract SuperNodeState is INodeState, System {
                         ids.push(_id);
                         id2index[_id] = ids.length;
                     }
-                    id2state[_id] = _state;
                     delete id2entries[_id];
                     getSuperNode().changeState(_id, _state);
                     break;

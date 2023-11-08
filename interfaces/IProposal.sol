@@ -30,6 +30,6 @@ interface IProposal {
     function changeDescription(uint _id, string memory _description) external;
     function getInfo(uint _id) external view returns (ProposalInfo memory);
     function getAll() external view returns (ProposalInfo[] memory);
-    function getMine() external view returns (ProposalInfo[] memory);
+    function getMines() external view returns (ProposalInfo[] memory);
     function exist(uint _id) external view returns (bool);
 }

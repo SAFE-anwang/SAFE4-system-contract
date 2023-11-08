@@ -6,10 +6,9 @@ import "./System.sol";
 contract MasterNodeState is INodeState, System {
     uint[] ids; // all node id
     mapping(uint => uint) id2index; // index in ids
-    mapping(uint => uint) id2state; // id to state
     mapping(uint => StateEntry[]) id2entries; // id to upload informations
 
-    function uploadState(uint[] memory _ids, uint[] memory _states) public override onlySN {
+    function upload(uint[] memory _ids, uint[] memory _states) public override onlySN {
         require(_ids.length == _states.length, "id list isn't matched with state list");
         bool flag = false;
         uint pos = 0;
@@ -27,21 +26,11 @@ contract MasterNodeState is INodeState, System {
             } else {
                 id2entries[id].push(StateEntry(msg.sender, state));
             }
-            updateState(id, state);
+            update(id, state);
         }
     }
 
-    function getAllState() public view override returns (StateInfo[] memory) {
-        StateInfo[] memory infos = new StateInfo[](ids.length);
-        for(uint i = 0; i < infos.length; i++) {
-            uint id = ids[i];
-            IMasterNode.MasterNodeInfo memory mn = getMasterNode().getInfoByID(id);
-            infos[i] = StateInfo(mn.addr, id, id2state[id]);
-        }
-        return infos;
-    }
-
-    function getEntries(uint _id) public view override returns (StateEntry[] memory) {
+    function get(uint _id) public view override returns (StateEntry[] memory) {
         return id2entries[_id];
     }
 
@@ -54,7 +43,7 @@ contract MasterNodeState is INodeState, System {
         return (false, 0);
     }
 
-    function updateState(uint _id, uint _state) internal {
+    function update(uint _id, uint _state) internal {
         StateEntry[] storage entries = id2entries[_id];
         uint num = 0;
         for(uint i = 0; i < entries.length; i++) {
@@ -64,7 +53,6 @@ contract MasterNodeState is INodeState, System {
                         ids.push(_id);
                         id2index[_id] = ids.length;
                     }
-                    id2state[_id] = _state;
                     delete id2entries[_id];
                     getMasterNode().changeState(_id, _state);
                     break;

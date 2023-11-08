@@ -20,8 +20,6 @@ interface INode {
         uint height;
     }
 
-    event SystemReward(address _nodeAddr, uint _nodeType, address[] _addrs, uint[] _rewardTypes, uint[] _amounts);
-
     function appendRegister(address _addr, uint _lockDay) external payable;
     function turnRegister(address _addr, uint _lockID) external;
     function reward(address _addr) external payable;
@@ -29,7 +27,7 @@ interface INode {
     function changeAddress(address _addr, address _newAddr) external;
     function changeEnode(address _addr, string memory _enode) external;
     function changeDescription(address _addr, string memory _description) external;
-    function changeOfficial(address _addr, bool _flag) external;
+    function changeIsOfficial(address _addr, bool _flag) external;
     function changeState(uint _id, uint _state) external;
 
     function getNum() external view returns (uint);

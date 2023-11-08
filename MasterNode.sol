@@ -14,6 +14,7 @@ contract MasterNode is IMasterNode, System {
     event MNRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _lockID);
     event MNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _lockID);
     event MNStateUpdate(address _addr, uint _newState, uint _oldState);
+    event SystemReward(address _nodeAddr, uint _nodeType, address[] _addrs, uint[] _rewardTypes, uint[] _amounts);
 
     function register(bool _isUnion, address _addr, uint _lockDay, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive) public payable override {
         require(_addr != address(0), "invalid address");
@@ -34,7 +35,7 @@ contract MasterNode is IMasterNode, System {
         }
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         create(_addr, lockID, msg.value, _enode, _description, IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
-        getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, _lockDay); // creator's lock id can't register other masternode again
+        getAccountManager().setRecordFreezeInfo(lockID, msg.sender, _addr, _lockDay); // creator's lock id can't register other masternode again
         emit MNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -44,7 +45,7 @@ contract MasterNode is IMasterNode, System {
         require(_lockDay >= getPropertyValue("masternode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         append(_addr, lockID, msg.value);
-        getAccountManager().setRecordFreeze(lockID, msg.sender, _addr, getPropertyValue("record_masternode_freezeday")); // partner's lock id can‘t register other masternode until unfreeze it
+        getAccountManager().setRecordFreezeInfo(lockID, msg.sender, _addr, getPropertyValue("record_masternode_freezeday")); // partner's lock id can‘t register other masternode until unfreeze it
         emit MNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -58,7 +59,7 @@ contract MasterNode is IMasterNode, System {
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight, "record is freezen");
         append(_addr, _lockID, record.amount);
-        getAccountManager().setRecordFreeze(_lockID, msg.sender, _addr, getPropertyValue("record_masternode_freezeday")); // partner's lock id can't register other masternode until unfreeze it
+        getAccountManager().setRecordFreezeInfo(_lockID, msg.sender, _addr, getPropertyValue("record_masternode_freezeday")); // partner's lock id can't register other masternode until unfreeze it
         emit MNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
 
@@ -132,7 +133,7 @@ contract MasterNode is IMasterNode, System {
         require(!existNodeAddress(_addr), "existent address");
         require(_amount >= getPropertyValue("masternode_min_amount") * COIN, "less than min lock amount");
         create(_addr, _lockID, _amount, "", "", IncentivePlan(MAX_INCENTIVE, 0, 0));
-        getAccountManager().setRecordFreeze(_lockID, _addr, _addr, _lockDay);
+        getAccountManager().setRecordFreezeInfo(_lockID, _addr, _addr, _lockDay);
         emit MNRegister(_addr, msg.sender, _amount, _lockDay, _lockID);
     }
 
@@ -169,7 +170,7 @@ contract MasterNode is IMasterNode, System {
         masternodes[_addr].updateHeight = block.number;
     }
 
-    function changeOfficial(address _addr, bool _flag) public override onlyOwner {
+    function changeIsOfficial(address _addr, bool _flag) public override onlyOwner {
         require(exist(_addr), "non-existent masternode");
         masternodes[_addr].isOfficial = _flag;
         masternodes[_addr].updateHeight = block.number;

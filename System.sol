@@ -70,6 +70,11 @@ contract System is Initializable, OwnableUpgradeable, Constant {
         _;
     }
 
+    modifier onlyProposalContract {
+        require(msg.sender == PROPOSAL_PROXY_ADDR, "No proposal contract");
+        _;
+    }
+
     function getProperty() internal pure returns (IProperty) {
         return IProperty(PROPERTY_PROXY_ADDR);
     }

@@ -13,7 +13,6 @@ interface INodeState {
         uint state;
     }
 
-    function uploadState(uint[] memory _ids, uint[] memory _states) external;
-    function getAllState() external view returns (StateInfo[] memory);
-    function getEntries(uint _id) external view returns (StateEntry[] memory);
+    function upload(uint[] memory _ids, uint[] memory _states) external;
+    function get(uint _id) external view returns (StateEntry[] memory);
 }
