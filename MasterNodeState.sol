@@ -4,8 +4,6 @@ pragma solidity ^0.8.2;
 import "./System.sol";
 
 contract MasterNodeState is INodeState, System {
-    uint[] ids; // all node id
-    mapping(uint => uint) id2index; // index in ids
     mapping(uint => StateEntry[]) id2entries; // id to upload informations
 
     function upload(uint[] memory _ids, uint[] memory _states) public override onlySN {
@@ -49,10 +47,6 @@ contract MasterNodeState is INodeState, System {
         for(uint i = 0; i < entries.length; i++) {
             if(_state == entries[i].state) {
                 if(++num > getSNNum() * 2 / 3) {
-                    if(id2index[_id] == 0) {
-                        ids.push(_id);
-                        id2index[_id] = ids.length;
-                    }
                     delete id2entries[_id];
                     getMasterNode().changeState(_id, _state);
                     break;
