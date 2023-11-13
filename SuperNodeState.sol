@@ -24,7 +24,7 @@ contract SuperNodeState is INodeState, System {
             } else {
                 id2entries[id].push(StateEntry(msg.sender, state));
             }
-            updateState(id, state);
+            update(id, state);
         }
     }
 
@@ -41,7 +41,7 @@ contract SuperNodeState is INodeState, System {
         return (false, 0);
     }
 
-    function updateState(uint _id, uint _state) internal {
+    function update(uint _id, uint _state) internal {
         StateEntry[] storage entries = id2entries[_id];
         uint num = 0;
         for(uint i = 0; i < entries.length; i++) {

@@ -62,8 +62,7 @@ contract SNVote is ISNVote, System {
         remove(_voterAddr, _recordID);
     }
 
-    function proxyVote(address _snAddr) public override {
-        require(isMN(msg.sender), "caller isn't proxy");
+    function proxyVote(address _snAddr) public override onlyMN {
         require(isSN(_snAddr), "invalid supernode");
         uint recordID;
         address voterAddr;
