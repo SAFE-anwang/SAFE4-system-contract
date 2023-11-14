@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >= 0.8.2;
+pragma solidity >=0.8.6 <=0.8.19;
 
 import "./System.sol";
 import "./utils/Base58.sol";
