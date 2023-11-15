@@ -14,9 +14,7 @@
 		},
 		"remappings":  [
 			"openzeppelin-contracts-upgradeable/=3rd/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts/",
-			"openzeppelin-contracts/=3rd/OpenZeppelin/openzeppelin-contracts/contracts/",
-			"ds-test/=3rd/forge-std/lib/ds-test/src/",
-			"forge-std/=3rd/forge-std/src/"
+			"openzeppelin-contracts/=3rd/OpenZeppelin/openzeppelin-contracts/contracts/"
 		]
 	}
 }
