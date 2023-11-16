@@ -280,7 +280,7 @@ contract SuperNode is ISuperNode, System {
         uint num = 0;
         for(uint i = 0; i < snIDs.length; i++) {
             address addr = snID2addr[snIDs[i]];
-            if(supernodes[addr].amount >= minAmount) {
+            if(supernodes[addr].amount >= minAmount && supernodes[addr].stateInfo.state == NODE_STATE_START) {
                 num++;
             }
         }
@@ -289,7 +289,7 @@ contract SuperNode is ISuperNode, System {
         uint k = 0;
         for(uint i = 0; i < snIDs.length; i++) {
             address addr = snID2addr[snIDs[i]];
-            if(supernodes[addr].amount >= minAmount) {
+            if(supernodes[addr].amount >= minAmount && supernodes[addr].stateInfo.state == NODE_STATE_START) {
                 snAddrs[k++] = addr;
             }
         }
