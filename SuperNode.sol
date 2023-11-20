@@ -163,11 +163,12 @@ contract SuperNode is ISuperNode, System {
                 break;
             }
         }
-        if(i == info.founders.length) {
-            return;
+        if(i != info.founders.length) {
+            for(uint k = i; k < info.founder.length - 1; k++) { // by order
+                info.founders[k] = info.founders[k + 1];
+            }
+            info.founders.pop();
         }
-        info.founders[i] = info.founders[info.founders.length - 1];
-        info.founders.pop();
     }
 
     function changeAddress(address _addr, address _newAddr) public override {
