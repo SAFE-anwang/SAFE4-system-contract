@@ -164,7 +164,7 @@ contract SuperNode is ISuperNode, System {
             }
         }
         if(i != info.founders.length) {
-            for(uint k = i; k < info.founder.length - 1; k++) { // by order
+            for(uint k = i; k < info.founders.length - 1; k++) { // by order
                 info.founders[k] = info.founders[k + 1];
             }
             info.founders.pop();
@@ -392,8 +392,9 @@ contract SuperNode is ISuperNode, System {
         if(info.amount < minAmount) {
             return false;
         }
+        IAccountManager.AccountRecord memory record;
         uint lockAmount;
-        for(uint i = 0;; i < info.founders.length; i++) {
+        for(uint i = 0; i < info.founders.length; i++) {
             record = getAccountManager().getRecordByID(info.founders[i].lockID);
             if(record.unlockHeight > block.number) {
                 lockAmount += record.amount;

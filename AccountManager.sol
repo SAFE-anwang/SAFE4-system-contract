@@ -124,7 +124,7 @@ contract AccountManager is IAccountManager, System {
         for(uint i = 0; i < temp_records.length; i++) {
             if(usedAmount + temp_records[i].amount <= _amount) {
                 if(temp_records[i].id != 0) {
-                    UseInfo memory useinfo = id2useinfo[temp_records[i].id];
+                    RecordUseInfo memory useinfo = id2useinfo[temp_records[i].id];
                     getSNVote().removeVoteOrApproval2(msg.sender, temp_records[i].id);
                     if(getMasterNode().exist(useinfo.frozenAddr)) {
                         getMasterNode().removeMember(useinfo.frozenAddr, temp_records[i].id);
@@ -141,7 +141,7 @@ contract AccountManager is IAccountManager, System {
                 }
             } else {
                 if(temp_records[i].id != 0) {
-                    UseInfo memory useinfo = id2useinfo[temp_records[i].id];
+                    RecordUseInfo memory useinfo = id2useinfo[temp_records[i].id];
                     getSNVote().removeVoteOrApproval2(msg.sender, temp_records[i].id);
                     if(getMasterNode().exist(useinfo.frozenAddr)) {
                         getMasterNode().removeMember(useinfo.frozenAddr, temp_records[i].id);
