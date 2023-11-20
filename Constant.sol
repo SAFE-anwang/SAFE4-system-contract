@@ -60,8 +60,8 @@ abstract contract Constant {
 
     // for vote
     uint internal constant VOTE_AGREE = 1;
-    uint internal constant VOTE_REJECT = 1;
-    uint internal constant VOTE_ABSTAIN = 1;
+    uint internal constant VOTE_REJECT = 2;
+    uint internal constant VOTE_ABSTAIN = 3;
 
     // node state
     uint internal constant NODE_STATE_INIT = 0;
