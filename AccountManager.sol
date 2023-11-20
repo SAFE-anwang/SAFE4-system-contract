@@ -69,7 +69,7 @@ contract AccountManager is IAccountManager, System {
             } else {
                 AccountRecord memory record = getRecordByID(_ids[i]);
                 RecordUseInfo memory useinfo = id2useinfo[_ids[i]];
-                if(record.addr == msg.sender && block.number >= record.unlockHeight && block.number >= useinfo.unfreezeHeight) {
+                if(record.addr == msg.sender && block.number >= record.unlockHeight && block.number >= useinfo.unfreezeHeight && block.number >= useinfo.releaseHeight) {
                     amount += record.amount;
                 }
             }
@@ -80,8 +80,13 @@ contract AccountManager is IAccountManager, System {
                 if(_ids[i] != 0) {
                     AccountRecord memory record = getRecordByID(_ids[i]);
                     RecordUseInfo memory useinfo = id2useinfo[_ids[i]];
-                    if(record.addr == msg.sender && block.number >= record.unlockHeight && block.number >= useinfo.unfreezeHeight) {
+                    if(record.addr == msg.sender && block.number >= record.unlockHeight && block.number >= useinfo.unfreezeHeight && block.number >= useinfo.releaseHeight) {
                         getSNVote().removeVoteOrApproval2(msg.sender, _ids[i]);
+                        if(getMasterNode().exist(useinfo.frozenAddr)) {
+                            getMasterNode().removeMember(useinfo.frozenAddr, _ids[i]);
+                        } else if(getSuperNode().exist(useinfo.frozenAddr)) {
+                            getSuperNode().removeMember(useinfo.frozenAddr, _ids[i]);
+                        }
                         delRecord(_ids[i]);
                     }
                 } else {
@@ -119,7 +124,13 @@ contract AccountManager is IAccountManager, System {
         for(uint i = 0; i < temp_records.length; i++) {
             if(usedAmount + temp_records[i].amount <= _amount) {
                 if(temp_records[i].id != 0) {
+                    UseInfo memory useinfo = id2useinfo[temp_records[i].id];
                     getSNVote().removeVoteOrApproval2(msg.sender, temp_records[i].id);
+                    if(getMasterNode().exist(useinfo.frozenAddr)) {
+                        getMasterNode().removeMember(useinfo.frozenAddr, temp_records[i].id);
+                    } else if(getSuperNode().exist(useinfo.frozenAddr)) {
+                        getSuperNode().removeMember(useinfo.frozenAddr, temp_records[i].id);
+                    }
                     delRecord(temp_records[i].id);
                 } else {
                     balances[msg.sender] = 0;
@@ -130,7 +141,13 @@ contract AccountManager is IAccountManager, System {
                 }
             } else {
                 if(temp_records[i].id != 0) {
+                    UseInfo memory useinfo = id2useinfo[temp_records[i].id];
                     getSNVote().removeVoteOrApproval2(msg.sender, temp_records[i].id);
+                    if(getMasterNode().exist(useinfo.frozenAddr)) {
+                        getMasterNode().removeMember(useinfo.frozenAddr, temp_records[i].id);
+                    } else if(getSuperNode().exist(useinfo.frozenAddr)) {
+                        getSuperNode().removeMember(useinfo.frozenAddr, temp_records[i].id);
+                    }
                     addr2records[msg.sender][id2index[temp_records[i].id]].amount = usedAmount + temp_records[i].amount - _amount;
                 } else {
                     balances[msg.sender] = usedAmount + temp_records[i].amount - _amount;
@@ -430,7 +447,7 @@ contract AccountManager is IAccountManager, System {
     //     AccountRecord memory middle = _arr[_left + (_right - _left) / 2];
     //     while(i <= j) {
     //         while(_arr[i].amount < middle.amount) i++;
-    //         while(middle.amount < _arr[j].amount && j > 0) j--;
+    //         while(middle.amount < _arr[j].amount && j > 0) j--; 
     //         if(i <= j) {
     //             (_arr[i], _arr[j]) = (_arr[j], _arr[i]);
     //             i++;
