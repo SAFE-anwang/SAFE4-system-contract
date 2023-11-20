@@ -129,6 +129,21 @@ contract MasterNode is IMasterNode, System {
         masternodes[_addr].lastRewardHeight = block.number;
     }
 
+    function removeMember(address _addr, uint _lockID) public override onlyAccountManagerContract {
+        MasterNodeInfo storage info = masternodes[_addr];
+        uint i;
+        for(; i < info.founders.length; i++) {
+            if(info.founders[i].lockID == _lockID) {
+                break;
+            }
+        }
+        if(i == info.founders.length) {
+            return;
+        }
+        info.founders[i] = info.founders[info.founders.length - 1];
+        info.founders.pop();
+    }
+
     function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID) public override onlySafe3Contract {
         require(!existNodeAddress(_addr), "existent address");
         require(_amount >= getPropertyValue("masternode_min_amount") * COIN, "less than min lock amount");
@@ -178,7 +193,7 @@ contract MasterNode is IMasterNode, System {
 
     function changeState(uint _id, uint _state) public override onlyMasterNodeStateContract {
         address addr = mnID2addr[_id];
-        if(mnID2addr[_id] == address(0)) {
+        if(addr == address(0)) {
             return;
         }
         uint oldState = masternodes[addr].stateInfo.state;
@@ -276,14 +291,37 @@ contract MasterNode is IMasterNode, System {
         return mnEnode2addr[_enode] != address(0);
     }
 
-    function existLockID(address _addr, uint _lokcID) public view override returns (bool) {
+    function existLockID(address _addr, uint _lockID) public view override returns (bool) {
         MasterNodeInfo memory mn = masternodes[_addr];
         for(uint i = 0; i < mn.founders.length; i++) {
-            if(mn.founders[i].lockID == _lokcID) {
+            if(mn.founders[i].lockID == _lockID) {
                 return true;
             }
         }
         return false;
+    }
+
+    function isValid(address _addr) public view override returns (bool) {
+        MasterNodeInfo memory info = masternodes[_addr];
+        if(info.id == 0) {
+            return false;
+        }
+        uint minAmount = getPropertyValue("masternode_min_amount") * COIN;
+        if(info.amount < minAmount) {
+            return false;
+        }
+        IAccountManager.AccountRecord memory record;
+        uint lockAmount;
+        for(uint i = 0;; i < info.founders.length; i++) {
+            record = getAccountManager().getRecordByID(info.founders[i].lockID);
+            if(record.unlockHeight > block.number) {
+                lockAmount += record.amount;
+            }
+        }
+        if(lockAmount < minAmount) {
+            return false;
+        }
+        return true;
     }
 
     function create(address _addr, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory plan) internal {

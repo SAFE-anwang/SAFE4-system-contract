@@ -155,6 +155,21 @@ contract SuperNode is ISuperNode, System {
         supernodes[_addr].lastRewardHeight = block.number;
     }
 
+    function removeMember(address _addr, uint _lockID) public override onlyAccountManagerContract {
+        SuperNodeInfo storage info = supernodes[_addr];
+        uint i;
+        for(; i < info.founders.length; i++) {
+            if(info.founders[i].lockID == _lockID) {
+                break;
+            }
+        }
+        if(i == info.founders.length) {
+            return;
+        }
+        info.founders[i] = info.founders[info.founders.length - 1];
+        info.founders.pop();
+    }
+
     function changeAddress(address _addr, address _newAddr) public override {
         require(exist(_addr), "non-existent supernode");
         require(_newAddr != address(0), "invalid new address");
@@ -208,7 +223,7 @@ contract SuperNode is ISuperNode, System {
 
     function changeState(uint _id, uint _state) public override onlySuperNodeStateContract {
         address addr = snID2addr[_id];
-        if(snID2addr[_id] == address(0)) {
+        if(addr == address(0)) {
             return;
         }
         uint oldState = supernodes[addr].stateInfo.state;
@@ -365,6 +380,28 @@ contract SuperNode is ISuperNode, System {
             }
         }
         return false;
+    }
+
+    function isValid(address _addr) public view override returns (bool) {
+        SuperNodeInfo memory info = supernodes[_addr];
+        if(info.id == 0) {
+            return false;
+        }
+        uint minAmount = getPropertyValue("supernode_min_amount") * COIN;
+        if(info.amount < minAmount) {
+            return false;
+        }
+        uint lockAmount;
+        for(uint i = 0;; i < info.founders.length; i++) {
+            record = getAccountManager().getRecordByID(info.founders[i].lockID);
+            if(record.unlockHeight > block.number) {
+                lockAmount += record.amount;
+            }
+        }
+        if(lockAmount < minAmount) {
+            return false;
+        }
+        return true;
     }
 
     function create(address _addr, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan) internal {

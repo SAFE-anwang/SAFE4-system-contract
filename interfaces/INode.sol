@@ -23,6 +23,7 @@ interface INode {
     function appendRegister(address _addr, uint _lockDay) external payable;
     function turnRegister(address _addr, uint _lockID) external;
     function reward(address _addr) external payable;
+    function removeMember(address _addr, uint _lockID) external;
 
     function changeAddress(address _addr, address _newAddr) external;
     function changeEnode(address _addr, string memory _enode) external;
@@ -36,4 +37,5 @@ interface INode {
     function existID(uint _id) external view returns (bool);
     function existEnode(string memory _enode) external view returns (bool);
     function existLockID(address _addr, uint _lockID) external view returns (bool);
+    function isValid(address _addr) external view returns (bool);
 }
