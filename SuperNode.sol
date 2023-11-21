@@ -193,7 +193,6 @@ contract SuperNode is ISuperNode, System {
             // remove sn
             delete supernodes[_addr];
         } else if(i != info.founders.length) {
-            info.amount -= getAccountManager().getRecordByID(_lockID).amount;
             for(uint k = i; k < info.founders.length - 1; k++) { // by order
                 info.founders[k] = info.founders[k + 1];
             }
@@ -328,7 +327,7 @@ contract SuperNode is ISuperNode, System {
         for(uint i = 0; i < snIDs.length; i++) {
             address addr = snID2addr[snIDs[i]];
             SuperNodeInfo memory info = supernodes[addr];
-            if(info.amount < minAmount || info.stateInfo.state != NODE_STATE_START) {
+            if(info.stateInfo.state != NODE_STATE_START) {
                 continue;
             }
             uint lockAmount;
@@ -385,19 +384,7 @@ contract SuperNode is ISuperNode, System {
     }
 
     function getNum() public view override returns (uint) {
-        uint minAmount = getPropertyValue("supernode_min_amount") * COIN;
-        uint maxNum = getPropertyValue("supernode_max_num");
-        uint num = 0;
-        for(uint i = 0; i < snIDs.length; i++) {
-            address addr = snID2addr[snIDs[i]];
-            if(supernodes[addr].amount >= minAmount) {
-                num++;
-            }
-        }
-        if(num >= maxNum) {
-            return maxNum;
-        }
-        return num;
+        return getTops().length;
     }
 
     function exist(address _addr) public view override returns (bool) {
@@ -430,10 +417,6 @@ contract SuperNode is ISuperNode, System {
         if(info.id == 0) {
             return false;
         }
-        uint minAmount = getPropertyValue("supernode_min_amount") * COIN;
-        if(info.amount < minAmount) {
-            return false;
-        }
         IAccountManager.AccountRecord memory record;
         uint lockAmount;
         for(uint i = 0; i < info.founders.length; i++) {
@@ -442,7 +425,7 @@ contract SuperNode is ISuperNode, System {
                 lockAmount += record.amount;
             }
         }
-        if(lockAmount < minAmount) {
+        if(lockAmount < getPropertyValue("supernode_min_amount") * COIN) {
             return false;
         }
         return true;
@@ -467,7 +450,6 @@ contract SuperNode is ISuperNode, System {
         sn.name = _name;
         sn.addr = _addr;
         sn.creator = msg.sender;
-        sn.amount = _amount;
         sn.enode = _enode;
         sn.description = _description;
         sn.isOfficial = false;
@@ -485,7 +467,6 @@ contract SuperNode is ISuperNode, System {
 
     function append(address _addr, uint _lockID, uint _amount) internal {
         supernodes[_addr].founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
-        supernodes[_addr].amount += _amount;
         supernodes[_addr].updateHeight = block.number;
     }
 

@@ -9,7 +9,6 @@ interface ISuperNode is INode {
         string name; // supernode name
         address addr; // supernode address
         address creator; // creator address
-        uint amount; // total amount
         string enode; // supernode enode, contain node id & node ip & node port
         string description; // supernode description
         bool isOfficial; // official or not

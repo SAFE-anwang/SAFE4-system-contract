@@ -8,7 +8,6 @@ interface IMasterNode is INode {
         uint id; // masternode id
         address addr; // masternode address
         address creator; // createor address
-        uint amount; // total locked amount
         string enode; // masternode enode, contain node id & node ip & node port
         string description; // masternode description
         bool isOfficial; // official or not

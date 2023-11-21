@@ -161,7 +161,6 @@ contract MasterNode is IMasterNode, System {
             // remove mn
             delete masternodes[_addr];
         } else if(i != info.founders.length) {
-            info.amount -= getAccountManager().getRecordByID(_lockID).amount;
             for(uint k = i; k < info.founders.length - 1; k++) { // by order
                 info.founders[k] = info.founders[k + 1];
             }
@@ -242,7 +241,7 @@ contract MasterNode is IMasterNode, System {
         MasterNodeInfo[] memory mns = new MasterNodeInfo[](mnIDs.length);
         for(uint i = 0; i < mnIDs.length; i++) {
             MasterNodeInfo memory info = masternodes[mnID2addr[mnIDs[i]]];
-            if(info.amount < minAmount || info.stateInfo.state != NODE_STATE_START) {
+            if(info.stateInfo.state != NODE_STATE_START) {
                 continue;
             }
             uint lockAmount;
@@ -335,10 +334,6 @@ contract MasterNode is IMasterNode, System {
         if(info.id == 0) {
             return false;
         }
-        uint minAmount = getPropertyValue("masternode_min_amount") * COIN;
-        if(info.amount < minAmount) {
-            return false;
-        }
         IAccountManager.AccountRecord memory record;
         uint lockAmount;
         for(uint i = 0; i < info.founders.length; i++) {
@@ -347,7 +342,7 @@ contract MasterNode is IMasterNode, System {
                 lockAmount += record.amount;
             }
         }
-        if(lockAmount < minAmount) {
+        if(lockAmount < getPropertyValue("masternode_min_amount") * COIN) {
             return false;
         }
         return true;
@@ -358,7 +353,6 @@ contract MasterNode is IMasterNode, System {
         mn.id = ++mn_no;
         mn.addr = _addr;
         mn.creator = msg.sender;
-        mn.amount = _amount;
         mn.enode = _enode;
         mn.description = _description;
         mn.isOfficial = false;
@@ -376,7 +370,6 @@ contract MasterNode is IMasterNode, System {
 
     function append(address _addr, uint _lockID, uint _amount) internal {
         masternodes[_addr].founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
-        masternodes[_addr].amount += _amount;
         masternodes[_addr].updateHeight = block.number;
     }
 
