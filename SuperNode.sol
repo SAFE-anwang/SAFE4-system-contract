@@ -163,7 +163,37 @@ contract SuperNode is ISuperNode, System {
                 break;
             }
         }
-        if(i != info.founders.length) {
+        if(i == 0) { // dissolve by creator
+            // unfreeze partner
+            for(uint k = 1; k < info.founders.length; k++) {
+                getAccountManager().setRecordFreezeInfo(info.founders[k].lockID, _addr, address(0), 0);
+            }
+            // release voter
+            for(uint k = 0; k < info.voteInfo.voters.length; k++) {
+                getAccountManager().setRecordVoteInfo(info.voteInfo.voters[k].lockID, info.voteInfo.voters[k].addr, address(0), 0);
+            }
+            // remove id
+            uint pos;
+            for(uint k = 0; k < snIDs.length; k++) {
+                if(snIDs[k] == info.id) {
+                    pos = k;
+                    break;
+                }
+            }
+            for(; pos < snIDs.length - 1; pos++) {
+                snIDs[pos] = snIDs[pos + 1];
+            }
+            snIDs.pop();
+            // remove id2addr
+            delete snID2addr[info.id];
+            // remove enode2addr
+            delete snName2addr[info.name];
+            // remove enode2addr
+            delete snEnode2addr[info.enode];
+            // remove sn
+            delete supernodes[_addr];
+        } else if(i != info.founders.length) {
+            info.amount -= getAccountManager().getRecordByID(_lockID).amount;
             for(uint k = i; k < info.founders.length - 1; k++) { // by order
                 info.founders[k] = info.founders[k + 1];
             }

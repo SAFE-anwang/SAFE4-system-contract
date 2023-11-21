@@ -137,7 +137,31 @@ contract MasterNode is IMasterNode, System {
                 break;
             }
         }
-        if(i != info.founders.length) {
+        if(i == 0) { // dissolve by creator
+            // unfreeze partner
+            for(uint k = 1; k < info.founders.length; k++) {
+                getAccountManager().setRecordFreezeInfo(info.founders.lockID, _addr, address(0), 0);
+            }
+            // remove id
+            uint pos;
+            for(uint k = 0; k < mnIDs.length; k++) {
+                if(mnIDs[k] == info.id) {
+                    pos = k;
+                    break;
+                }
+            }
+            for(; pos < mnIDs.length - 1; pos++) {
+                mnIDs[pos] = mnIDs[pos + 1];
+            }
+            mnIDs.pop();
+            // remove id2addr
+            delete mnID2addr[info.id];
+            // remove enode2addr
+            delete mnEnode2addr[info.enode];
+            // remove mn
+            delete info;
+        } else if(i != info.founders.length) {
+            info.amount -= getAccountManager().getRecordByID(_lockID).amount;
             for(uint k = i; k < info.founders.length - 1; k++) { // by order
                 info.founders[k] = info.founders[k + 1];
             }
