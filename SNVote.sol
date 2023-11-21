@@ -27,11 +27,11 @@ contract SNVote is ISNVote, System {
     event SNVOTE_REMOVE_APPROVAL(address _voterAddr, address _proxyAddr, uint _recordID, uint _voteNum);
 
     function voteOrApproval(bool _isVote, address _dstAddr, uint[] memory _recordIDs) public override {
-        require(!isSN(msg.sender), "caller can't be supernode");
+        require(!isSN(msg.sender), "supernode can't vote others");
         if(_isVote) {
-            require(isSN(_dstAddr), "invalid supernode address");
+            require(isValidSN(_dstAddr), "invalid supernode address");
         } else {
-            require(isMN(_dstAddr), "invalid proxy address");
+            require(isValidMN(_dstAddr), "invalid proxy address");
         }
         uint id = 0;
         for(uint i = 0; i < _recordIDs.length; i++) {
@@ -46,7 +46,7 @@ contract SNVote is ISNVote, System {
     }
 
     function removeVoteOrApproval(uint[] memory _recordIDs) public override {
-        require(!isSN(msg.sender), "caller can't be supernode");
+        require(!isSN(msg.sender), "supernode can't remove vote");
         for(uint i = 0; i < _recordIDs.length; i++) {
             if(_recordIDs[i] == 0) {
                 continue;
@@ -62,8 +62,9 @@ contract SNVote is ISNVote, System {
         remove(_voterAddr, _recordID);
     }
 
-    function proxyVote(address _snAddr) public override onlyMN {
-        require(isSN(_snAddr), "invalid supernode");
+    function proxyVote(address _snAddr) public override {
+        require(isValidMN(msg.sender), "invalid proxy");
+        require(isValidSN(_snAddr), "invalid supernode");
         uint recordID;
         address voterAddr;
         uint[] memory ids = dst2ids[msg.sender];
@@ -96,7 +97,6 @@ contract SNVote is ISNVote, System {
                 retNums[index++] = voter2details[_voterAddr][dsts[i]].totalNum;
             }
         }
-        return (retAddrs, retNums);
     }
 
     // get voter's records
@@ -106,7 +106,6 @@ contract SNVote is ISNVote, System {
 
     // get supernode's voters
     function getVoters4SN(address _snAddr) public view override returns (address[] memory retAddrs, uint[] memory retNums) {
-        require(isSN(_snAddr), "invalid supernode");
         retAddrs = dst2voters[_snAddr];
         retNums = new uint[](retAddrs.length);
         for(uint i = 0; i < retAddrs.length; i++) {
@@ -116,7 +115,6 @@ contract SNVote is ISNVote, System {
 
     // get supernode's votenum
     function getVoteNum4SN(address _snAddr) public view override returns (uint) {
-        require(isSN(_snAddr), "invalid supernode");
         return dst2num[_snAddr];
     }
 
@@ -169,7 +167,6 @@ contract SNVote is ISNVote, System {
 
     // get proxy's voters
     function getVoters4Proxy(address _proxyAddr) public view override returns (address[] memory retAddrs, uint[] memory retNums) {
-        require(isMN(_proxyAddr), "invalid proxy");
         retAddrs = dst2voters[_proxyAddr];
         retNums = new uint[](retAddrs.length);
         for(uint i = 0; i < retAddrs.length; i++) {
@@ -179,7 +176,6 @@ contract SNVote is ISNVote, System {
 
     // get proxy's votenum
     function getVoteNum4Proxy(address _proxyAddr) public view override returns (uint) {
-        require(isMN(_proxyAddr), "invalid proxy");
         return dst2num[_proxyAddr];
     }
 
@@ -287,10 +283,14 @@ contract SNVote is ISNVote, System {
 
     function add(address _voterAddr, address _dstAddr, uint _recordID) internal {
         IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_recordID);
-        require(record.addr == _voterAddr, "caller isn't owner of record");
+        if(record.addr != _voterAddr) {
+            return;
+        }
 
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_recordID);
-        require(block.number >= useinfo.releaseHeight, "record is voted, need wait for release");
+        if(block.number < useinfo.releaseHeight || isSN(useinfo.frozenAddr)) {
+            return;
+        }
 
         uint amount = record.amount;
         uint num = amount;
@@ -465,10 +465,14 @@ contract SNVote is ISNVote, System {
 
     function remove(address _voterAddr, uint _recordID) internal {
         IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_recordID);
-        require(record.addr == _voterAddr, "caller isn't owner of record");
+        if(record.addr != _voterAddr) {
+            return;
+        }
 
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_recordID);
-        require(block.number >= useinfo.releaseHeight, "record is voted, need wait for release");
+        if(block.number < useinfo.releaseHeight) {
+            return;
+        }
 
         VoteRecord memory voteRecord = id2record[_recordID];
         address dstAddr = voteRecord.dstAddr;
@@ -490,7 +494,7 @@ contract SNVote is ISNVote, System {
 
         // unfreeze record
         if(isSN(dstAddr)) { // vote
-            getAccountManager().setRecordVoteInfo(_recordID, _voterAddr, dstAddr, 0);
+            getAccountManager().setRecordVoteInfo(_recordID, _voterAddr, address(0), 0);
             getSuperNode().changeVoteInfo(dstAddr, _voterAddr, _recordID, amount, num, 0);
             emit SNVOTE_REMOVE_VOTE(_voterAddr, dstAddr, _recordID, num);
         } else { // proxy

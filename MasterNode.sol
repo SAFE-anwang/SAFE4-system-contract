@@ -247,7 +247,7 @@ contract MasterNode is IMasterNode, System {
             sortByRewardHeight(officials, 0, officials.length - 1);
             return officials[block.number % officials.length].addr;
         } else {
-            return mnID2addr[(block.number % mn_no) + 1];
+            return mnID2addr[(block.number % mnIDs.length) + 1];
         }
     }
 

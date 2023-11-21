@@ -406,6 +406,19 @@ contract SuperNode is ISuperNode, System {
         return true;
     }
 
+    function isFormal(address _addr) public view override returns (bool) {
+        if(!isValid(_addr)) {
+            return false;
+        }
+        SuperNodeInfo[] memory tops = getTops();
+        for(uint i = 0; i < tops.length; i++) {
+            if(_addr == tops[i].addr) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function create(address _addr, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan) internal {
         SuperNodeInfo storage sn = supernodes[_addr];
         sn.id = ++sn_no;

@@ -38,4 +38,5 @@ interface ISuperNode is INode {
     function getTops() external view returns (SuperNodeInfo[] memory);
     function getOfficials() external view returns (SuperNodeInfo[] memory);
     function existName(string memory _name) external view returns (bool);
+    function isFormal(address _addr) external view returns (bool);
 }

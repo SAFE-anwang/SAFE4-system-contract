@@ -218,7 +218,7 @@ contract AccountManager is IAccountManager, System {
         }
     }
 
-    function setRecordVoteInfo(uint _id, address _addr, address _target, uint _day) public override onlySNVoteContract {
+    function setRecordVoteInfo(uint _id, address _addr, address _target, uint _day) public override onlySnOrSNVoteContract {
         if(_id == 0) {
             return;
         }
