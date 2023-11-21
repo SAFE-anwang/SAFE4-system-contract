@@ -140,7 +140,7 @@ contract MasterNode is IMasterNode, System {
         if(i == 0) { // dissolve by creator
             // unfreeze partner
             for(uint k = 1; k < info.founders.length; k++) {
-                getAccountManager().setRecordFreezeInfo(info.founders.lockID, _addr, address(0), 0);
+                getAccountManager().setRecordFreezeInfo(info.founders[k].lockID, _addr, address(0), 0);
             }
             // remove id
             uint pos;
@@ -159,7 +159,7 @@ contract MasterNode is IMasterNode, System {
             // remove enode2addr
             delete mnEnode2addr[info.enode];
             // remove mn
-            delete info;
+            delete masternodes[_addr];
         } else if(i != info.founders.length) {
             info.amount -= getAccountManager().getRecordByID(_lockID).amount;
             for(uint k = i; k < info.founders.length - 1; k++) { // by order
@@ -239,30 +239,34 @@ contract MasterNode is IMasterNode, System {
     function getNext() public view override returns (address) {
         uint minAmount = getPropertyValue("masternode_min_amount") * COIN;
         uint count = 0;
+        MasterNodeInfo[] memory mns = new MasterNodeInfo[](mnIDs.length);
         for(uint i = 0; i < mnIDs.length; i++) {
-            MasterNodeInfo memory mn = masternodes[mnID2addr[mnIDs[i]]];
-            if(mn.amount < minAmount) {
+            MasterNodeInfo memory info = masternodes[mnID2addr[mnIDs[i]]];
+            if(info.amount < minAmount || info.stateInfo.state != NODE_STATE_START) {
                 continue;
             }
-            if(mn.stateInfo.state != NODE_STATE_START) {
+            uint lockAmount;
+            // check creator
+            IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(info.founders[0].lockID);
+            if(block.number >= record.unlockHeight) { // creator must be locked
                 continue;
             }
+            lockAmount += record.amount;
+            // check partner
+            for(uint k = 1; k < info.founders.length; k++) {
+                record = getAccountManager().getRecordByID(info.founders[k].lockID);
+                if(block.number < record.unlockHeight) {
+                    lockAmount += record.amount;
+                }
+            }
+            if(lockAmount < minAmount) {
+                continue;
+            }
+            mns[count++] = info;
             count++;
         }
-        if(count != 0) {
-            MasterNodeInfo[] memory mns = new MasterNodeInfo[](count);
-            uint index = 0;
-            for(uint i = 0; i < mnIDs.length; i++) {
-                MasterNodeInfo memory mn = masternodes[mnID2addr[mnIDs[i]]];
-                if(mn.amount < minAmount) {
-                    continue;
-                }
-                if(mn.stateInfo.state != NODE_STATE_START) {
-                    continue;
-                }
-                mns[index++] = mn;
-            }
-            sortByRewardHeight(mns, 0, mns.length - 1);
+        if(count > 1) {
+            sortByRewardHeight(mns, 0, count - 1);
             return mns[0].addr;
         }
         // select official masternodes

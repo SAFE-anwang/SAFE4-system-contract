@@ -323,25 +323,37 @@ contract SuperNode is ISuperNode, System {
 
     function getTops() public view override returns (SuperNodeInfo[] memory) {
         uint minAmount = getPropertyValue("supernode_min_amount") * COIN;
+        address[] memory snAddrs = new address[](snIDs.length);
         uint num = 0;
         for(uint i = 0; i < snIDs.length; i++) {
             address addr = snID2addr[snIDs[i]];
-            if(supernodes[addr].amount >= minAmount && supernodes[addr].stateInfo.state == NODE_STATE_START) {
-                num++;
+            SuperNodeInfo memory info = supernodes[addr];
+            if(info.amount < minAmount || info.stateInfo.state != NODE_STATE_START) {
+                continue;
             }
-        }
-
-        address[] memory snAddrs = new address[](num);
-        uint k = 0;
-        for(uint i = 0; i < snIDs.length; i++) {
-            address addr = snID2addr[snIDs[i]];
-            if(supernodes[addr].amount >= minAmount && supernodes[addr].stateInfo.state == NODE_STATE_START) {
-                snAddrs[k++] = addr;
+            uint lockAmount;
+            // check creator
+            IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(info.founders[0].lockID);
+            if(block.number >= record.unlockHeight) { // creator must be locked
+                continue;
             }
+            lockAmount += record.amount;
+            // check partner
+            for(uint k = 1; k < info.founders.length; k++) {
+                record = getAccountManager().getRecordByID(info.founders[k].lockID);
+                if(block.number < record.unlockHeight) {
+                    lockAmount += record.amount;
+                }
+            }
+            if(lockAmount < minAmount) {
+                continue;
+            }
+            num++;
         }
-
-        // sort by vote number
-        sortByVoteNum(snAddrs, 0, snAddrs.length - 1);
+        if(num > 1) {
+            // sort by vote number
+            sortByVoteNum(snAddrs, 0, num - 1);
+        }
 
         // get top, max: MAX_NUM
         num = getPropertyValue("supernode_max_num");
