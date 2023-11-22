@@ -264,15 +264,13 @@ contract MasterNode is IMasterNode, System {
             mns[count++] = info;
             count++;
         }
-        if(count > 1) {
-            sortByRewardHeight(mns, 0, count - 1);
-            return mns[0].addr;
+        if(count != 0) {
+            return selectNext(mns, count).addr;
         }
         // select official masternodes
         MasterNodeInfo[] memory officials = getOfficials();
         if(officials.length != 0) {
-            sortByRewardHeight(officials, 0, officials.length - 1);
-            return officials[block.number % officials.length].addr;
+            return selectNext(officials, count).addr;
         } else {
             return mnID2addr[(block.number % mnIDs.length) + 1];
         }
@@ -373,24 +371,15 @@ contract MasterNode is IMasterNode, System {
         masternodes[_addr].updateHeight = block.number;
     }
 
-    // ASC by lastRewardHeight
-    function sortByRewardHeight(MasterNodeInfo[] memory _arr, uint _left, uint _right) internal pure {
-        uint i = _left;
-        uint j = _right;
-        if (i == j) return;
-        MasterNodeInfo memory middle = _arr[_left + (_right - _left) / 2];
-        while(i <= j) {
-            while(_arr[i].lastRewardHeight < middle.lastRewardHeight) i++;
-            while(middle.lastRewardHeight < _arr[j].lastRewardHeight && j > 0) j--;
-            if(i <= j) {
-                (_arr[i], _arr[j]) = (_arr[j], _arr[i]);
-                i++;
-                if(j != 0) j--;
+    function selectNext(MasterNodeInfo[] memory _arr, uint len) internal pure returns (MasterNodeInfo memory) {
+        uint pos;
+        uint temp = _arr[pos].lastRewardHeight;
+        for(uint i = 1; i < len; i++) {
+            if(temp > _arr[i].lastRewardHeight) {
+                pos = i;
+                temp = _arr[i].lastRewardHeight;
             }
         }
-        if(_left < j)
-            sortByRewardHeight(_arr, _left, j);
-        if(i < _right)
-            sortByRewardHeight(_arr, i, _right);
+        return _arr[pos];
     }
 }
