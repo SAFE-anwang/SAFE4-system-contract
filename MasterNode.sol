@@ -262,7 +262,6 @@ contract MasterNode is IMasterNode, System {
                 continue;
             }
             mns[count++] = info;
-            count++;
         }
         if(count != 0) {
             return selectNext(mns, count).addr;

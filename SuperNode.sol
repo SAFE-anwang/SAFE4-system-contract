@@ -347,7 +347,7 @@ contract SuperNode is ISuperNode, System {
             if(lockAmount < minAmount) {
                 continue;
             }
-            num++;
+            snAddrs[num++] = addr;
         }
         if(num > 1) {
             // sort by vote number
