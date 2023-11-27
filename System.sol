@@ -87,10 +87,6 @@ contract System is Initializable, OwnableUpgradeable, Constant {
         _;
     }
 
-    function getProperty() internal pure returns (IProperty) {
-        return IProperty(PROPERTY_ADDR);
-    }
-
     function getAccountManager() internal pure returns (IAccountManager) {
         return IAccountManager(ACCOUNT_MANAGER_ADDR);
     }
@@ -115,20 +111,12 @@ contract System is Initializable, OwnableUpgradeable, Constant {
         return ISNVote(SNVOTE_ADDR);
     }
 
-    function getMasterNodeState() internal pure returns (INodeState) {
-        return INodeState(MASTERNODE_STATE_ADDR);
-    }
-
-    function getSuperNodeState() internal pure returns (INodeState) {
-        return INodeState(SUPERNODE_STATE_ADDR);
-    }
-
     function getProposal() internal pure returns (IProposal) {
         return IProposal(PROPOSAL_ADDR);
     }
 
     function getPropertyValue(string memory _name) internal view returns (uint) {
-        return getProperty().getValue(_name);
+        return IProperty(PROPERTY_ADDR).getValue(_name);
     }
 
     function isMN(address _addr) internal view returns (bool) {
