@@ -3,9 +3,7 @@ pragma solidity >=0.8.6 <=0.8.19;
 
 pragma experimental ABIEncoderV2;
 
-import "./System.sol";
-
-contract Multicall is System {
+contract Multicall {
     struct Call {
         address target;
         bytes callData;
