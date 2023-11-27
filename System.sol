@@ -33,98 +33,98 @@ contract System is Initializable, OwnableUpgradeable, Constant {
     }
 
     modifier onlyAccountManagerContract {
-        require(msg.sender == ACCOUNT_MANAGER_PROXY_ADDR, "No account manager contract");
+        require(msg.sender == ACCOUNT_MANAGER_ADDR, "No account-manager contract");
         _;
     }
 
     modifier onlyMasterNodeLogic {
-        require(msg.sender == MASTERNODE_LOGIC_PROXY_ADDR, "No masternode logic contract");
+        require(msg.sender == MASTERNODE_LOGIC_ADDR, "No masternode-logic contract");
         _;
     }
 
     modifier onlySuperNodeLogic {
-        require(msg.sender == SUPERNODE_LOGIC_PROXY_ADDR, "No supernode logic contract");
+        require(msg.sender == SUPERNODE_LOGIC_ADDR, "No supernode logic contract");
         _;
     }
 
     modifier onlyMnOrSnContract {
-        require(msg.sender == MASTERNODE_LOGIC_PROXY_ADDR || msg.sender == SUPERNODE_LOGIC_PROXY_ADDR, "No masternode logic and supernode logic contract");
+        require(msg.sender == MASTERNODE_LOGIC_ADDR || msg.sender == SUPERNODE_LOGIC_ADDR, "No masternode logic and supernode logic contract");
         _;
     }
 
     modifier onlySnOrSNVoteContract {
-        require(msg.sender == SUPERNODE_LOGIC_PROXY_ADDR || msg.sender == SNVOTE_PROXY_ADDR, "No supernode logic and snvote contract");
+        require(msg.sender == SUPERNODE_LOGIC_ADDR || msg.sender == SNVOTE_ADDR, "No supernode logic and snvote contract");
         _;
     }
 
     modifier onlySNVoteContract {
-        require(msg.sender == SNVOTE_PROXY_ADDR, "No snvote contract");
+        require(msg.sender == SNVOTE_ADDR, "No snvote contract");
         _;
     }
 
     modifier onlyMasterNodeStateContract {
-        require(msg.sender == MASTERNODE_STATE_PROXY_ADDR, "No masternode-state contract");
+        require(msg.sender == MASTERNODE_STATE_ADDR, "No masternode-state contract");
         _;
     }
 
     modifier onlySuperNodeStateContract {
-        require(msg.sender == SUPERNODE_STATE_PROXY_ADDR, "No supernode-state contract");
+        require(msg.sender == SUPERNODE_STATE_ADDR, "No supernode-state contract");
         _;
     }
 
     modifier onlySafe3Contract {
-        require(msg.sender == SAFE3_PROXY_ADDR, "No SAFE3 contract");
+        require(msg.sender == SAFE3_ADDR, "No SAFE3 contract");
         _;
     }
 
     modifier onlySystemRewardContract {
-        require(msg.sender == SYSTEM_REWARD_PROXY_ADDR, "No system reward contract");
+        require(msg.sender == SYSTEM_REWARD_ADDR, "No system reward contract");
         _;
     }
 
     modifier onlyProposalContract {
-        require(msg.sender == PROPOSAL_PROXY_ADDR, "No proposal contract");
+        require(msg.sender == PROPOSAL_ADDR, "No proposal contract");
         _;
     }
 
     function getProperty() internal pure returns (IProperty) {
-        return IProperty(PROPERTY_PROXY_ADDR);
+        return IProperty(PROPERTY_ADDR);
     }
 
     function getAccountManager() internal pure returns (IAccountManager) {
-        return IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
+        return IAccountManager(ACCOUNT_MANAGER_ADDR);
     }
 
     function getMasterNodeStorage() internal pure returns (IMasterNodeStorage) {
-        return IMasterNodeStorage(MASTERNODE_STORAGE_PROXY_ADDR);
+        return IMasterNodeStorage(MASTERNODE_STORAGE_ADDR);
     }
 
     function getMasterNodeLogic() internal pure returns (IMasterNodeLogic) {
-        return IMasterNodeLogic(MASTERNODE_LOGIC_PROXY_ADDR);
+        return IMasterNodeLogic(MASTERNODE_LOGIC_ADDR);
     }
 
     function getSuperNodeStorage() internal pure returns (ISuperNodeStorage) {
-        return ISuperNodeStorage(SUPERNODE_STORAGE_PROXY_ADDR);
+        return ISuperNodeStorage(SUPERNODE_STORAGE_ADDR);
     }
 
     function getSuperNodeLogic() internal pure returns (ISuperNodeLogic) {
-        return ISuperNodeLogic(SUPERNODE_LOGIC_PROXY_ADDR);
+        return ISuperNodeLogic(SUPERNODE_LOGIC_ADDR);
     }
 
     function getSNVote() internal pure returns (ISNVote) {
-        return ISNVote(SNVOTE_PROXY_ADDR);
+        return ISNVote(SNVOTE_ADDR);
     }
 
     function getMasterNodeState() internal pure returns (INodeState) {
-        return INodeState(MASTERNODE_STATE_PROXY_ADDR);
+        return INodeState(MASTERNODE_STATE_ADDR);
     }
 
     function getSuperNodeState() internal pure returns (INodeState) {
-        return INodeState(SUPERNODE_STATE_PROXY_ADDR);
+        return INodeState(SUPERNODE_STATE_ADDR);
     }
 
     function getProposal() internal pure returns (IProposal) {
-        return IProposal(PROPOSAL_PROXY_ADDR);
+        return IProposal(PROPOSAL_ADDR);
     }
 
     function getPropertyValue(string memory _name) internal view returns (uint) {
