@@ -4,7 +4,8 @@ pragma solidity >=0.8.6 <=0.8.19;
 import "./Constant.sol";
 import "./interfaces/IProperty.sol";
 import "./interfaces/IAccountManager.sol";
-import "./interfaces/IMasterNode.sol";
+import "./interfaces/IMasterNodeStorage.sol";
+import "./interfaces/IMasterNodeLogic.sol";
 import "./interfaces/ISuperNodeStorage.sol";
 import "./interfaces/ISuperNodeLogic.sol";
 import "./interfaces/ISNVote.sol";
@@ -36,13 +37,18 @@ contract System is Initializable, OwnableUpgradeable, Constant {
         _;
     }
 
+    modifier onlyMasterNodeLogic {
+        require(msg.sender == MASTERNODE_LOGIC_PROXY_ADDR, "No masternode logic contract");
+        _;
+    }
+
     modifier onlySuperNodeLogic {
         require(msg.sender == SUPERNODE_LOGIC_PROXY_ADDR, "No supernode logic contract");
         _;
     }
 
     modifier onlyMnOrSnContract {
-        require(msg.sender == MASTERNODE_PROXY_ADDR || msg.sender == SUPERNODE_LOGIC_PROXY_ADDR, "No masternode and supernode logic contract");
+        require(msg.sender == MASTERNODE_LOGIC_PROXY_ADDR || msg.sender == SUPERNODE_LOGIC_PROXY_ADDR, "No masternode logic and supernode logic contract");
         _;
     }
 
@@ -89,8 +95,8 @@ contract System is Initializable, OwnableUpgradeable, Constant {
         return IAccountManager(ACCOUNT_MANAGER_PROXY_ADDR);
     }
 
-    function getMasterNode() internal pure returns (IMasterNode) {
-        return IMasterNode(MASTERNODE_PROXY_ADDR);
+    function getMasterNodeStorage() internal pure returns (IMasterNodeStorage) {
+        return IMasterNodeStorage(MASTERNODE_STORAGE_PROXY_ADDR);
     }
 
     function getSuperNodeStorage() internal pure returns (ISuperNodeStorage) {
@@ -122,11 +128,11 @@ contract System is Initializable, OwnableUpgradeable, Constant {
     }
 
     function isMN(address _addr) internal view returns (bool) {
-        return getMasterNode().exist(_addr);
+        return getMasterNodeStorage().exist(_addr);
     }
 
     function isValidMN(address _addr) internal view returns (bool) {
-        return getMasterNode().isValid(_addr);
+        return getMasterNodeStorage().isValid(_addr);
     }
 
     function isSN(address _addr) internal view returns (bool) {
@@ -146,10 +152,10 @@ contract System is Initializable, OwnableUpgradeable, Constant {
     }
 
     function existNodeAddress(address _addr) internal view returns (bool) {
-        return getMasterNode().exist(_addr) || getSuperNodeStorage().exist(_addr);
+        return getMasterNodeStorage().exist(_addr) || getSuperNodeStorage().exist(_addr);
     }
 
     function existNodeEnode(string memory _enode) internal view returns (bool) {
-        return getMasterNode().existEnode(_enode) || getSuperNodeStorage().existEnode(_enode);
+        return getMasterNodeStorage().existEnode(_enode) || getSuperNodeStorage().existEnode(_enode);
     }
 }
