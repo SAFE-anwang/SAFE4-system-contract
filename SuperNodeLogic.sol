@@ -152,7 +152,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_addr);
         for(uint i = 0; i < info.founders.length; i++) {
             if(info.founders[i].lockID == _lockID) {
-                getSuperNodeLogic().removeMember(_addr, i);
+                getSuperNodeStorage().removeMember(_addr, i);
                 return;
             }
         }
