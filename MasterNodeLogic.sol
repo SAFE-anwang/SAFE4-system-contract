@@ -19,7 +19,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
             require(msg.value >= getPropertyValue("masternode_union_min_amount") * Constant.COIN, "less than min union lock amount");
         }
         require(_lockDay >= getPropertyValue("masternode_min_lockday"), "less than min lock day");
-        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN, "invalid enode");
+        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(_enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
         require(!existNodeEnode(_enode), "existent enode");
         require(bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         if(!_isUnion) {
@@ -151,7 +151,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
 
     function changeEnode(address _addr, string memory _enode) public override {
         require(getMasterNodeStorage().exist(_addr), "non-existent masternode");
-        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN, "invalid enode");
+        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(_enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
         require(!existNodeEnode(_enode), "existent enode");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't masternode creator");
         getMasterNodeStorage().updateEnode(_addr, _enode);

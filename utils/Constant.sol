@@ -45,8 +45,11 @@ library Constant {
     uint internal constant SECONDS_IN_DAY = 86400;
 
     // for property
+    uint internal constant MIN_PROPERTY_NAME_LEN = 4;
     uint internal constant MAX_PROPERTY_NAME_LEN = 64;
+    uint internal constant MIN_PROPERTY_DESCRIPTION_LEN = 4;
     uint internal constant MAX_PROPERTY_DESCRIPTION_LEN = 256;
+    uint internal constant MIN_PROPERTY_REASON_LEN = 12;
     uint internal constant MAX_PROPERTY_REASON_LEN = 512;
 
     // for vote
@@ -62,6 +65,7 @@ library Constant {
     // for node
     uint internal constant MIN_NODE_ENODE_LEN = 150;
     uint internal constant MAX_NODE_ENODE_LEN = 200;
+    uint internal constant MIN_NODE_DESCRIPTION_LEN = 12;
     uint internal constant MAX_NODE_DESCRIPTION_LEN = 2048;
     uint internal constant MAX_INCENTIVE = 100;
 
@@ -69,6 +73,7 @@ library Constant {
     uint internal constant MAX_MN_CREATOR_INCENTIVE = 50;
 
     // for supernode
+    uint internal constant MIN_SN_NAME_LEN = 2;
     uint internal constant MAX_SN_NAME_LEN = 64;
     uint internal constant MIN_SN_CREATOR_INCENTIVE = 0;
     uint internal constant MAX_SN_CREATOR_INCENTIVE = 10;
@@ -78,8 +83,10 @@ library Constant {
     uint internal constant MAX_SN_VOTER_INCENTIVE = 50;
 
     // for proposal
+    uint internal constant MIN_PP_TITLE_LEN = 8;
     uint internal constant MAX_PP_TITLE_LEN = 256;
     uint internal constant MAX_PP_PAY_TIMES = 100;
+    uint internal constant MIN_PP_DESCRIPTIO_LEN = 8;
     uint internal constant MAX_PP_DESCRIPTIO_LEN = 2048;
 
     // for reward

@@ -21,13 +21,13 @@ contract Proposal is IProposal, System {
     }
 
     function create(string memory _title, uint _payAmount, uint _payTimes, uint _startPayTime, uint _endPayTime, string memory _description) public payable override returns (uint) {
-        require(bytes(_title).length > 0 && bytes(_title).length < Constant.MAX_PP_TITLE_LEN, "invalid title");
+        require(bytes(_title).length >= Constant.MIN_PP_TITLE_LEN && bytes(_title).length <= Constant.MAX_PP_TITLE_LEN, "invalid title");
         require(_payAmount > 0 && _payAmount <= getBalance(), "invalid pay amount");
-        require(_payTimes > 0 && _payTimes < Constant.MAX_PP_PAY_TIMES, "invalid pay times");
+        require(_payTimes > 0 && _payTimes <= Constant.MAX_PP_PAY_TIMES, "invalid pay times");
         require(_payAmount / _payTimes == 0, "invalid pay amount and times");
         require(_startPayTime >= block.timestamp, "invalid start pay time");
         require(_endPayTime >= _startPayTime, "invalid end pay time");
-        require(bytes(_description).length > 0 && bytes(_description).length < Constant.MAX_PP_DESCRIPTIO_LEN, "invalid description");
+        require(bytes(_description).length >= Constant.MIN_PP_DESCRIPTIO_LEN && bytes(_description).length <= Constant.MAX_PP_DESCRIPTIO_LEN, "invalid description");
         require(msg.value >= 1 * Constant.COIN, "need pay 1 SAFE");
 
         // burn 1 SAFE at least
@@ -104,7 +104,7 @@ contract Proposal is IProposal, System {
     function changeTitle(uint _id, string memory _title) public override {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
-        require(bytes(_title).length > 0 && bytes(_title).length < Constant.MAX_PP_TITLE_LEN, "invalid title");
+        require(bytes(_title).length >= Constant.MIN_PP_TITLE_LEN && bytes(_title).length <= Constant.MAX_PP_TITLE_LEN, "invalid title");
         require(proposals[_id].voters.length == 0, "voted proposal can't update title");
         proposals[_id].title = _title;
         proposals[_id].updateHeight = block.number;
@@ -123,7 +123,7 @@ contract Proposal is IProposal, System {
     function changePayTimes(uint _id, uint _payTimes) public override {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
-        require(_payTimes > 0 && _payTimes < Constant.MAX_PP_PAY_TIMES, "invalid pay times");
+        require(_payTimes > 0 && _payTimes <= Constant.MAX_PP_PAY_TIMES, "invalid pay times");
         require(proposals[_id].payAmount / _payTimes == 0, "pay times is too big");
         require(proposals[_id].voters.length == 0, "voted proposal can't update pay-times");
         proposals[_id].payTimes = _payTimes;
@@ -151,7 +151,7 @@ contract Proposal is IProposal, System {
     function changeDescription(uint _id, string memory _description) public override {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
-        require(bytes(_description).length > 0 && bytes(_description).length < Constant.MAX_PP_DESCRIPTIO_LEN, "invalid description");
+        require(bytes(_description).length >= Constant.MIN_PP_DESCRIPTIO_LEN && bytes(_description).length <= Constant.MAX_PP_DESCRIPTIO_LEN, "invalid description");
         require(proposals[_id].voters.length == 0, "voted proposal can't update description");
         proposals[_id].description = _description;
         proposals[_id].updateHeight = block.number;

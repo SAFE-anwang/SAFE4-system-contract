@@ -20,9 +20,9 @@ contract Property is IProperty, System {
     event PropertyUpdateVote(string _name, uint _newValue, address _voter, uint _voteResult);
 
     function add(string memory _name, uint _value, string memory _description) public override onlyOwner {
-        require(bytes(_name).length > 0 && bytes(_name).length < Constant.MAX_PROPERTY_NAME_LEN, "invalid name");
+        require(bytes(_name).length >= Constant.MIN_PROPERTY_NAME_LEN && bytes(_name).length <= Constant.MAX_PROPERTY_NAME_LEN, "invalid name");
         require(!exist(_name), "existent property");
-        require(bytes(_description).length <= Constant.MAX_PROPERTY_DESCRIPTION_LEN, "invalid description");
+        require(bytes(_description).length >= Constant.MIN_PROPERTY_DESCRIPTION_LEN && bytes(_description).length <= Constant.MAX_PROPERTY_DESCRIPTION_LEN, "invalid description");
         properties[_name] = PropertyInfo(_name, _value, _description, block.number, 0);
         confirmedNames.push(_name);
         emit PropertyAdd(_name, _value);
@@ -31,7 +31,7 @@ contract Property is IProperty, System {
     function applyUpdate(string memory _name, uint _value, string memory _reason) public override onlySN {
         require(exist(_name), "non-existent property");
         require(!existUnconfirmed(_name), "existent unconfirmed property");
-        require(bytes(_reason).length > 0 && bytes(_reason).length <= Constant.MAX_PROPERTY_REASON_LEN, "invalid reason");
+        require(bytes(_reason).length >= Constant.MIN_PROPERTY_REASON_LEN && bytes(_reason).length <= Constant.MAX_PROPERTY_REASON_LEN, "invalid reason");
         UnconfirmedPropertyInfo storage info = unconfirmedProperties[_name];
         info.name = _name;
         info.value = _value;

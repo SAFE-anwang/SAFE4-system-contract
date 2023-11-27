@@ -19,13 +19,13 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
             require(msg.value >= getPropertyValue("supernode_union_min_amount") * Constant.COIN, "less than min union lock amount");
         }
         require(_lockDay >= getPropertyValue("supernode_min_lockday"), "less than min lock day");
-        require(bytes(_name).length > 0 && bytes(_name).length <= Constant.MAX_SN_NAME_LEN, "invalid name");
+        require(bytes(_name).length >= Constant.MIN_SN_NAME_LEN && bytes(_name).length <= Constant.MAX_SN_NAME_LEN, "invalid name");
         require(!getSuperNodeStorage().existName(_name), "existent name");
-        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN, "invalid enode");
+        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(_enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
         require(!existNodeEnode(_enode), "existent enode");
-        require(bytes(_description).length > 0 && bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
+        require(bytes(_description).length >= Constant.MIN_NODE_DESCRIPTION_LEN && bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         require(_creatorIncentive + _partnerIncentive + _voterIncentive == Constant.MAX_INCENTIVE, "invalid incentive");
-        require(_creatorIncentive > 0 && _creatorIncentive <= Constant.MAX_SN_CREATOR_INCENTIVE, "creator incentive exceed 10%");
+        require(_creatorIncentive >= Constant.MIN_SN_CREATOR_INCENTIVE && _creatorIncentive <= Constant.MAX_SN_CREATOR_INCENTIVE, "creator incentive exceed 10%");
         require(_partnerIncentive >= Constant.MIN_SN_PARTNER_INCENTIVE && _partnerIncentive <= Constant.MAX_SN_PARTNER_INCENTIVE, "partner incentive is 40% - 50%");
         require(_voterIncentive >= Constant.MIN_SN_VOTER_INCENTIVE && _voterIncentive <= Constant.MAX_SN_VOTER_INCENTIVE, "creator incentive is 40% - 50%");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
@@ -168,7 +168,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function changeName(address _addr, string memory _name) public override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
-        require(bytes(_name).length > 0 && bytes(_name).length <= Constant.MAX_SN_NAME_LEN, "invalid name");
+        require(bytes(_name).length >= Constant.MIN_SN_NAME_LEN && bytes(_name).length <= Constant.MAX_SN_NAME_LEN, "invalid name");
         require(!getSuperNodeStorage().existName(_name), "existent name");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
         getSuperNodeStorage().updateName(_addr, _name);
@@ -176,7 +176,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function changeEnode(address _addr, string memory _enode) public override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
-        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN, "invalid enode");
+        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(_enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
         require(!existNodeEnode(_enode), "existent enode");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
         getSuperNodeStorage().updateEnode(_addr, _enode);
@@ -184,7 +184,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function changeDescription(address _addr, string memory _description) public override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
-        require(bytes(_description).length > 0 && bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
+        require(bytes(_description).length >= Constant.MIN_NODE_DESCRIPTION_LEN && bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
         getSuperNodeStorage().updateDescription(_addr, _description);
     }
