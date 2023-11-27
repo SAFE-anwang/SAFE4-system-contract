@@ -37,7 +37,7 @@ contract AccountManager is IAccountManager, System {
         }
         uint space = getPropertyValue("block_space");
         uint unlockHeight = block.number + _lockSecond / space;
-        uint lockDay = _lockSecond / SECONDS_IN_DAY;
+        uint lockDay = _lockSecond / Constant.SECONDS_IN_DAY;
         if(_lockSecond % space != 0) {
             unlockHeight += 1;
             lockDay += 1;
@@ -184,11 +184,9 @@ contract AccountManager is IAccountManager, System {
         require(_addr != address(0), "reward to the zero address");
         require(_lockDay > 0, "invalid lock day");
         require(_remainLockHeight > 0, "invalid remain lock height");
-        uint startHeight = block.number;
-        uint unlockHeight = startHeight + _remainLockHeight * DAYS_IN_MONTH / getPropertyValue("block_space");
         uint id = ++record_no;
         AccountRecord[] storage records = addr2records[_addr];
-        records.push(AccountRecord(id, _addr, _amount, _lockDay, startHeight, unlockHeight));
+        records.push(AccountRecord(id, _addr, _amount, _lockDay, block.number, block.number + _remainLockHeight));
         id2index[id] = records.length - 1;
         id2addr[id] = _addr;
         return id;
@@ -213,7 +211,7 @@ contract AccountManager is IAccountManager, System {
             }
             useinfo.frozenAddr = _target;
             useinfo.freezeHeight = block.number;
-            useinfo.unfreezeHeight = useinfo.freezeHeight + _day * SECONDS_IN_DAY / getPropertyValue("block_space");
+            useinfo.unfreezeHeight = useinfo.freezeHeight + _day * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
             emit SafeFreeze(_id, _target, _day);
         }
     }
@@ -237,7 +235,7 @@ contract AccountManager is IAccountManager, System {
             }
             useinfo.votedAddr = _target;
             useinfo.voteHeight = block.number;
-            useinfo.releaseHeight = useinfo.voteHeight + _day * SECONDS_IN_DAY / getPropertyValue("block_space");
+            useinfo.releaseHeight = useinfo.voteHeight + _day * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
             emit SafeVote(_id, _target, _day);
         }
     }
@@ -255,7 +253,7 @@ contract AccountManager is IAccountManager, System {
         } else {
             record.lockDay += _day;
         }
-        record.unlockHeight = record.startHeight + record.lockDay * SECONDS_IN_DAY / getPropertyValue("block_space");
+        record.unlockHeight = record.startHeight + record.lockDay * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
         emit SafeAddLockDay(_id, oldLockDay, record.lockDay);
     }
 
@@ -412,7 +410,7 @@ contract AccountManager is IAccountManager, System {
             return 0;
         }
         uint startHeight = block.number;
-        uint unlockHeight = startHeight + _lockDay * SECONDS_IN_DAY / getPropertyValue("block_space");
+        uint unlockHeight = startHeight + _lockDay * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
         uint id = ++record_no;
         AccountRecord[] storage records = addr2records[_addr];
         records.push(AccountRecord(id, _addr, _amount, _lockDay, startHeight, unlockHeight));

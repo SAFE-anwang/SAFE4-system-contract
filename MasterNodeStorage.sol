@@ -19,7 +19,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         info.enode = _enode;
         info.description = _description;
         info.isOfficial = false;
-        info.stateInfo = StateInfo(NODE_STATE_INIT, block.number);
+        info.stateInfo = StateInfo(Constant.NODE_STATE_INIT, block.number);
         info.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
         info.incentivePlan = plan;
         info.lastRewardHeight = 0;
@@ -126,12 +126,12 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     }
 
     function getNext() public view override returns (address) {
-        uint minAmount = getPropertyValue("masternode_min_amount") * COIN;
+        uint minAmount = getPropertyValue("masternode_min_amount") * Constant.COIN;
         uint count = 0;
         MasterNodeInfo[] memory mns = new MasterNodeInfo[](ids.length);
         for(uint i = 0; i < ids.length; i++) {
             MasterNodeInfo memory info = addr2info[id2addr[ids[i]]];
-            if(info.stateInfo.state != NODE_STATE_START) {
+            if(info.stateInfo.state != Constant.NODE_STATE_START) {
                 continue;
             }
             uint lockAmount;
@@ -229,7 +229,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
                 lockAmount += record.amount;
             }
         }
-        if(lockAmount < getPropertyValue("masternode_min_amount") * COIN) {
+        if(lockAmount < getPropertyValue("masternode_min_amount") * Constant.COIN) {
             return false;
         }
         return true;

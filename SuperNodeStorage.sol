@@ -21,7 +21,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         info.enode = _enode;
         info.description = _description;
         info.isOfficial = false;
-        info.stateInfo = StateInfo(NODE_STATE_INIT, block.number);
+        info.stateInfo = StateInfo(Constant.NODE_STATE_INIT, block.number);
         info.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
         info.incentivePlan = _incentivePlan;
         info.lastRewardHeight = 0;
@@ -189,13 +189,13 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     }
 
     function getTops() public view override returns (SuperNodeInfo[] memory) {
-        uint minAmount = getPropertyValue("supernode_min_amount") * COIN;
+        uint minAmount = getPropertyValue("supernode_min_amount") * Constant.COIN;
         address[] memory addrs = new address[](ids.length);
         uint num = 0;
         for(uint i = 0; i < ids.length; i++) {
             address addr = id2addr[ids[i]];
             SuperNodeInfo memory info = addr2info[addr];
-            if(info.stateInfo.state != NODE_STATE_START) {
+            if(info.stateInfo.state != Constant.NODE_STATE_START) {
                 continue;
             }
             uint lockAmount;
@@ -293,7 +293,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
                 lockAmount += record.amount;
             }
         }
-        if(lockAmount < getPropertyValue("supernode_min_amount") * COIN) {
+        if(lockAmount < getPropertyValue("supernode_min_amount") * Constant.COIN) {
             return false;
         }
         return true;

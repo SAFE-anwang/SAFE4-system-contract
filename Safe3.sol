@@ -5,9 +5,6 @@ import "./System.sol";
 import "./utils/Base58.sol";
 
 contract Safe3 is ISafe3, System {
-    uint internal constant SPOS_HEIGHT = 1092826;
-    uint internal constant SAFE3_END_HEIGHT = 5000000;
-
     // available safe3
     uint num;
     bytes20[] keyIDs;
@@ -50,24 +47,24 @@ contract Safe3 is ISafe3, System {
             address safe4Addr = getSafe4Addr(_pubkey);
             uint lockDay = 0;
             uint remainLockHeight;
-            if(info.unlockHeight <= SAFE3_END_HEIGHT) {
+            if(info.unlockHeight <= Constant.SAFE3_END_HEIGHT) {
                 lockDay = 0;
                 remainLockHeight = 0;
             } else {
-                if(info.lockHeight < SPOS_HEIGHT) {
-                    if(info.unlockHeight <= SPOS_HEIGHT) {
+                if(info.lockHeight < Constant.SPOS_HEIGHT) {
+                    if(info.unlockHeight <= Constant.SPOS_HEIGHT) {
                         lockDay += (info.unlockHeight - info.lockHeight) / 576;
                     } else {
-                        lockDay += (SPOS_HEIGHT - info.lockHeight) / 576;
-                        lockDay += (info.unlockHeight - SPOS_HEIGHT) / 2880;
+                        lockDay += (Constant.SPOS_HEIGHT - info.lockHeight) / 576;
+                        lockDay += (info.unlockHeight - Constant.SPOS_HEIGHT) / 2880;
                     }
-                    if((info.unlockHeight - info.lockHeight) % DAYS_IN_MONTH != 0) {
+                    if((info.unlockHeight - info.lockHeight) % Constant.DAYS_IN_MONTH != 0) {
                         lockDay += 1;
                     }
                 } else {
                     lockDay += (info.unlockHeight - info.lockHeight) / 2880 + ((info.unlockHeight - info.lockHeight) % 2880 == 0 ? 0 : 1);
                 }
-                remainLockHeight = info.unlockHeight - SAFE3_END_HEIGHT;
+                remainLockHeight = info.unlockHeight - Constant.SAFE3_END_HEIGHT;
             }
             uint lockID = getAccountManager().fromSafe3(safe4Addr, info.amount, lockDay, remainLockHeight);
             if(info.isMN) {

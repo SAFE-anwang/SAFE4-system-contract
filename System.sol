@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.6 <=0.8.19;
 
-import "./Constant.sol";
 import "./interfaces/IProperty.sol";
 import "./interfaces/IAccountManager.sol";
 import "./interfaces/IMasterNodeStorage.sol";
@@ -17,8 +16,9 @@ import "./3rd/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts/proxy/ut
 import "./3rd/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "./3rd/OpenZeppelin/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import "./3rd/OpenZeppelin/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "./utils/Constant.sol";
 
-contract System is Initializable, OwnableUpgradeable, Constant {
+contract System is Initializable, OwnableUpgradeable {
     function initialize() public initializer {
         __Ownable_init();
     }
@@ -33,90 +33,90 @@ contract System is Initializable, OwnableUpgradeable, Constant {
     }
 
     modifier onlyAccountManagerContract {
-        require(msg.sender == ACCOUNT_MANAGER_ADDR, "No account-manager contract");
+        require(msg.sender == Constant.ACCOUNT_MANAGER_ADDR, "No account-manager contract");
         _;
     }
 
     modifier onlyMasterNodeLogic {
-        require(msg.sender == MASTERNODE_LOGIC_ADDR, "No masternode-logic contract");
+        require(msg.sender == Constant.MASTERNODE_LOGIC_ADDR, "No masternode-logic contract");
         _;
     }
 
     modifier onlySuperNodeLogic {
-        require(msg.sender == SUPERNODE_LOGIC_ADDR, "No supernode logic contract");
+        require(msg.sender == Constant.SUPERNODE_LOGIC_ADDR, "No supernode-logic contract");
         _;
     }
 
     modifier onlyMnOrSnContract {
-        require(msg.sender == MASTERNODE_LOGIC_ADDR || msg.sender == SUPERNODE_LOGIC_ADDR, "No masternode logic and supernode logic contract");
+        require(msg.sender == Constant.MASTERNODE_LOGIC_ADDR || msg.sender == Constant.SUPERNODE_LOGIC_ADDR, "No masternode-logic and supernode-logic contract");
         _;
     }
 
     modifier onlySnOrSNVoteContract {
-        require(msg.sender == SUPERNODE_LOGIC_ADDR || msg.sender == SNVOTE_ADDR, "No supernode logic and snvote contract");
+        require(msg.sender == Constant.SUPERNODE_LOGIC_ADDR || msg.sender == Constant.SNVOTE_ADDR, "No supernode-logic and supernode-vote contract");
         _;
     }
 
     modifier onlySNVoteContract {
-        require(msg.sender == SNVOTE_ADDR, "No snvote contract");
+        require(msg.sender == Constant.SNVOTE_ADDR, "No supernode-vote contract");
         _;
     }
 
     modifier onlyMasterNodeStateContract {
-        require(msg.sender == MASTERNODE_STATE_ADDR, "No masternode-state contract");
+        require(msg.sender == Constant.MASTERNODE_STATE_ADDR, "No masternode-state contract");
         _;
     }
 
     modifier onlySuperNodeStateContract {
-        require(msg.sender == SUPERNODE_STATE_ADDR, "No supernode-state contract");
+        require(msg.sender == Constant.SUPERNODE_STATE_ADDR, "No supernode-state contract");
         _;
     }
 
     modifier onlySafe3Contract {
-        require(msg.sender == SAFE3_ADDR, "No SAFE3 contract");
+        require(msg.sender == Constant.SAFE3_ADDR, "No SAFE3 contract");
         _;
     }
 
     modifier onlySystemRewardContract {
-        require(msg.sender == SYSTEM_REWARD_ADDR, "No system reward contract");
+        require(msg.sender == Constant.SYSTEM_REWARD_ADDR, "No system-reward contract");
         _;
     }
 
     modifier onlyProposalContract {
-        require(msg.sender == PROPOSAL_ADDR, "No proposal contract");
+        require(msg.sender == Constant.PROPOSAL_ADDR, "No proposal contract");
         _;
     }
 
     function getAccountManager() internal pure returns (IAccountManager) {
-        return IAccountManager(ACCOUNT_MANAGER_ADDR);
+        return IAccountManager(Constant.ACCOUNT_MANAGER_ADDR);
     }
 
     function getMasterNodeStorage() internal pure returns (IMasterNodeStorage) {
-        return IMasterNodeStorage(MASTERNODE_STORAGE_ADDR);
+        return IMasterNodeStorage(Constant.MASTERNODE_STORAGE_ADDR);
     }
 
     function getMasterNodeLogic() internal pure returns (IMasterNodeLogic) {
-        return IMasterNodeLogic(MASTERNODE_LOGIC_ADDR);
+        return IMasterNodeLogic(Constant.MASTERNODE_LOGIC_ADDR);
     }
 
     function getSuperNodeStorage() internal pure returns (ISuperNodeStorage) {
-        return ISuperNodeStorage(SUPERNODE_STORAGE_ADDR);
+        return ISuperNodeStorage(Constant.SUPERNODE_STORAGE_ADDR);
     }
 
     function getSuperNodeLogic() internal pure returns (ISuperNodeLogic) {
-        return ISuperNodeLogic(SUPERNODE_LOGIC_ADDR);
+        return ISuperNodeLogic(Constant.SUPERNODE_LOGIC_ADDR);
     }
 
     function getSNVote() internal pure returns (ISNVote) {
-        return ISNVote(SNVOTE_ADDR);
+        return ISNVote(Constant.SNVOTE_ADDR);
     }
 
     function getProposal() internal pure returns (IProposal) {
-        return IProposal(PROPOSAL_ADDR);
+        return IProposal(Constant.PROPOSAL_ADDR);
     }
 
     function getPropertyValue(string memory _name) internal view returns (uint) {
-        return IProperty(PROPERTY_ADDR).getValue(_name);
+        return IProperty(Constant.PROPERTY_ADDR).getValue(_name);
     }
 
     function isMN(address _addr) internal view returns (bool) {

@@ -14,18 +14,18 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(_addr != address(0), "invalid address");
         require(!existNodeAddress(_addr), "existent address");
         if(!_isUnion) {
-            require(msg.value >= getPropertyValue("masternode_min_amount") * COIN, "less than min lock amount");
+            require(msg.value >= getPropertyValue("masternode_min_amount") * Constant.COIN, "less than min lock amount");
         } else {
-            require(msg.value >= getPropertyValue("masternode_union_min_amount") * COIN, "less than min union lock amount");
+            require(msg.value >= getPropertyValue("masternode_union_min_amount") * Constant.COIN, "less than min union lock amount");
         }
         require(_lockDay >= getPropertyValue("masternode_min_lockday"), "less than min lock day");
-        require(bytes(_enode).length >= MIN_NODE_ENODE_LEN, "invalid enode");
+        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN, "invalid enode");
         require(!existNodeEnode(_enode), "existent enode");
-        require(bytes(_description).length <= MAX_NODE_DESCRIPTION_LEN, "invalid description");
+        require(bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         if(!_isUnion) {
-            require(_creatorIncentive == MAX_INCENTIVE && _partnerIncentive == 0, "invalid incentive");
+            require(_creatorIncentive == Constant.MAX_INCENTIVE && _partnerIncentive == 0, "invalid incentive");
         } else {
-            require(_creatorIncentive > 0 && _creatorIncentive <= MAX_MN_CREATOR_INCENTIVE && _creatorIncentive + _partnerIncentive == MAX_INCENTIVE, "invalid incentive");
+            require(_creatorIncentive > 0 && _creatorIncentive <= Constant.MAX_MN_CREATOR_INCENTIVE && _creatorIncentive + _partnerIncentive == Constant.MAX_INCENTIVE, "invalid incentive");
         }
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         getMasterNodeStorage().create(_addr, lockID, msg.value, _enode, _description, IMasterNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
@@ -35,7 +35,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
 
     function appendRegister(address _addr, uint _lockDay) public payable override {
         require(getMasterNodeStorage().exist(_addr), "non-existent masternode");
-        require(msg.value >= getPropertyValue("masternode_append_min_amount") * COIN, "less than min append lock amount");
+        require(msg.value >= getPropertyValue("masternode_append_min_amount") * Constant.COIN, "less than min append lock amount");
         require(_lockDay >= getPropertyValue("masternode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         getMasterNodeStorage().append(_addr, lockID, msg.value);
@@ -48,7 +48,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_lockID);
         require(record.addr == msg.sender, "you aren't record owner");
         require(block.number < record.unlockHeight, "record isn't locked");
-        require(record.amount >= getPropertyValue("masternode_append_min_amount") * COIN, "less than min append lock amount");
+        require(record.amount >= getPropertyValue("masternode_append_min_amount") * Constant.COIN, "less than min append lock amount");
         require(record.lockDay >= getPropertyValue("masternode_append_min_lockday"), "less than min append lock day");
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight, "record is freezen");
@@ -61,8 +61,8 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(getMasterNodeStorage().exist(_addr), "non-existent masternode");
         require(msg.value > 0, "invalid reward");
         IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfo(_addr);
-        uint creatorReward = msg.value * info.incentivePlan.creator / MAX_INCENTIVE;
-        uint partnerReward = msg.value* info.incentivePlan.partner / MAX_INCENTIVE;
+        uint creatorReward = msg.value * info.incentivePlan.creator / Constant.MAX_INCENTIVE;
+        uint partnerReward = msg.value* info.incentivePlan.partner / Constant.MAX_INCENTIVE;
 
         uint maxCount = info.founders.length;
         address[] memory tempAddrs = new address[](maxCount);
@@ -73,11 +73,11 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         if(creatorReward != 0) {
             tempAddrs[count] = info.creator;
             tempAmounts[count] = creatorReward;
-            tempRewardTypes[count] = REWARD_CREATOR;
+            tempRewardTypes[count] = Constant.REWARD_CREATOR;
             count++;
         }
 
-        uint minAmount = getPropertyValue("masternode_min_amount") * COIN;
+        uint minAmount = getPropertyValue("masternode_min_amount") * Constant.COIN;
         // reward to partner
         if(partnerReward != 0) {
             uint total = 0;
@@ -90,7 +90,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
                         if(pos == -1) {
                             tempAddrs[count] = partner.addr;
                             tempAmounts[count] = tempAmount;
-                            tempRewardTypes[count] = REWARD_PARTNER;
+                            tempRewardTypes[count] = Constant.REWARD_PARTNER;
                             count++;
                         } else {
                             tempAmounts[uint(pos)] += tempAmount;
@@ -107,7 +107,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
                         if(pos == -1) {
                             tempAddrs[count] = partner.addr;
                             tempAmounts[count] = tempAmount;
-                            tempRewardTypes[count] = REWARD_PARTNER;
+                            tempRewardTypes[count] = Constant.REWARD_PARTNER;
                             count++;
                         } else {
                             tempAmounts[uint(pos)] += tempAmount;
@@ -119,7 +119,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         }
         // reward to address
         getAccountManager().reward{value: msg.value}(tempAddrs, tempAmounts);
-        emit SystemReward(_addr, REWARD_MN, tempAddrs, tempRewardTypes, tempAmounts);
+        emit SystemReward(_addr, Constant.REWARD_MN, tempAddrs, tempRewardTypes, tempAmounts);
         getMasterNodeStorage().updateLastRewardHeight(_addr, block.number);
     }
 
@@ -135,8 +135,8 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
 
     function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID) public override onlySafe3Contract {
         require(!existNodeAddress(_addr), "existent address");
-        require(_amount >= getPropertyValue("masternode_min_amount") * COIN, "less than min lock amount");
-        getMasterNodeStorage().create(_addr, _lockID, _amount, "", "", IMasterNodeStorage.IncentivePlan(MAX_INCENTIVE, 0, 0));
+        require(_amount >= getPropertyValue("masternode_min_amount") * Constant.COIN, "less than min lock amount");
+        getMasterNodeStorage().create(_addr, _lockID, _amount, "", "", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0));
         getAccountManager().setRecordFreezeInfo(_lockID, _addr, _addr, _lockDay);
         emit MNRegister(_addr, msg.sender, _amount, _lockDay, _lockID);
     }
@@ -151,7 +151,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
 
     function changeEnode(address _addr, string memory _enode) public override {
         require(getMasterNodeStorage().exist(_addr), "non-existent masternode");
-        require(bytes(_enode).length >= MIN_NODE_ENODE_LEN, "invalid enode");
+        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN, "invalid enode");
         require(!existNodeEnode(_enode), "existent enode");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't masternode creator");
         getMasterNodeStorage().updateEnode(_addr, _enode);
@@ -159,7 +159,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
 
     function changeDescription(address _addr, string memory _description) public override {
         require(getMasterNodeStorage().exist(_addr), "non-existent masternode");
-        require(bytes(_description).length <= MAX_NODE_DESCRIPTION_LEN, "invalid description");
+        require(bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't masternode creator");
         getMasterNodeStorage().updateDescription(_addr, _description);
     }

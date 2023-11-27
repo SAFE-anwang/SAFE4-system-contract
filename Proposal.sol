@@ -21,14 +21,14 @@ contract Proposal is IProposal, System {
     }
 
     function create(string memory _title, uint _payAmount, uint _payTimes, uint _startPayTime, uint _endPayTime, string memory _description) public payable override returns (uint) {
-        require(bytes(_title).length > 0 && bytes(_title).length < MAX_PP_TITLE_LEN, "invalid title");
+        require(bytes(_title).length > 0 && bytes(_title).length < Constant.MAX_PP_TITLE_LEN, "invalid title");
         require(_payAmount > 0 && _payAmount <= getBalance(), "invalid pay amount");
-        require(_payTimes > 0 && _payTimes < MAX_PP_PAY_TIMES, "invalid pay times");
+        require(_payTimes > 0 && _payTimes < Constant.MAX_PP_PAY_TIMES, "invalid pay times");
         require(_payAmount / _payTimes == 0, "invalid pay amount and times");
         require(_startPayTime >= block.timestamp, "invalid start pay time");
         require(_endPayTime >= _startPayTime, "invalid end pay time");
-        require(bytes(_description).length > 0 && bytes(_description).length < MAX_PP_DESCRIPTIO_LEN, "invalid description");
-        require(msg.value >= 1 * COIN, "need pay 1 SAFE");
+        require(bytes(_description).length > 0 && bytes(_description).length < Constant.MAX_PP_DESCRIPTIO_LEN, "invalid description");
+        require(msg.value >= 1 * Constant.COIN, "need pay 1 SAFE");
 
         // burn 1 SAFE at least
         getAccountManager().deposit{value: msg.value}(0x0000000000000000000000000000000000000000, 0);
@@ -54,7 +54,7 @@ contract Proposal is IProposal, System {
     function vote(uint _id, uint _voteResult) public override onlySN {
         require(exist(_id), "non-existent proprosal");
         require(proposals[_id].state == 0, "proposal has been confirmed");
-        require(_voteResult == VOTE_AGREE || _voteResult == VOTE_REJECT || _voteResult == VOTE_ABSTAIN, "invalue vote result, must be agree(1), reject(2), abstain(3)");
+        require(_voteResult == Constant.VOTE_AGREE || _voteResult == Constant.VOTE_REJECT || _voteResult == Constant.VOTE_ABSTAIN, "invalue vote result, must be agree(1), reject(2), abstain(3)");
         require(block.timestamp > proposals[_id].startPayTime, "proposal is out of day");
         address[] storage voters = proposals[_id].voters;
         uint i = 0;
@@ -82,20 +82,20 @@ contract Proposal is IProposal, System {
         uint rejectCount = 0;
         uint snCount = getSNNum();
         for(i = 0; i < voteResults.length; i++) {
-             if(voteResults[i] == VOTE_AGREE) {
+             if(voteResults[i] == Constant.VOTE_AGREE) {
                 agreeCount++;
             } else { // reject or abstain
                 rejectCount++;
             }
             if(agreeCount > snCount * 2 / 3) {
                 handle(_id);
-                proposals[_id].state = VOTE_AGREE;
-                emit ProposalState(_id, VOTE_AGREE);
+                proposals[_id].state = Constant.VOTE_AGREE;
+                emit ProposalState(_id, Constant.VOTE_AGREE);
                 return;
             }
             if(rejectCount >= snCount * 1 / 3) {
-                proposals[_id].state = VOTE_REJECT;
-                emit ProposalState(_id, VOTE_REJECT);
+                proposals[_id].state = Constant.VOTE_REJECT;
+                emit ProposalState(_id, Constant.VOTE_REJECT);
                 return;
             }
         }
@@ -104,7 +104,7 @@ contract Proposal is IProposal, System {
     function changeTitle(uint _id, string memory _title) public override {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
-        require(bytes(_title).length > 0 && bytes(_title).length < MAX_PP_TITLE_LEN, "invalid title");
+        require(bytes(_title).length > 0 && bytes(_title).length < Constant.MAX_PP_TITLE_LEN, "invalid title");
         require(proposals[_id].voters.length == 0, "voted proposal can't update title");
         proposals[_id].title = _title;
         proposals[_id].updateHeight = block.number;
@@ -123,7 +123,7 @@ contract Proposal is IProposal, System {
     function changePayTimes(uint _id, uint _payTimes) public override {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
-        require(_payTimes > 0 && _payTimes < MAX_PP_PAY_TIMES, "invalid pay times");
+        require(_payTimes > 0 && _payTimes < Constant.MAX_PP_PAY_TIMES, "invalid pay times");
         require(proposals[_id].payAmount / _payTimes == 0, "pay times is too big");
         require(proposals[_id].voters.length == 0, "voted proposal can't update pay-times");
         proposals[_id].payTimes = _payTimes;
@@ -151,7 +151,7 @@ contract Proposal is IProposal, System {
     function changeDescription(uint _id, string memory _description) public override {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
-        require(bytes(_description).length > 0 && bytes(_description).length < MAX_PP_DESCRIPTIO_LEN, "invalid description");
+        require(bytes(_description).length > 0 && bytes(_description).length < Constant.MAX_PP_DESCRIPTIO_LEN, "invalid description");
         require(proposals[_id].voters.length == 0, "voted proposal can't update description");
         proposals[_id].description = _description;
         proposals[_id].updateHeight = block.number;

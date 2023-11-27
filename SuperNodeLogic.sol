@@ -14,20 +14,20 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(_addr != address(0), "invalid address");
         require(!existNodeAddress(_addr), "existent address");
         if(!_isUnion) {
-            require(msg.value >= getPropertyValue("supernode_min_amount") * COIN, "less than min lock amount");
+            require(msg.value >= getPropertyValue("supernode_min_amount") * Constant.COIN, "less than min lock amount");
         } else {
-            require(msg.value >= getPropertyValue("supernode_union_min_amount") * COIN, "less than min union lock amount");
+            require(msg.value >= getPropertyValue("supernode_union_min_amount") * Constant.COIN, "less than min union lock amount");
         }
         require(_lockDay >= getPropertyValue("supernode_min_lockday"), "less than min lock day");
-        require(bytes(_name).length > 0 && bytes(_name).length <= MAX_SN_NAME_LEN, "invalid name");
+        require(bytes(_name).length > 0 && bytes(_name).length <= Constant.MAX_SN_NAME_LEN, "invalid name");
         require(!getSuperNodeStorage().existName(_name), "existent name");
-        require(bytes(_enode).length >= MIN_NODE_ENODE_LEN, "invalid enode");
+        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN, "invalid enode");
         require(!existNodeEnode(_enode), "existent enode");
-        require(bytes(_description).length > 0 && bytes(_description).length <= MAX_NODE_DESCRIPTION_LEN, "invalid description");
-        require(_creatorIncentive + _partnerIncentive + _voterIncentive == MAX_INCENTIVE, "invalid incentive");
-        require(_creatorIncentive > 0 && _creatorIncentive <= MAX_SN_CREATOR_INCENTIVE, "creator incentive exceed 10%");
-        require(_partnerIncentive >= MIN_SN_PARTNER_INCENTIVE && _partnerIncentive <= MAX_SN_PARTNER_INCENTIVE, "partner incentive is 40% - 50%");
-        require(_voterIncentive >= MIN_SN_VOTER_INCENTIVE && _voterIncentive <= MAX_SN_VOTER_INCENTIVE, "creator incentive is 40% - 50%");
+        require(bytes(_description).length > 0 && bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
+        require(_creatorIncentive + _partnerIncentive + _voterIncentive == Constant.MAX_INCENTIVE, "invalid incentive");
+        require(_creatorIncentive > 0 && _creatorIncentive <= Constant.MAX_SN_CREATOR_INCENTIVE, "creator incentive exceed 10%");
+        require(_partnerIncentive >= Constant.MIN_SN_PARTNER_INCENTIVE && _partnerIncentive <= Constant.MAX_SN_PARTNER_INCENTIVE, "partner incentive is 40% - 50%");
+        require(_voterIncentive >= Constant.MIN_SN_VOTER_INCENTIVE && _voterIncentive <= Constant.MAX_SN_VOTER_INCENTIVE, "creator incentive is 40% - 50%");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         getSuperNodeStorage().create(_addr, lockID, msg.value, _name, _enode, _description, ISuperNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive));
         getAccountManager().setRecordFreezeInfo(lockID, msg.sender, _addr, _lockDay); // creator's lock id can't register other supernode again
@@ -36,7 +36,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function appendRegister(address _addr, uint _lockDay) public payable override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
-        require(msg.value >= getPropertyValue("supernode_append_min_amount") * COIN, "less than min append lock amount");
+        require(msg.value >= getPropertyValue("supernode_append_min_amount") * Constant.COIN, "less than min append lock amount");
         require(_lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         getSuperNodeStorage().append(_addr, lockID, msg.value);
@@ -49,7 +49,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_lockID);
         require(record.addr == msg.sender, "you aren't record owner");
         require(block.number < record.unlockHeight, "record isn't locked");
-        require(record.amount >= getPropertyValue("supernode_append_min_amount") * COIN, "less than min append lock amount");
+        require(record.amount >= getPropertyValue("supernode_append_min_amount") * Constant.COIN, "less than min append lock amount");
         require(record.lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight, "record is freezen");
@@ -62,8 +62,8 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
         require(msg.value > 0, "invalid reward");
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_addr);
-        uint creatorReward = msg.value * info.incentivePlan.creator / MAX_INCENTIVE;
-        uint partnerReward = msg.value * info.incentivePlan.partner / MAX_INCENTIVE;
+        uint creatorReward = msg.value * info.incentivePlan.creator / Constant.MAX_INCENTIVE;
+        uint partnerReward = msg.value * info.incentivePlan.partner / Constant.MAX_INCENTIVE;
         uint voterReward = msg.value - creatorReward - partnerReward;
 
         uint maxCount = info.founders.length + info.voteInfo.voters.length;
@@ -75,11 +75,11 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         if(creatorReward != 0) {
             tempAddrs[count] = info.creator;
             tempAmounts[count] = creatorReward;
-            tempRewardTypes[count] = REWARD_CREATOR;
+            tempRewardTypes[count] = Constant.REWARD_CREATOR;
             count++;
         }
 
-        uint minAmount = getPropertyValue("supernode_min_amount") * COIN;
+        uint minAmount = getPropertyValue("supernode_min_amount") * Constant.COIN;
         // reward to partner
         if(partnerReward != 0) {
             uint total = 0;
@@ -92,7 +92,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
                         if(pos == -1) {
                             tempAddrs[count] = partner.addr;
                             tempAmounts[count] = tempAmount;
-                            tempRewardTypes[count] = REWARD_PARTNER;
+                            tempRewardTypes[count] = Constant.REWARD_PARTNER;
                             count++;
                         } else {
                             tempAmounts[uint(pos)] += tempAmount;
@@ -109,7 +109,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
                         if(pos == -1) {
                             tempAddrs[count] = partner.addr;
                             tempAmounts[count] = tempAmount;
-                            tempRewardTypes[count] = REWARD_PARTNER;
+                            tempRewardTypes[count] = Constant.REWARD_PARTNER;
                             count++;
                         } else {
                             tempAmounts[uint(pos)] += tempAmount;
@@ -130,7 +130,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
                         if(pos == -1) {
                             tempAddrs[count] = voter.addr;
                             tempAmounts[count] = tempAmount;
-                            tempRewardTypes[count] = REWARD_VOTER;
+                            tempRewardTypes[count] = Constant.REWARD_VOTER;
                             count++;
                         } else {
                             tempAmounts[uint(pos)] += tempAmount;
@@ -144,7 +144,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         }
         // reward to address
         getAccountManager().reward{value: msg.value}(tempAddrs, tempAmounts);
-        emit SystemReward(_addr, REWARD_SN, tempAddrs, tempRewardTypes, tempAmounts);
+        emit SystemReward(_addr, Constant.REWARD_SN, tempAddrs, tempRewardTypes, tempAmounts);
         getSuperNodeStorage().updateLastRewardHeight(_addr, block.number);
     }
 
@@ -168,7 +168,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function changeName(address _addr, string memory _name) public override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
-        require(bytes(_name).length > 0 && bytes(_name).length <= MAX_SN_NAME_LEN, "invalid name");
+        require(bytes(_name).length > 0 && bytes(_name).length <= Constant.MAX_SN_NAME_LEN, "invalid name");
         require(!getSuperNodeStorage().existName(_name), "existent name");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
         getSuperNodeStorage().updateName(_addr, _name);
@@ -176,7 +176,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function changeEnode(address _addr, string memory _enode) public override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
-        require(bytes(_enode).length >= MIN_NODE_ENODE_LEN, "invalid enode");
+        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN, "invalid enode");
         require(!existNodeEnode(_enode), "existent enode");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
         getSuperNodeStorage().updateEnode(_addr, _enode);
@@ -184,7 +184,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function changeDescription(address _addr, string memory _description) public override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
-        require(bytes(_description).length > 0 && bytes(_description).length <= MAX_NODE_DESCRIPTION_LEN, "invalid description");
+        require(bytes(_description).length > 0 && bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
         getSuperNodeStorage().updateDescription(_addr, _description);
     }
