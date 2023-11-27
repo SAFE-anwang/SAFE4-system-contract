@@ -5,16 +5,17 @@ import "./Constant.sol";
 import "./interfaces/IProperty.sol";
 import "./interfaces/IAccountManager.sol";
 import "./interfaces/IMasterNode.sol";
-import "./interfaces/ISuperNode.sol";
+import "./interfaces/ISuperNodeStorage.sol";
+import "./interfaces/ISuperNodeLogic.sol";
 import "./interfaces/ISNVote.sol";
 import "./interfaces/INodeState.sol";
 import "./interfaces/IProposal.sol";
 import "./interfaces/ISystemReward.sol";
 import "./interfaces/ISafe3.sol";
-import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
-import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
-import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "./3rd/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
+import "./3rd/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import "./3rd/OpenZeppelin/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import "./3rd/OpenZeppelin/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 contract System is Initializable, OwnableUpgradeable, Constant {
     function initialize() public initializer {
@@ -35,13 +36,18 @@ contract System is Initializable, OwnableUpgradeable, Constant {
         _;
     }
 
+    modifier onlySuperNodeLogic {
+        require(msg.sender == SUPERNODE_LOGIC_PROXY_ADDR, "No supernode logic contract");
+        _;
+    }
+
     modifier onlyMnOrSnContract {
-        require(msg.sender == MASTERNODE_PROXY_ADDR || msg.sender == SUPERNODE_PROXY_ADDR, "No masternode and supernode contract");
+        require(msg.sender == MASTERNODE_PROXY_ADDR || msg.sender == SUPERNODE_LOGIC_PROXY_ADDR, "No masternode and supernode logic contract");
         _;
     }
 
     modifier onlySnOrSNVoteContract {
-        require(msg.sender == SUPERNODE_PROXY_ADDR || msg.sender == SNVOTE_PROXY_ADDR, "No supernode and snvote contract");
+        require(msg.sender == SUPERNODE_LOGIC_PROXY_ADDR || msg.sender == SNVOTE_PROXY_ADDR, "No supernode logic and snvote contract");
         _;
     }
 
@@ -87,8 +93,12 @@ contract System is Initializable, OwnableUpgradeable, Constant {
         return IMasterNode(MASTERNODE_PROXY_ADDR);
     }
 
-    function getSuperNode() internal pure returns (ISuperNode) {
-        return ISuperNode(SUPERNODE_PROXY_ADDR);
+    function getSuperNodeStorage() internal pure returns (ISuperNodeStorage) {
+        return ISuperNodeStorage(SUPERNODE_STORAGE_PROXY_ADDR);
+    }
+
+    function getSuperNodeLogic() internal pure returns (ISuperNodeLogic) {
+        return ISuperNodeLogic(SUPERNODE_LOGIC_PROXY_ADDR);
     }
 
     function getSNVote() internal pure returns (ISNVote) {
@@ -120,26 +130,26 @@ contract System is Initializable, OwnableUpgradeable, Constant {
     }
 
     function isSN(address _addr) internal view returns (bool) {
-        return getSuperNode().exist(_addr);
+        return getSuperNodeStorage().exist(_addr);
     }
 
     function isValidSN(address _addr) internal view returns (bool) {
-        return getSuperNode().isValid(_addr);
+        return getSuperNodeStorage().isValid(_addr);
     }
 
     function isFormalSN(address _addr) internal view returns (bool) {
-        return getSuperNode().isFormal(_addr);
+        return getSuperNodeStorage().isFormal(_addr);
     }
 
     function getSNNum() internal view returns (uint) {
-        return getSuperNode().getNum();
+        return getSuperNodeStorage().getNum();
     }
 
     function existNodeAddress(address _addr) internal view returns (bool) {
-        return getMasterNode().exist(_addr) || getSuperNode().exist(_addr);
+        return getMasterNode().exist(_addr) || getSuperNodeStorage().exist(_addr);
     }
 
     function existNodeEnode(string memory _enode) internal view returns (bool) {
-        return getMasterNode().existEnode(_enode) || getSuperNode().existEnode(_enode);
+        return getMasterNode().existEnode(_enode) || getSuperNodeStorage().existEnode(_enode);
     }
 }
