@@ -312,7 +312,7 @@ contract SNVote is ISNVote, System {
         // freeze record
         if(isSN(_dstAddr)) { // vote
             getAccountManager().setRecordVoteInfo(_recordID, _voterAddr, _dstAddr, getPropertyValue("record_snvote_lockday"));
-            getSuperNode().changeVoteInfo(_dstAddr, _voterAddr, _recordID, amount, num, 1);
+            getSuperNodeLogic().changeVoteInfo(_dstAddr, _voterAddr, _recordID, amount, num, 1);
             emit SNVOTE_VOTE(_voterAddr, _dstAddr, _recordID, num);
         } else { // approval
             emit SNVOTE_APPROVAL(_voterAddr, _dstAddr, _recordID, num);
@@ -495,7 +495,7 @@ contract SNVote is ISNVote, System {
         // unfreeze record
         if(isSN(dstAddr)) { // vote
             getAccountManager().setRecordVoteInfo(_recordID, _voterAddr, address(0), 0);
-            getSuperNode().changeVoteInfo(dstAddr, _voterAddr, _recordID, amount, num, 0);
+            getSuperNodeLogic().changeVoteInfo(dstAddr, _voterAddr, _recordID, amount, num, 0);
             emit SNVOTE_REMOVE_VOTE(_voterAddr, dstAddr, _recordID, num);
         } else { // proxy
             emit SNVOTE_REMOVE_APPROVAL(_voterAddr, dstAddr, _recordID, num);

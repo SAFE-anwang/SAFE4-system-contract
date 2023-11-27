@@ -82,10 +82,10 @@ contract AccountManager is IAccountManager, System {
                     RecordUseInfo memory useinfo = id2useinfo[_ids[i]];
                     if(record.addr == msg.sender && block.number >= record.unlockHeight && block.number >= useinfo.unfreezeHeight && block.number >= useinfo.releaseHeight) {
                         getSNVote().removeVoteOrApproval2(msg.sender, _ids[i]);
-                        if(getMasterNode().exist(useinfo.frozenAddr)) {
-                            getMasterNode().removeMember(useinfo.frozenAddr, _ids[i]);
-                        } else if(getSuperNode().exist(useinfo.frozenAddr)) {
-                            getSuperNode().removeMember(useinfo.frozenAddr, _ids[i]);
+                        if(getMasterNodeStorage().exist(useinfo.frozenAddr)) {
+                            getMasterNodeLogic().removeMember(useinfo.frozenAddr, _ids[i]);
+                        } else if(getSuperNodeStorage().exist(useinfo.frozenAddr)) {
+                            getSuperNodeLogic().removeMember(useinfo.frozenAddr, _ids[i]);
                         }
                         delRecord(_ids[i]);
                     }
@@ -126,10 +126,10 @@ contract AccountManager is IAccountManager, System {
                 if(temp_records[i].id != 0) {
                     RecordUseInfo memory useinfo = id2useinfo[temp_records[i].id];
                     getSNVote().removeVoteOrApproval2(msg.sender, temp_records[i].id);
-                    if(getMasterNode().exist(useinfo.frozenAddr)) {
-                        getMasterNode().removeMember(useinfo.frozenAddr, temp_records[i].id);
-                    } else if(getSuperNode().exist(useinfo.frozenAddr)) {
-                        getSuperNode().removeMember(useinfo.frozenAddr, temp_records[i].id);
+                    if(getMasterNodeStorage().exist(useinfo.frozenAddr)) {
+                        getMasterNodeLogic().removeMember(useinfo.frozenAddr, temp_records[i].id);
+                    } else if(getSuperNodeStorage().exist(useinfo.frozenAddr)) {
+                        getSuperNodeLogic().removeMember(useinfo.frozenAddr, temp_records[i].id);
                     }
                     delRecord(temp_records[i].id);
                 } else {
@@ -143,10 +143,10 @@ contract AccountManager is IAccountManager, System {
                 if(temp_records[i].id != 0) {
                     RecordUseInfo memory useinfo = id2useinfo[temp_records[i].id];
                     getSNVote().removeVoteOrApproval2(msg.sender, temp_records[i].id);
-                    if(getMasterNode().exist(useinfo.frozenAddr)) {
-                        getMasterNode().removeMember(useinfo.frozenAddr, temp_records[i].id);
-                    } else if(getSuperNode().exist(useinfo.frozenAddr)) {
-                        getSuperNode().removeMember(useinfo.frozenAddr, temp_records[i].id);
+                    if(getMasterNodeStorage().exist(useinfo.frozenAddr)) {
+                        getMasterNodeLogic().removeMember(useinfo.frozenAddr, temp_records[i].id);
+                    } else if(getSuperNodeStorage().exist(useinfo.frozenAddr)) {
+                        getSuperNodeLogic().removeMember(useinfo.frozenAddr, temp_records[i].id);
                     }
                     addr2records[msg.sender][id2index[temp_records[i].id]].amount = usedAmount + temp_records[i].amount - _amount;
                 } else {

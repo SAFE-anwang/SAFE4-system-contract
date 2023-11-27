@@ -12,7 +12,7 @@ contract MasterNodeState is INodeState, System {
         uint pos = 0;
         for(uint i = 0; i < _ids.length; i++) {
             uint id = _ids[i];
-            if(!getMasterNode().existID(id)) {
+            if(!getMasterNodeStorage().existID(id)) {
                 continue;
             }
             uint state = _states[i];
@@ -48,7 +48,7 @@ contract MasterNodeState is INodeState, System {
             if(_state == entries[i].state) {
                 if(++num > getSNNum() * 2 / 3) {
                     delete id2entries[_id];
-                    getMasterNode().changeState(_id, _state);
+                    getMasterNodeLogic().changeState(_id, _state);
                     break;
                 }
             }

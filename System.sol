@@ -99,6 +99,10 @@ contract System is Initializable, OwnableUpgradeable, Constant {
         return IMasterNodeStorage(MASTERNODE_STORAGE_PROXY_ADDR);
     }
 
+    function getMasterNodeLogic() internal pure returns (IMasterNodeLogic) {
+        return IMasterNodeLogic(MASTERNODE_LOGIC_PROXY_ADDR);
+    }
+
     function getSuperNodeStorage() internal pure returns (ISuperNodeStorage) {
         return ISuperNodeStorage(SUPERNODE_STORAGE_PROXY_ADDR);
     }

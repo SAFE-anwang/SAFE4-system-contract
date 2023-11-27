@@ -11,8 +11,8 @@ contract SystemReward is ISystemReward, System {
         require(_snAmount > 0, "invalid supernode reward");
         require(_mnAmount > 0, "invalid masternode reward");
         require(_snAmount + _mnAmount + _ppAmount == msg.value, "invalid amount");
-        getSuperNode().reward{value: _snAmount}(_snAddr);
-        getMasterNode().reward{value: _mnAmount}(_mnAddr);
+        getSuperNodeLogic().reward{value: _snAmount}(_snAddr);
+        getMasterNodeLogic().reward{value: _mnAmount}(_mnAddr);
         getProposal().reward{value: _ppAmount}();
     }
 }

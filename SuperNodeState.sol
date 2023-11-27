@@ -12,7 +12,7 @@ contract SuperNodeState is INodeState, System {
         uint pos = 0;
         for(uint i = 0; i < _ids.length; i++) {
             uint id = _ids[i];
-            if(!getSuperNode().existID(id)) {
+            if(!getSuperNodeStorage().existID(id)) {
                 continue;
             }
             uint state = _states[i];
@@ -48,7 +48,7 @@ contract SuperNodeState is INodeState, System {
             if(_state == entries[i].state) {
                 if(++num > getSNNum() * 2 / 3) {
                     delete id2entries[_id];
-                    getSuperNode().changeState(_id, _state);
+                    getSuperNodeLogic().changeState(_id, _state);
                     break;
                 }
             }
