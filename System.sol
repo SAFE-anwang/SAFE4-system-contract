@@ -12,10 +12,10 @@ import "./interfaces/INodeState.sol";
 import "./interfaces/IProposal.sol";
 import "./interfaces/ISystemReward.sol";
 import "./interfaces/ISafe3.sol";
-import "./3rd/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
-import "./3rd/OpenZeppelin/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import "./3rd/OpenZeppelin/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
-import "./3rd/OpenZeppelin/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
+import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
+import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "./utils/Constant.sol";
 
 contract System is Initializable, OwnableUpgradeable {
