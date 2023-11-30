@@ -136,16 +136,14 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
             }
             uint lockAmount;
             // check creator
-            IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(info.founders[0].lockID);
-            if(block.number >= record.unlockHeight) { // creator must be locked
+            if(block.number >= getAccountManager().getRecordByID(info.founders[0].lockID).unlockHeight) { // creator must be locked
                 continue;
             }
-            lockAmount += record.amount;
+            lockAmount += info.founders[0].amount;
             // check partner
             for(uint k = 1; k < info.founders.length; k++) {
-                record = getAccountManager().getRecordByID(info.founders[k].lockID);
-                if(block.number < record.unlockHeight) {
-                    lockAmount += record.amount;
+                if(block.number < getAccountManager().getRecordByID(info.founders[k].lockID).unlockHeight) {
+                    lockAmount += info.founders[k].amount;
                 }
             }
             if(lockAmount < minAmount) {
@@ -221,12 +219,13 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         if(info.id == 0) {
             return false;
         }
-        IAccountManager.AccountRecord memory record;
-        uint lockAmount;
+        if(block.number >= getAccountManager().getRecordByID(info.founders[0].lockID).unlockHeight) { // creator must be locked
+            return false;
+        }
+        uint lockAmount = info.founders[0].amount;
         for(uint i = 0; i < info.founders.length; i++) {
-            record = getAccountManager().getRecordByID(info.founders[i].lockID);
-            if(record.unlockHeight > block.number) {
-                lockAmount += record.amount;
+            if(block.number < getAccountManager().getRecordByID(info.founders[i].lockID).unlockHeight) {
+                lockAmount += info.founders[i].amount;
             }
         }
         if(lockAmount < getPropertyValue("masternode_min_amount") * Constant.COIN) {

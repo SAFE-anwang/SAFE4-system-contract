@@ -200,16 +200,14 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
             }
             uint lockAmount;
             // check creator
-            IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(info.founders[0].lockID);
-            if(block.number >= record.unlockHeight) { // creator must be locked
+            if(block.number >= getAccountManager().getRecordByID(info.founders[0].lockID).unlockHeight) { // creator must be locked
                 continue;
             }
-            lockAmount += record.amount;
+            lockAmount += info.founders[0].amount;
             // check partner
             for(uint k = 1; k < info.founders.length; k++) {
-                record = getAccountManager().getRecordByID(info.founders[k].lockID);
-                if(block.number < record.unlockHeight) {
-                    lockAmount += record.amount;
+                if(block.number < getAccountManager().getRecordByID(info.founders[k].lockID).unlockHeight) {
+                    lockAmount += info.founders[k].amount;
                 }
             }
             if(lockAmount < minAmount) {
@@ -217,6 +215,11 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
             }
             addrs[num++] = addr;
         }
+
+        if(num == 0) {
+            return getOfficials();
+        }
+
         if(num > 1) {
             // sort by vote number
             sortByVoteNum(addrs, 0, num - 1);
@@ -285,12 +288,13 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         if(info.id == 0) {
             return false;
         }
-        IAccountManager.AccountRecord memory record;
-        uint lockAmount;
-        for(uint i = 0; i < info.founders.length; i++) {
-            record = getAccountManager().getRecordByID(info.founders[i].lockID);
-            if(record.unlockHeight > block.number) {
-                lockAmount += record.amount;
+        if(block.number >= getAccountManager().getRecordByID(info.founders[0].lockID).unlockHeight) { // creator must be locked
+            return false;
+        }
+        uint lockAmount = info.founders[0].amount;
+        for(uint i = 1; i < info.founders.length; i++) {
+            if(block.number < getAccountManager().getRecordByID(info.founders[i].lockID).unlockHeight) {
+                lockAmount += info.founders[i].amount;
             }
         }
         if(lockAmount < getPropertyValue("supernode_min_amount") * Constant.COIN) {
