@@ -86,12 +86,10 @@ contract Property is IProperty, System {
     }
 
     function getInfo(string memory _name) public view override returns (PropertyInfo memory) {
-        require(exist(_name), "non-existent property");
         return properties[_name];
     }
 
     function getUnconfirmedInfo(string memory _name) public view override returns (UnconfirmedPropertyInfo memory) {
-        require(existUnconfirmed(_name), "non-existent unconfirmed property");
         return unconfirmedProperties[_name];
     }
 
@@ -124,7 +122,6 @@ contract Property is IProperty, System {
     }
 
     function removeUnconfirmedName(string memory _name) internal {
-        require(existUnconfirmed(_name), "non-existent unconfirmed property");
         delete unconfirmedProperties[_name];
         for(uint i = 0; i < unconfirmedNames.length; i++) {
             if(unconfirmedNames[i].equal(_name)) {

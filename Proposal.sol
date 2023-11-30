@@ -158,7 +158,6 @@ contract Proposal is IProposal, System {
     }
 
     function getInfo(uint _id) public view override returns (ProposalInfo memory) {
-        require(exist(_id), "non-existent proposal");
         return proposals[_id];
     }
 
