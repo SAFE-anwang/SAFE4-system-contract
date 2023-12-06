@@ -4,54 +4,71 @@ pragma solidity >=0.8.6 <=0.8.19;
 import "./System.sol";
 
 contract SuperNodeState is INodeState, System {
-    mapping(uint => StateEntry[]) id2entries; // id to upload informations
+    mapping(uint => mapping(address => uint)) id2entry;
+    mapping(uint => address[]) id2addrs;
 
     function upload(uint[] memory _ids, uint[] memory _states) public override onlySN {
         require(_ids.length == _states.length, "id list isn't matched with state list");
-        bool flag = false;
-        uint pos = 0;
         for(uint i = 0; i < _ids.length; i++) {
             uint id = _ids[i];
             if(!getSuperNodeStorage().existID(id)) {
                 continue;
             }
-            uint state = _states[i];
-            flag = false;
-            pos = 0;
-            (flag, pos) = existCaller(id, msg.sender);
-            if(flag) {
-                id2entries[id][pos].state = state;
-            } else {
-                id2entries[id].push(StateEntry(msg.sender, state));
+            id2entry[id][msg.sender] = _states[i];
+
+            bool exist = false;
+            for(uint k = 0; k < id2addrs[id].length; k++) {
+                if(id2addrs[id][k] == msg.sender) {
+                    exist = true;
+                    break;
+                }
             }
-            update(id, state);
+            if(!exist) {
+                id2addrs[id].push(msg.sender);
+            }
+
+            update(id, _states[i]);
         }
     }
 
     function get(uint _id) public view override returns (StateEntry[] memory) {
-        return id2entries[_id];
-    }
-
-    function existCaller(uint _id, address _caller) internal view returns (bool, uint) {
-        for(uint i = 0; i < id2entries[_id].length; i++) {
-            if(id2entries[_id][i].caller == _caller) {
-                return (true, i);
+        address[] memory addrs = id2addrs[_id];
+        uint count = 0;
+        for(uint i = 0; i < addrs.length; i++) {
+            if(id2entry[_id][addrs[i]] != 0) {
+                count++;
             }
         }
-        return (false, 0);
+        StateEntry[] memory entries = new StateEntry[](count);
+        uint k = 0;
+        for(uint i = 0; i < addrs.length; i++) {
+            if(id2entry[_id][addrs[i]] != 0) {
+                entries[k++] = StateEntry(addrs[i], id2entry[_id][addrs[i]]);
+            }
+        }
+        return entries;
     }
 
     function update(uint _id, uint _state) internal {
-        StateEntry[] storage entries = id2entries[_id];
         uint num = 0;
-        for(uint i = 0; i < entries.length; i++) {
-            if(_state == entries[i].state) {
-                if(++num > getSNNum() * 2 / 3) {
-                    delete id2entries[_id];
-                    getSuperNodeLogic().changeState(_id, _state);
+        uint snNum = getSNNum();
+        address[] memory addrs = id2addrs[_id];
+        bool flag = false;
+        for(uint i = 0; i < addrs.length; i++) {
+            address addr = addrs[i];
+            if(_state == id2entry[_id][addr]) {
+                if(++num > snNum * 2 / 3) {
+                    flag = true;
                     break;
                 }
             }
+        }
+        if(flag) {
+            for(uint i = 0; i < addrs.length; i++) {
+                id2entry[_id][addrs[i]] = 0;
+            }
+            // delete id2addrs[_id];
+            getSuperNodeLogic().changeState(_id, _state);
         }
     }
 }
