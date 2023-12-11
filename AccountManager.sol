@@ -246,7 +246,7 @@ contract AccountManager is IAccountManager, System {
         id2useinfo[_id].frozenAddr = _target;
     }
 
-    function updateRecordVoteAddr(uint _id, address _target) public override onlyMnOrSnContract {
+    function updateRecordVoteAddr(uint _id, address _target) public override onlySuperNodeLogic {
         if(_id == 0) {
             return;
         }
