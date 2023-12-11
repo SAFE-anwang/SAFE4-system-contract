@@ -15,12 +15,12 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         MasterNodeInfo storage info = addr2info[_addr];
         info.id = ++no;
         info.addr = _addr;
-        info.creator = msg.sender;
+        info.creator = tx.origin;
         info.enode = _enode;
         info.description = _description;
         info.isOfficial = false;
         info.stateInfo = StateInfo(Constant.NODE_STATE_INIT, block.number);
-        info.founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
+        info.founders.push(MemberInfo(_lockID, tx.origin, _amount, block.number));
         info.incentivePlan = plan;
         info.lastRewardHeight = 0;
         info.createHeight = block.number;
@@ -31,7 +31,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     }
 
     function append(address _addr, uint _lockID, uint _amount) public override onlyMasterNodeLogic {
-        addr2info[_addr].founders.push(MemberInfo(_lockID, msg.sender, _amount, block.number));
+        addr2info[_addr].founders.push(MemberInfo(_lockID, tx.origin, _amount, block.number));
         addr2info[_addr].updateHeight = block.number;
     }
 

@@ -144,7 +144,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(_amount >= getPropertyValue("masternode_min_amount") * Constant.COIN, "less than min lock amount");
         getMasterNodeStorage().create(_addr, _lockID, _amount, "", "", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0));
         getAccountManager().setRecordFreezeInfo(_lockID, _addr, _lockDay);
-        emit MNRegister(_addr, msg.sender, _amount, _lockDay, _lockID);
+        emit MNRegister(_addr, tx.origin, _amount, _lockDay, _lockID);
     }
 
     function changeAddress(address _addr, address _newAddr) public override {
