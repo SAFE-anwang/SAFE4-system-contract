@@ -28,8 +28,10 @@ interface IAccountManager {
     function reward(address[] memory _addrs, uint[] memory _amounts) external payable;
     function moveID0(address _addr) external returns (uint);
     function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _remainLockHeight) external returns (uint);
-    function setRecordFreezeInfo(uint _id, address _addr, address _target, uint _day) external;
-    function setRecordVoteInfo(uint _id, address _addr, address _target, uint _day) external;
+    function setRecordFreezeInfo(uint _id, address _target, uint _day) external;
+    function setRecordVoteInfo(uint _id, address _target, uint _day) external;
+    function updateRecordFreezeAddr(uint _id, address _target) external;
+    function updateRecordVoteAddr(uint _id, address _target) external;
     function addLockDay(uint _id, uint _day) external;
     function getTotalAmount(address _addr) external view returns (uint, uint[] memory); 
     function getAvailableAmount(address _addr) external view returns (uint, uint[] memory);

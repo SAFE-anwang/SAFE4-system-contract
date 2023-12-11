@@ -192,11 +192,10 @@ contract AccountManager is IAccountManager, System {
         return id;
     }
 
-    function setRecordFreezeInfo(uint _id, address _addr, address _target, uint _day) public override onlyMnOrSnContract {
+    function setRecordFreezeInfo(uint _id, address _target, uint _day) public override onlyMnOrSnContract {
         if(_id == 0) {
             return;
         }
-        require(id2addr[_id] == _addr, "invalid record id");
         RecordUseInfo storage useinfo = id2useinfo[_id];
         if(_day == 0) {
             if(useinfo.frozenAddr != address(0)) {
@@ -216,11 +215,10 @@ contract AccountManager is IAccountManager, System {
         }
     }
 
-    function setRecordVoteInfo(uint _id, address _addr, address _target, uint _day) public override onlySnOrSNVoteContract {
+    function setRecordVoteInfo(uint _id, address _target, uint _day) public override onlySnOrSNVoteContract {
         if(_id == 0) {
             return;
         }
-        require(id2addr[_id] == _addr, "invalid record id");
         RecordUseInfo storage useinfo = id2useinfo[_id];
         if(_day == 0) {
             if(useinfo.votedAddr != address(0)) {
@@ -238,6 +236,22 @@ contract AccountManager is IAccountManager, System {
             useinfo.releaseHeight = useinfo.voteHeight + _day * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
             emit SafeVote(_id, _target, _day);
         }
+    }
+
+    function updateRecordFreezeAddr(uint _id, address _target) public override onlyMnOrSnContract {
+        if(_id == 0) {
+            return;
+        }
+        require(id2useinfo[_id].frozenAddr != address(0), "account isn't fronzen");
+        id2useinfo[_id].frozenAddr = _target;
+    }
+
+    function updateRecordVoteAddr(uint _id, address _target) public override onlyMnOrSnContract {
+        if(_id == 0) {
+            return;
+        }
+        require(id2useinfo[_id].votedAddr != address(0), "account isn't voted");
+        id2useinfo[_id].votedAddr = _target;
     }
 
     function addLockDay(uint _id, uint _day) public override {
