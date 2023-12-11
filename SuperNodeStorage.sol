@@ -98,15 +98,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     }
 
     function dissolve(address _addr) public override onlySuperNodeLogic {
-        SuperNodeInfo storage info = addr2info[_addr];
-        // unfreeze partner
-        for(uint i = 1; i < info.founders.length; i++) {
-            getAccountManager().setRecordFreezeInfo(info.founders[i].lockID, _addr, address(0), 0);
-        }
-        // release voter
-        for(uint i = 0; i < info.voteInfo.voters.length; i++) {
-            getAccountManager().setRecordVoteInfo(info.voteInfo.voters[i].lockID, info.voteInfo.voters[i].addr, address(0), 0);
-        }
+        SuperNodeInfo memory info = addr2info[_addr];
         // remove id
         uint pos;
         for(uint i = 0; i < ids.length; i++) {

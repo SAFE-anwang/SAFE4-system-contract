@@ -87,11 +87,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     }
 
     function dissolve(address _addr) public override onlyMasterNodeLogic {
-        MasterNodeInfo storage info = addr2info[_addr];
-        // unfreeze partner
-        for(uint i = 1; i < info.founders.length; i++) {
-            getAccountManager().setRecordFreezeInfo(info.founders[i].lockID, _addr, address(0), 0);
-        }
+        MasterNodeInfo memory info = addr2info[_addr];
         // remove id
         uint pos;
         for(uint i = 0; i < ids.length; i++) {

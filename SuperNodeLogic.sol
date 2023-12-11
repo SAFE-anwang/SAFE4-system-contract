@@ -30,7 +30,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(_voterIncentive >= Constant.MIN_SN_VOTER_INCENTIVE && _voterIncentive <= Constant.MAX_SN_VOTER_INCENTIVE, "creator incentive is 40% - 50%");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         getSuperNodeStorage().create(_addr, lockID, msg.value, _name, _enode, _description, ISuperNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive));
-        getAccountManager().setRecordFreezeInfo(lockID, msg.sender, _addr, _lockDay); // creator's lock id can't register other supernode again
+        getAccountManager().setRecordFreezeInfo(lockID, _addr, _lockDay); // creator's lock id can't register other supernode again
         emit SNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -40,7 +40,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(_lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         getSuperNodeStorage().append(_addr, lockID, msg.value);
-        getAccountManager().setRecordFreezeInfo(lockID, msg.sender, _addr, getPropertyValue("record_supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
+        getAccountManager().setRecordFreezeInfo(lockID, _addr, getPropertyValue("record_supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
         emit SNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -54,7 +54,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight, "record is freezen");
         getSuperNodeStorage().append(_addr, _lockID, record.amount);
-        getAccountManager().setRecordFreezeInfo(_lockID, msg.sender, _addr, getPropertyValue("record_supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
+        getAccountManager().setRecordFreezeInfo(_lockID, _addr, getPropertyValue("record_supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
         emit SNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
 
@@ -152,6 +152,16 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_addr);
         for(uint i = 0; i < info.founders.length; i++) {
             if(info.founders[i].lockID == _lockID) {
+                if(i == 0) {
+                    // unfreeze partner
+                    for(uint k = 1; k < info.founders.length; k++) {
+                        getAccountManager().setRecordFreezeInfo(info.founders[k].lockID, address(0), 0);
+                    }
+                    // release voter
+                    for(uint k = 0; k < info.voteInfo.voters.length; k++) {
+                        getAccountManager().setRecordVoteInfo(info.voteInfo.voters[k].lockID, address(0), 0);
+                    }
+                }
                 getSuperNodeStorage().removeMember(_addr, i);
                 return;
             }
@@ -164,6 +174,13 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(!existNodeAddress(_newAddr), "existent new address");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
         getSuperNodeStorage().updateAddress(_addr, _newAddr);
+        ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_newAddr);
+        for(uint i = 0; i < info.founders.length; i++) {
+            getAccountManager().updateRecordFreezeAddr(info.founders[i].lockID, _newAddr);
+        }
+        for(uint i = 0; i < info.voteInfo.voters.length; i++) {
+            getAccountManager().updateRecordVoteAddr(info.voteInfo.voters[i].lockID, _newAddr);
+        }
     }
 
     function changeName(address _addr, string memory _name) public override {

@@ -29,7 +29,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         }
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         getMasterNodeStorage().create(_addr, lockID, msg.value, _enode, _description, IMasterNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
-        getAccountManager().setRecordFreezeInfo(lockID, msg.sender, _addr, _lockDay); // creator's lock id can't register other masternode again
+        getAccountManager().setRecordFreezeInfo(lockID, _addr, _lockDay); // creator's lock id can't register other masternode again
         emit MNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -39,7 +39,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(_lockDay >= getPropertyValue("masternode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
         getMasterNodeStorage().append(_addr, lockID, msg.value);
-        getAccountManager().setRecordFreezeInfo(lockID, msg.sender, _addr, getPropertyValue("record_masternode_freezeday")); // partner's lock id can‘t register other masternode until unfreeze it
+        getAccountManager().setRecordFreezeInfo(lockID, _addr, getPropertyValue("record_masternode_freezeday")); // partner's lock id can‘t register other masternode until unfreeze it
         emit MNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
 
@@ -53,7 +53,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight, "record is freezen");
         getMasterNodeStorage().append(_addr, _lockID, record.amount);
-        getAccountManager().setRecordFreezeInfo(_lockID, msg.sender, _addr, getPropertyValue("record_masternode_freezeday")); // partner's lock id can't register other masternode until unfreeze it
+        getAccountManager().setRecordFreezeInfo(_lockID, _addr, getPropertyValue("record_masternode_freezeday")); // partner's lock id can't register other masternode until unfreeze it
         emit MNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
 
@@ -127,6 +127,12 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfo(_addr);
         for(uint i = 0; i < info.founders.length; i++) {
             if(info.founders[i].lockID == _lockID) {
+                if(i == 0) {
+                    // unfreeze partner
+                    for(uint k = 1; k < info.founders.length; k++) {
+                        getAccountManager().setRecordFreezeInfo(info.founders[k].lockID, address(0), 0);
+                    }
+                }
                 getMasterNodeStorage().removeMember(_addr, i);
                 return;
             }
@@ -137,7 +143,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(!existNodeAddress(_addr), "existent address");
         require(_amount >= getPropertyValue("masternode_min_amount") * Constant.COIN, "less than min lock amount");
         getMasterNodeStorage().create(_addr, _lockID, _amount, "", "", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0));
-        getAccountManager().setRecordFreezeInfo(_lockID, _addr, _addr, _lockDay);
+        getAccountManager().setRecordFreezeInfo(_lockID, _addr, _lockDay);
         emit MNRegister(_addr, msg.sender, _amount, _lockDay, _lockID);
     }
 
@@ -147,6 +153,10 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(!existNodeAddress(_newAddr), "existent new address");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't masternode creator");
         getMasterNodeStorage().updateAddress(_addr, _newAddr);
+        IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfo(_newAddr);
+        for(uint i = 0; i < info.founders.length; i++) {
+            getAccountManager().updateRecordFreezeAddr(info.founders[i].lockID, _newAddr);
+        }
     }
 
     function changeEnode(address _addr, string memory _enode) public override {
