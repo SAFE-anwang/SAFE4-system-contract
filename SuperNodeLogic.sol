@@ -53,6 +53,11 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(record.lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight, "record is freezen");
+        if(isSN(useinfo.frozenAddr)) {
+            getSuperNodeLogic().removeMember(useinfo.frozenAddr, _lockID);
+        } else if(isMN(useinfo.frozenAddr)) {
+            getMasterNodeLogic().removeMember(useinfo.frozenAddr, _lockID);
+        }
         getSuperNodeStorage().append(_addr, _lockID, record.amount);
         getAccountManager().setRecordFreezeInfo(_lockID, _addr, getPropertyValue("record_supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
         emit SNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
@@ -148,7 +153,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         getSuperNodeStorage().updateLastRewardHeight(_addr, block.number);
     }
 
-    function removeMember(address _addr, uint _lockID) public override onlyAccountManagerContract {
+    function removeMember(address _addr, uint _lockID) public override onlyMnSnAmContract {
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_addr);
         for(uint i = 0; i < info.founders.length; i++) {
             if(info.founders[i].lockID == _lockID) {

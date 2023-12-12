@@ -57,6 +57,11 @@ contract System is Initializable, OwnableUpgradeable {
         _;
     }
 
+    modifier onlyMnSnAmContract {
+        require(msg.sender == Constant.MASTERNODE_LOGIC_ADDR || msg.sender == Constant.SUPERNODE_LOGIC_ADDR || msg.sender == Constant.ACCOUNT_MANAGER_ADDR, "No masternode-logic, supernode-logic and account-manager contract");
+        _;
+    }
+
     modifier onlySNVoteContract {
         require(msg.sender == Constant.SNVOTE_ADDR, "No supernode-vote contract");
         _;

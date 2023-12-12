@@ -52,6 +52,11 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(record.lockDay >= getPropertyValue("masternode_append_min_lockday"), "less than min append lock day");
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight, "record is freezen");
+        if(isSN(useinfo.frozenAddr)) {
+            getSuperNodeLogic().removeMember(useinfo.frozenAddr, _lockID);
+        } else if(isMN(useinfo.frozenAddr)) {
+            getMasterNodeLogic().removeMember(useinfo.frozenAddr, _lockID);
+        }
         getMasterNodeStorage().append(_addr, _lockID, record.amount);
         getAccountManager().setRecordFreezeInfo(_lockID, _addr, getPropertyValue("record_masternode_freezeday")); // partner's lock id can't register other masternode until unfreeze it
         emit MNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
@@ -123,7 +128,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         getMasterNodeStorage().updateLastRewardHeight(_addr, block.number);
     }
 
-    function removeMember(address _addr, uint _lockID) public override onlyAccountManagerContract {
+    function removeMember(address _addr, uint _lockID) public override onlyMnSnAmContract {
         IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfo(_addr);
         for(uint i = 0; i < info.founders.length; i++) {
             if(info.founders[i].lockID == _lockID) {
@@ -151,7 +156,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(getMasterNodeStorage().exist(_addr), "non-existent masternode");
         require(_newAddr != address(0), "invalid new address");
         require(!existNodeAddress(_newAddr), "existent new address");
-        require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't masternode creator");
+        require(msg.sender == getMasterNodeStorage().getInfo(_addr).creator, "caller isn't masternode creator");
         getMasterNodeStorage().updateAddress(_addr, _newAddr);
         IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfo(_newAddr);
         for(uint i = 0; i < info.founders.length; i++) {
@@ -163,14 +168,14 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(getMasterNodeStorage().exist(_addr), "non-existent masternode");
         require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(_enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
         require(!existNodeEnode(_enode), "existent enode");
-        require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't masternode creator");
+        require(msg.sender == getMasterNodeStorage().getInfo(_addr).creator, "caller isn't masternode creator");
         getMasterNodeStorage().updateEnode(_addr, _enode);
     }
 
     function changeDescription(address _addr, string memory _description) public override {
         require(getMasterNodeStorage().exist(_addr), "non-existent masternode");
         require(bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
-        require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't masternode creator");
+        require(msg.sender == getMasterNodeStorage().getInfo(_addr).creator, "caller isn't masternode creator");
         getMasterNodeStorage().updateDescription(_addr, _description);
     }
 

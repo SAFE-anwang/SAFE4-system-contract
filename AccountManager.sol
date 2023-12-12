@@ -242,7 +242,7 @@ contract AccountManager is IAccountManager, System {
         if(_id == 0) {
             return;
         }
-        require(id2useinfo[_id].frozenAddr != address(0), "account isn't fronzen");
+        require(id2useinfo[_id].frozenAddr != address(0), "account isn't frozen");
         id2useinfo[_id].frozenAddr = _target;
     }
 
