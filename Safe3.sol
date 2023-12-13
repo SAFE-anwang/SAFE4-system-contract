@@ -109,7 +109,6 @@ contract Safe3 is ISafe3, System {
 
     function getKeyIDFromAddress(string memory _safe3Addr) internal pure returns (bytes memory) {
         bytes memory b =  Base58.decodeFromString(_safe3Addr);
-        require(b.length == 25, "invalid safe3 address");
         bytes memory keyID = new bytes(20);
         for(uint i = 0; i < 20; i++) {
             keyID[i] = b[i + 1];
