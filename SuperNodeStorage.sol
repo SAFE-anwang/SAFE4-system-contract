@@ -218,9 +218,9 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         }
 
         // get top, max: MAX_NUM
-        num = getPropertyValue("supernode_max_num");
-        if(addrs.length < num) {
-            num = addrs.length;
+        uint maxNum = getPropertyValue("supernode_max_num");
+        if(num > maxNum) {
+            num = maxNum;
         }
         SuperNodeInfo[] memory ret = new SuperNodeInfo[](num);
         for(uint i = 0; i < num; i++) {
