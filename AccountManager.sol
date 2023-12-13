@@ -404,9 +404,10 @@ contract AccountManager is IAccountManager, System {
     }
 
     // get record by id
-    function getRecordByID(uint _id) public view override returns (AccountRecord memory) {
-        require(_id != 0, "id=0 please use getRecord0");
-        return addr2records[id2addr[_id]][id2index[_id]];
+    function getRecordByID(uint _id) public view override returns (AccountRecord memory ret) {
+        if(_id != 0 && id2addr[_id] != address(0)) {
+            ret = addr2records[id2addr[_id]][id2index[_id]];
+        }
     }
 
     // get record by id
