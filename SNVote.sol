@@ -100,8 +100,27 @@ contract SNVote is ISNVote, System {
     }
 
     // get voter's records
-    function getRecordIDs4Voter(address _voterAddr) public view override returns (uint[] memory) {
-        return voter2ids[_voterAddr];
+    function getRecordIDs4Voter(address _voterAddr) public view override returns (uint[] memory retIDs) {
+        uint[] memory ids = voter2ids[_voterAddr];
+        uint id = 0;
+        uint count = 0;
+        for(uint i = 0; i < ids.length; i++) {
+            id = ids[i];
+            if(isSN(id2record[id].dstAddr)) {
+                count++;
+            }
+        }
+        if(count == 0) {
+            return retIDs;
+        }
+        retIDs = new uint[](count);
+        uint index = 0;
+        for(uint i = 0; i < ids.length; i++) {
+            id = ids[i];
+            if(isSN(id2record[id].dstAddr)) {
+                retIDs[index++] = id;
+            }
+        }
     }
 
     // get supernode's voters
