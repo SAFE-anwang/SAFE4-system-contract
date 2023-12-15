@@ -24,7 +24,7 @@ contract Proposal is IProposal, System {
         require(bytes(_title).length >= Constant.MIN_PP_TITLE_LEN && bytes(_title).length <= Constant.MAX_PP_TITLE_LEN, "invalid title");
         require(_payAmount > 0 && _payAmount <= getBalance(), "invalid pay amount");
         require(_payTimes > 0 && _payTimes <= Constant.MAX_PP_PAY_TIMES, "invalid pay times");
-        require(_payAmount / _payTimes == 0, "invalid pay amount and times");
+        require(_payAmount / _payTimes != 0, "invalid pay amount and times");
         require(_startPayTime >= block.timestamp, "invalid start pay time");
         require(_endPayTime >= _startPayTime, "invalid end pay time");
         require(bytes(_description).length >= Constant.MIN_PP_DESCRIPTIO_LEN && bytes(_description).length <= Constant.MAX_PP_DESCRIPTIO_LEN, "invalid description");
@@ -55,7 +55,7 @@ contract Proposal is IProposal, System {
         require(exist(_id), "non-existent proprosal");
         require(proposals[_id].state == 0, "proposal has been confirmed");
         require(_voteResult == Constant.VOTE_AGREE || _voteResult == Constant.VOTE_REJECT || _voteResult == Constant.VOTE_ABSTAIN, "invalue vote result, must be agree(1), reject(2), abstain(3)");
-        require(block.timestamp > proposals[_id].startPayTime, "proposal is out of day");
+        require(block.timestamp < proposals[_id].startPayTime, "proposal is out of day");
         address[] storage voters = proposals[_id].voters;
         uint i = 0;
         bool flag = false;
@@ -114,7 +114,7 @@ contract Proposal is IProposal, System {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(_payAmount > 0 && _payAmount <= getBalance(), "invalid pay amount");
-        require(_payAmount / proposals[_id].payTimes == 0, "pay amount is too small");
+        require(_payAmount / proposals[_id].payTimes != 0, "pay amount is too small");
         require(proposals[_id].voters.length == 0, "voted proposal can't update pay-amount");
         proposals[_id].payAmount = _payAmount;
         proposals[_id].updateHeight = block.number;
@@ -124,7 +124,7 @@ contract Proposal is IProposal, System {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(_payTimes > 0 && _payTimes <= Constant.MAX_PP_PAY_TIMES, "invalid pay times");
-        require(proposals[_id].payAmount / _payTimes == 0, "pay times is too big");
+        require(proposals[_id].payAmount / _payTimes != 0, "pay times is too big");
         require(proposals[_id].voters.length == 0, "voted proposal can't update pay-times");
         proposals[_id].payTimes = _payTimes;
         proposals[_id].updateHeight = block.number;
@@ -133,7 +133,7 @@ contract Proposal is IProposal, System {
     function changeStartPayTime(uint _id, uint _startPayTime) public override {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
-        require(_startPayTime >= proposals[_id].startPayTime && _startPayTime >= block.timestamp && _startPayTime <= proposals[_id].endPayTime, "invalid start pay time");
+        require(_startPayTime >= block.timestamp && _startPayTime <= proposals[_id].endPayTime, "invalid start pay time");
         require(proposals[_id].voters.length == 0, "voted proposal can't update start-pay-time");
         proposals[_id].startPayTime = _startPayTime;
         proposals[_id].updateHeight = block.number;
@@ -189,9 +189,11 @@ contract Proposal is IProposal, System {
             return;
         }
         uint space = (pp.endPayTime - pp.startPayTime) / (pp.payTimes - 1);
+        uint usedAmount = 0;
         for(uint i = 0; i < pp.payTimes - 1; i++) {
             getAccountManager().depositWithSecond{value: pp.payAmount / pp.payTimes}(pp.creator, pp.startPayTime + space * i - block.timestamp);
+            usedAmount += pp.payAmount / pp.payTimes;
         }
-        getAccountManager().depositWithSecond{value: pp.payAmount / pp.payTimes + pp.payAmount % pp.payTimes}(pp.creator, pp.endPayTime - block.timestamp);
+        getAccountManager().depositWithSecond{value: pp.payAmount - usedAmount}(pp.creator, pp.endPayTime - block.timestamp);
     }
 }
