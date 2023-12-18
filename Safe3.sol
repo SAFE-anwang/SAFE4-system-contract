@@ -3,8 +3,11 @@ pragma solidity >=0.8.6 <=0.8.19;
 
 import "./System.sol";
 import "./utils/Base58.sol";
+import "./utils/StringUtil.sol";
 
 contract Safe3 is ISafe3, System {
+    using StringUtil for string;
+
     // available safe3
     uint num;
     bytes[] keyIDs;
@@ -16,35 +19,49 @@ contract Safe3 is ISafe3, System {
     mapping(bytes => Safe3LockInfo[]) locks;
 
     function redeemAvailable(bytes memory _pubkey, bytes memory _sig) public override {
+        require(_pubkey.length == 65 && _pubkey[0] == 0x04, "must be uncompressed pubkey, [0]=0x04");
+
+        bytes memory tempPubkey = getPubkey4(_pubkey);
+        require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(uint160(msg.sender)), "pubkey is incompatiable with caller");
+
         bytes memory keyID = getKeyIDFromPubkey(_pubkey);
         require(availables[keyID].amount > 0, "non-existent available amount");
         require(availables[keyID].redeemHeight == 0, "has redeemed");
 
-        bytes32 h = sha256(abi.encodePacked(string(Base58.encode(keyID))));
-        bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
-        require(verifySig(_pubkey, msgHash, _sig), "invalid signature");
+        string memory safe3Addr = getSafe3Addr(_pubkey);
+        require(safe3Addr.equal(availables[keyID].addr), "pubkey is incompatiable with Safe3 address");
 
-        address safe4Addr = getSafe4Addr(_pubkey);
+        bytes32 h = sha256(abi.encodePacked(safe3Addr));
+        bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
+        require(verifySig(tempPubkey, msgHash, _sig), "invalid signature");
+
+        address safe4Addr = getSafe4Addr(tempPubkey);
         payable(safe4Addr).transfer(availables[keyID].amount);
-        availables[keyID].amount = 0;
+        // availables[keyID].amount = 0;
         availables[keyID].redeemHeight = block.number;
     }
 
     function redeemLocked(bytes memory _pubkey, bytes memory _sig) public override {
+        require(_pubkey.length == 65 && _pubkey[0] == 0x04, "must be uncompressed pubkey, [0]=0x04");
+
+        bytes memory tempPubkey = getPubkey4(_pubkey);
+        require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(uint160(msg.sender)), "pubkey is incompatiable with caller");
+
         bytes memory keyID = getKeyIDFromPubkey(_pubkey);
+        require(locks[keyID].length > 0, "non-existent locked amount");
+
+        string memory safe3Addr = getSafe3Addr(_pubkey);
+        bytes32 h = sha256(abi.encodePacked(safe3Addr));
+        bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
+        require(verifySig(tempPubkey, msgHash, _sig), "invalid signature");
+
+        address safe4Addr = getSafe4Addr(tempPubkey);
         for(uint i = 0; i < locks[keyID].length; i++) {
             Safe3LockInfo memory info = locks[keyID][i];
-            if(info.amount == 0 || info.redeemHeight != 0) {
+            if(info.amount == 0 || info.redeemHeight != 0 || !safe3Addr.equal(info.addr)) {
                 continue;
             }
 
-            bytes32 h = sha256(abi.encodePacked(info.txid));
-            bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
-            if(!verifySig(_pubkey, msgHash, _sig)) {
-                return;
-            }
-
-            address safe4Addr = getSafe4Addr(_pubkey);
             uint lockDay = 0;
             uint remainLockHeight;
             if(info.unlockHeight <= Constant.SAFE3_END_HEIGHT) {
@@ -52,12 +69,8 @@ contract Safe3 is ISafe3, System {
                 remainLockHeight = 0;
             } else {
                 if(info.lockHeight < Constant.SPOS_HEIGHT) {
-                    if(info.unlockHeight <= Constant.SPOS_HEIGHT) {
-                        lockDay += (info.unlockHeight - info.lockHeight) / 576;
-                    } else {
-                        lockDay += (Constant.SPOS_HEIGHT - info.lockHeight) / 576;
-                        lockDay += (info.unlockHeight - Constant.SPOS_HEIGHT) / 2880;
-                    }
+                    lockDay += (Constant.SPOS_HEIGHT - info.lockHeight) / 576;
+                    lockDay += (info.unlockHeight - Constant.SPOS_HEIGHT) / 2880;
                     if((info.unlockHeight - info.lockHeight) % Constant.DAYS_IN_MONTH != 0) {
                         lockDay += 1;
                     }
@@ -66,10 +79,12 @@ contract Safe3 is ISafe3, System {
                 }
                 remainLockHeight = info.unlockHeight - Constant.SAFE3_END_HEIGHT;
             }
-            uint lockID = getAccountManager().fromSafe3(safe4Addr, info.amount, lockDay, remainLockHeight);
+            uint lockID = getAccountManager().fromSafe3{value: info.amount}(safe4Addr, lockDay, remainLockHeight);
             if(info.isMN) {
-                getMasterNodeLogic().fromSafe3(safe4Addr, info.amount, lockDay, lockID);
+                getMasterNodeLogic().fromSafe3(safe4Addr, info.amount, lockDay, lockID, info.mnState);
             }
+            // locks[keyID][i].amount = 0;
+            locks[keyID][i].redeemHeight = block.number;
         }
     }
 
@@ -103,7 +118,8 @@ contract Safe3 is ISafe3, System {
         return ret;
     }
 
-    function getKeyIDFromPubkey(bytes memory _pubkey) internal pure returns (bytes memory) {
+    function getKeyIDFromPubkey(bytes memory _pubkey) public pure returns (bytes memory) {
+        require(_pubkey.length == 65 && _pubkey[0] == 0x04, "must be uncompressed pubkey, [0]=0x04");
         bytes32 h = sha256(_pubkey);
         bytes20 r = ripemd160(abi.encodePacked(h));
         bytes memory t = new bytes(21);
@@ -123,16 +139,17 @@ contract Safe3 is ISafe3, System {
         return t2;
     }
 
-    function getKeyIDFromAddress(string memory _safe3Addr) internal pure returns (bytes memory) {
+    function getKeyIDFromAddress(string memory _safe3Addr) public pure returns (bytes memory) {
         return Base58.decodeFromString(_safe3Addr);
     }
 
-    //function getSafe3Addr(bytes memory _pubkey) internal pure returns (string memory) {
-    //    return string(Base58.encode(getKeyIDFromPubkey(_pubkey)));
-    //}
+    function getSafe3Addr(bytes memory _pubkey) public pure returns (string memory) {
+        require(_pubkey.length == 65 && _pubkey[0] == 0x04, "must be uncompressed pubkey");
+        return string(Base58.encode(getKeyIDFromPubkey(_pubkey)));
+    }
 
-    function getSafe4Addr(bytes memory _pubkey) internal pure returns (address addr) {
-        return address(uint160(uint256(keccak256(_pubkey))));
+    function getSafe4Addr(bytes memory _pubkey) public pure returns (address addr) {
+        return address(uint160(uint256(keccak256(getPubkey4(_pubkey)))));
     }
 
     function verifySig(bytes memory _pubkey, bytes32 _msgHash, bytes memory _sig) internal pure returns (bool) {
@@ -144,6 +161,17 @@ contract Safe3 is ISafe3, System {
             s := mload(add(_sig ,64))
             v := byte(0,mload(add(_sig ,96)))
         }
-        return getSafe4Addr(_pubkey) == ecrecover(_msgHash, v, r, s);
+        return getSafe4Addr(getPubkey4(_pubkey)) == ecrecover(_msgHash, v, r, s);
+    }
+
+    function getPubkey4(bytes memory _pubkey) internal pure returns (bytes memory) {
+        if(_pubkey.length == 65 && _pubkey[0] == 0x04) {
+            bytes memory temp = new bytes(64);
+            for(uint i = 0; i < 64; i++) {
+                temp[i] = _pubkey[i + 1];
+            }
+            return temp;
+        }
+        return _pubkey;
     }
 }

@@ -27,7 +27,7 @@ interface IAccountManager {
     function transfer(address _to, uint _amount, uint _lockDay) external returns (uint);
     function reward(address[] memory _addrs, uint[] memory _amounts) external payable;
     function moveID0(address _addr) external returns (uint);
-    function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _remainLockHeight) external returns (uint);
+    function fromSafe3(address _addr, uint _lockDay, uint _remainLockHeight) external payable returns (uint);
     function setRecordFreezeInfo(uint _id, address _target, uint _day) external;
     function setRecordVoteInfo(uint _id, address _target, uint _day) external;
     function updateRecordFreezeAddr(uint _id, address _target) external;

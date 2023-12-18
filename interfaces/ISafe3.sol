@@ -15,6 +15,7 @@ interface ISafe3 {
         uint unlockHeight;
         string txid;
         bool isMN;
+        uint mnState;
         uint redeemHeight;
     }
 

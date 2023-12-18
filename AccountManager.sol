@@ -180,13 +180,14 @@ contract AccountManager is IAccountManager, System {
         return id;
     }
 
-    function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _remainLockHeight) public override onlySafe3Contract returns (uint) {
+    function fromSafe3(address _addr, uint _lockDay, uint _remainLockHeight) public payable override onlySafe3Contract returns (uint) {
+        require(msg.value > 0, "invalid amount");
         require(_addr != address(0), "reward to the zero address");
         require(_lockDay > 0, "invalid lock day");
         require(_remainLockHeight > 0, "invalid remain lock height");
         uint id = ++record_no;
         AccountRecord[] storage records = addr2records[_addr];
-        records.push(AccountRecord(id, _addr, _amount, _lockDay, block.number, block.number + _remainLockHeight));
+        records.push(AccountRecord(id, _addr, msg.value, _lockDay, block.number, block.number + _remainLockHeight));
         id2index[id] = records.length - 1;
         id2addr[id] = _addr;
         return id;
