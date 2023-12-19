@@ -41,7 +41,7 @@ contract Safe3 is ISafe3, System {
         availables[keyID].redeemHeight = block.number;
     }
 
-    function redeemLocked(bytes memory _pubkey, bytes memory _sig) public override {
+    function redeemLocked(bytes memory _pubkey, bytes memory _sig, string memory _enode) public override {
         require(_pubkey.length == 65 && _pubkey[0] == 0x04, "must be uncompressed pubkey, [0]=0x04");
 
         bytes memory tempPubkey = getPubkey4(_pubkey);
@@ -82,6 +82,7 @@ contract Safe3 is ISafe3, System {
             uint lockID = getAccountManager().fromSafe3{value: info.amount}(safe4Addr, lockDay, remainLockHeight);
             if(info.isMN) {
                 getMasterNodeLogic().fromSafe3(safe4Addr, info.amount, lockDay, lockID, info.mnState);
+                getMasterNodeLogic().changeEnode(safe4Addr, _enode);
             }
             // locks[keyID][i].amount = 0;
             locks[keyID][i].redeemHeight = block.number;
