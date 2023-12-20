@@ -169,7 +169,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(getMasterNodeStorage().exist(_addr), "non-existent masternode");
         require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(_enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
         require(!existNodeEnode(_enode), "existent enode");
-        require(msg.sender == getMasterNodeStorage().getInfo(_addr).creator, "caller isn't masternode creator");
+        require(msg.sender == getMasterNodeStorage().getInfo(_addr).creator || msg.sender == Constant.SAFE3_ADDR, "caller isn't masternode creator");
         getMasterNodeStorage().updateEnode(_addr, _enode);
     }
 
