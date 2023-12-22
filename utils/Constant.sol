@@ -95,8 +95,4 @@ library Constant {
     uint internal constant REWARD_CREATOR = 1;
     uint internal constant REWARD_PARTNER = 2;
     uint internal constant REWARD_VOTER = 3;
-
-    // for safe3
-    uint internal constant SPOS_HEIGHT = 1092826;
-    uint internal constant SAFE3_END_HEIGHT = 5000000;
 }
