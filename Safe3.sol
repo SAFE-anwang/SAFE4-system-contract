@@ -17,7 +17,6 @@ contract Safe3 is ISafe3, System {
     mapping(bytes => Safe3LockInfo[]) locks;
 
     // special safe3
-    uint specialNum;
     bytes[] specialKeyIDs;
     mapping(bytes => SpecialSafe3Info) specials;
 
