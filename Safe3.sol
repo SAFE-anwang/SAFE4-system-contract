@@ -190,7 +190,7 @@ contract Safe3 is ISafe3, System {
         return ret;
     }
 
-    function getKeyIDFromPubkey(bytes memory _pubkey) public pure returns (bytes memory) {
+    function getKeyIDFromPubkey(bytes memory _pubkey) internal pure returns (bytes memory) {
         require(_pubkey.length == 65 && _pubkey[0] == 0x04, "must be uncompressed pubkey, [0]=0x04");
         bytes32 h = sha256(_pubkey);
         bytes20 r = ripemd160(abi.encodePacked(h));
@@ -211,16 +211,16 @@ contract Safe3 is ISafe3, System {
         return t2;
     }
 
-    function getKeyIDFromAddress(string memory _safe3Addr) public pure returns (bytes memory) {
+    function getKeyIDFromAddress(string memory _safe3Addr) internal pure returns (bytes memory) {
         return Base58.decodeFromString(_safe3Addr);
     }
 
-    function getSafe3Addr(bytes memory _pubkey) public pure returns (string memory) {
+    function getSafe3Addr(bytes memory _pubkey) internal pure returns (string memory) {
         require(_pubkey.length == 65 && _pubkey[0] == 0x04, "must be uncompressed pubkey");
         return string(Base58.encode(getKeyIDFromPubkey(_pubkey)));
     }
 
-    function getSafe4Addr(bytes memory _pubkey) public pure returns (address addr) {
+    function getSafe4Addr(bytes memory _pubkey) internal pure returns (address addr) {
         return address(uint160(uint256(keccak256(getPubkey4(_pubkey)))));
     }
 
