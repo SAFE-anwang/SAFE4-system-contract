@@ -29,8 +29,11 @@ contract Safe3 is ISafe3, System {
     event RedeemSpecialAgree(string _safe3Addr);
     event RedeemSpecialVote(string _safe3Addr, address _voter, uint _voteResult);
 
-    function redeemAvailable(bytes memory _pubkey, bytes memory _sig) public override onlyOwner {
+    function redeemAvailable(bytes memory _pubkey, bytes memory _sig) public override {
         require(_pubkey.length == 65 && _pubkey[0] == 0x04, "must be uncompressed pubkey, [0]=0x04");
+
+        bytes memory tempPubkey = getPubkey4(_pubkey);
+        require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(uint160(msg.sender)), "pubkey is incompatiable with caller");
 
         bytes memory keyID = getKeyIDFromPubkey(_pubkey);
         require(availables[keyID].amount > 0, "non-existent available amount");
@@ -41,16 +44,19 @@ contract Safe3 is ISafe3, System {
 
         bytes32 h = sha256(abi.encodePacked(safe3Addr));
         bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
-        require(verifySig(_pubkey, msgHash, _sig), "invalid signature");
+        require(verifySig(tempPubkey, msgHash, _sig), "invalid signature");
 
-        address safe4Addr = getSafe4Addr(_pubkey);
+        address safe4Addr = getSafe4Addr(tempPubkey);
         payable(safe4Addr).transfer(availables[keyID].amount);
         availables[keyID].safe4Addr = safe4Addr;
         availables[keyID].redeemHeight = block.number;
     }
 
-    function redeemLocked(bytes memory _pubkey, bytes memory _sig, string memory _enode) public override onlyOwner {
+    function redeemLocked(bytes memory _pubkey, bytes memory _sig, string memory _enode) public override {
         require(_pubkey.length == 65 && _pubkey[0] == 0x04, "must be uncompressed pubkey, [0]=0x04");
+
+        bytes memory tempPubkey = getPubkey4(_pubkey);
+        require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(uint160(msg.sender)), "pubkey is incompatiable with caller");
 
         bytes memory keyID = getKeyIDFromPubkey(_pubkey);
         require(locks[keyID].length > 0, "non-existent locked amount");
@@ -58,9 +64,9 @@ contract Safe3 is ISafe3, System {
         string memory safe3Addr = getSafe3Addr(_pubkey);
         bytes32 h = sha256(abi.encodePacked(safe3Addr));
         bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
-        require(verifySig(_pubkey, msgHash, _sig), "invalid signature");
+        require(verifySig(tempPubkey, msgHash, _sig), "invalid signature");
 
-        address safe4Addr = getSafe4Addr(_pubkey);
+        address safe4Addr = getSafe4Addr(tempPubkey);
         for(uint i = 0; i < locks[keyID].length; i++) {
             Safe3LockInfo memory info = locks[keyID][i];
             if(info.redeemHeight != 0 || !safe3Addr.equal(info.safe3Addr) || info.amount == 0 || info.lockDay == 0) {
@@ -76,8 +82,11 @@ contract Safe3 is ISafe3, System {
         }
     }
 
-    function applyRedeemSpecial(bytes memory _pubkey, bytes memory _sig) public override onlyOwner {
+    function applyRedeemSpecial(bytes memory _pubkey, bytes memory _sig) public override {
         require(_pubkey.length == 65 && _pubkey[0] == 0x04, "must be uncompressed pubkey, [0]=0x04");
+
+        bytes memory tempPubkey = getPubkey4(_pubkey);
+        require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(uint160(msg.sender)), "pubkey is incompatiable with caller");
 
         bytes memory keyID = getKeyIDFromPubkey(_pubkey);
         require(specials[keyID].amount > 0, "non-existent available amount");
@@ -89,9 +98,9 @@ contract Safe3 is ISafe3, System {
 
         bytes32 h = sha256(abi.encodePacked(safe3Addr));
         bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
-        require(verifySig(_pubkey, msgHash, _sig), "invalid signature");
+        require(verifySig(tempPubkey, msgHash, _sig), "invalid signature");
 
-        specials[keyID].safe4Addr = getSafe4Addr(_pubkey);
+        specials[keyID].safe4Addr = getSafe4Addr(tempPubkey);
         specials[keyID].applyHeight = block.number;
     }
 
