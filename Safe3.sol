@@ -13,6 +13,7 @@ contract Safe3 is ISafe3, System {
     mapping(bytes => Safe3Info) availables;
 
     // locked safe3
+    uint lockedNum;
     bytes[] lockedKeyIDs;
     mapping(bytes => Safe3LockInfo[]) locks;
 
@@ -170,7 +171,7 @@ contract Safe3 is ISafe3, System {
     }
 
     function getAllLocked() public view override returns (Safe3LockInfo[] memory) {
-        Safe3LockInfo[] memory ret = new Safe3LockInfo[](lockedKeyIDs.length);
+        Safe3LockInfo[] memory ret = new Safe3LockInfo[](lockedNum);
         uint pos = 0;
         for(uint i = 0; i < lockedKeyIDs.length; i++) {
             Safe3LockInfo[] memory infos = locks[lockedKeyIDs[i]];
