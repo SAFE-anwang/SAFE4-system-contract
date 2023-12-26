@@ -12,9 +12,9 @@ interface ISafe3 {
     struct Safe3LockInfo {
         string safe3Addr;
         uint amount;
+        string txid;
         uint lockHeight;
         uint unlockHeight;
-        string txid;
         uint lockDay;
         uint remainLockHeight;
         bool isMN;
