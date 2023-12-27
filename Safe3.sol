@@ -10,12 +10,12 @@ contract Safe3 is ISafe3, System {
 
     // available safe3
     bytes[] keyIDs;
-    mapping(bytes => Safe3Info) availables;
+    mapping(bytes => AvailableSafe3Info) availables;
 
     // locked safe3
     uint lockedNum;
     bytes[] lockedKeyIDs;
-    mapping(bytes => Safe3LockInfo[]) locks;
+    mapping(bytes => LockedSafe3Info[]) locks;
 
     // special safe3
     bytes[] specialKeyIDs;
@@ -68,7 +68,7 @@ contract Safe3 is ISafe3, System {
 
         address safe4Addr = getSafe4Addr(tempPubkey);
         for(uint i = 0; i < locks[keyID].length; i++) {
-            Safe3LockInfo memory info = locks[keyID][i];
+            LockedSafe3Info memory info = locks[keyID][i];
             if(info.redeemHeight != 0 || !safe3Addr.equal(info.safe3Addr) || info.amount == 0 || info.lockDay == 0) {
                 continue;
             }
@@ -147,12 +147,12 @@ contract Safe3 is ISafe3, System {
         emit RedeemSpecialVote(_safe3Addr, msg.sender, _voteResult);
     }
 
-    function getAvailable(string memory _safe3Addr) public view override returns (Safe3Info memory) {
+    function getAvailable(string memory _safe3Addr) public view override returns (AvailableSafe3Info memory) {
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
         return availables[keyID];
     }
 
-    function getLocked(string memory _safe3Addr) public view override returns (Safe3LockInfo[] memory) {
+    function getLocked(string memory _safe3Addr) public view override returns (LockedSafe3Info[] memory) {
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
         return locks[keyID];
     }
@@ -162,19 +162,19 @@ contract Safe3 is ISafe3, System {
         return specials[keyID];
     }
 
-    function getAllAvailable() public view override returns (Safe3Info[] memory) {
-        Safe3Info[] memory ret = new Safe3Info[](keyIDs.length);
+    function getAllAvailable() public view override returns (AvailableSafe3Info[] memory) {
+        AvailableSafe3Info[] memory ret = new AvailableSafe3Info[](keyIDs.length);
         for(uint i = 0; i < keyIDs.length; i++) {
             ret[i] = availables[keyIDs[i]];
         }
         return ret;
     }
 
-    function getAllLocked() public view override returns (Safe3LockInfo[] memory) {
-        Safe3LockInfo[] memory ret = new Safe3LockInfo[](lockedNum);
+    function getAllLocked() public view override returns (LockedSafe3Info[] memory) {
+        LockedSafe3Info[] memory ret = new LockedSafe3Info[](lockedNum);
         uint pos = 0;
         for(uint i = 0; i < lockedKeyIDs.length; i++) {
-            Safe3LockInfo[] memory infos = locks[lockedKeyIDs[i]];
+            LockedSafe3Info[] memory infos = locks[lockedKeyIDs[i]];
             for(uint k = 0; k < infos.length; k++) {
                 ret[pos++] = infos[k];
             }
