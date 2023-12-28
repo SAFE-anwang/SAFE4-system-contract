@@ -15,10 +15,9 @@ interface ISafe3 {
         string txid;
         uint lockHeight;
         uint unlockHeight;
-        uint lockDay;
         uint remainLockHeight;
+        uint lockDay;
         bool isMN;
-        uint mnState;
         address safe4Addr;
         uint redeemHeight;
     }
@@ -26,10 +25,10 @@ interface ISafe3 {
     struct SpecialSafe3Info {
         string safe3Addr;
         uint amount;
-        address safe4Addr;
         uint applyHeight;
         address[] voters;
         uint[] voteResults;
+        address safe4Addr;
         uint redeemHeight;
     }
 
