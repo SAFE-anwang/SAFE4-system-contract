@@ -74,8 +74,7 @@ contract Safe3 is ISafe3, System {
             }
             uint lockID = getAccountManager().fromSafe3{value: info.amount}(safe4Addr, info.lockDay, info.remainLockHeight);
             if(info.isMN) {
-                getMasterNodeLogic().fromSafe3(safe4Addr, info.amount, info.lockDay, lockID, info.mnState);
-                getMasterNodeLogic().changeEnode(safe4Addr, _enode);
+                getMasterNodeLogic().fromSafe3(safe4Addr, info.amount, info.lockDay, lockID, _enode);
             }
             locks[keyID][i].safe4Addr = safe4Addr;
             locks[keyID][i].redeemHeight = block.number;

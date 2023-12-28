@@ -7,7 +7,7 @@ interface IMasterNodeLogic {
     function turnRegister(address _addr, uint _lockID) external;
     function reward(address _addr) external payable;
     function removeMember(address _addr, uint _lockID) external;
-    function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID, uint _state) external;
+    function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID, string memory _enode) external;
     function changeAddress(address _addr, address _newAddr) external;
     function changeEnode(address _addr, string memory _enode) external;
     function changeDescription(address _addr, string memory _description) external;
