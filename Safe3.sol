@@ -4,6 +4,7 @@ pragma solidity >=0.8.6 <=0.8.19;
 import "./System.sol";
 import "./utils/Base58.sol";
 import "./utils/StringUtil.sol";
+import "./utils/Secp256k1.sol";
 
 contract Safe3 is ISafe3, System {
     using StringUtil for string;
@@ -57,62 +58,104 @@ contract Safe3 is ISafe3, System {
     event RedeemSpecialAgree(string _safe3Addr);
     event RedeemSpecialVote(string _safe3Addr, address _voter, uint _voteResult);
 
-    function redeemAvailable(bytes memory _pubkey, bytes memory _sig) public override {
-        require(_pubkey.length == 65 && _pubkey[0] == 0x04, "must be uncompressed pubkey, [0]=0x04");
-
-        bytes memory tempPubkey = getPubkey4(_pubkey);
-        require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(uint160(msg.sender)), "pubkey is incompatiable with caller");
-
-        bytes memory keyID = getKeyIDFromPubkey(_pubkey);
-        require(availables[keyID].amount > 0, "non-existent available amount");
-        require(availables[keyID].redeemHeight == 0, "has redeemed");
-
-        string memory safe3Addr = getSafe3Addr(_pubkey);
-        // require(safe3Addr.equal(availables[keyID].safe3Addr), "pubkey is incompatiable with Safe3 address");
-
-        bytes32 h = sha256(abi.encodePacked(safe3Addr));
-        bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
-        require(verifySig(tempPubkey, msgHash, _sig), "invalid signature");
-
-        address safe4Addr = getSafe4Addr(tempPubkey);
-        payable(safe4Addr).transfer(availables[keyID].amount);
-        availables[keyID].safe4Addr = safe4Addr;
-        availables[keyID].redeemHeight = uint24(block.number);
-    }
-
-    function redeemLocked(bytes memory _pubkey, bytes memory _sig, string memory _enode) public override {
-        require(_pubkey.length == 65 && _pubkey[0] == 0x04, "must be uncompressed pubkey, [0]=0x04");
-
-        bytes memory tempPubkey = getPubkey4(_pubkey);
-        require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(uint160(msg.sender)), "pubkey is incompatiable with caller");
-
-        bytes memory keyID = getKeyIDFromPubkey(_pubkey);
-        require(locks[keyID].length > 0, "non-existent locked amount");
-
-        string memory safe3Addr = getSafe3Addr(_pubkey);
-        bytes32 h = sha256(abi.encodePacked(safe3Addr));
-        bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
-        require(verifySig(tempPubkey, msgHash, _sig), "invalid signature");
-
-        address safe4Addr = getSafe4Addr(tempPubkey);
-        for(uint i = 0; i < locks[keyID].length; i++) {
-            LockedData memory data = locks[keyID][i];
-            if(data.redeemHeight != 0 || data.amount == 0 || data.lockDay == 0) {
+    function redeemAvailables(bytes[] memory _pubkeys, bytes[] memory _sigs) public override {
+        require(_pubkeys.length == _sigs.length, "invalid params");
+        for(uint i = 0; i < _pubkeys.length; i++) {
+            bytes memory _pubkey = _pubkeys[i];
+            bytes memory _sig = _sigs[i];
+            if(!(_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) && !(_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03))) {
                 continue;
             }
-            uint lockID = getAccountManager().fromSafe3{value: data.amount}(safe4Addr, data.lockDay, data.remainLockHeight);
-            if(data.isMN) {
-                getMasterNodeLogic().fromSafe3(safe4Addr, data.amount, data.lockDay, lockID, _enode);
+
+            bytes memory tempPubkey;
+            if(_pubkey.length == 65) {
+                tempPubkey = getPubkey4(_pubkey);
+            } else {
+                tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
             }
-            locks[keyID][i].safe4Addr = safe4Addr;
-            locks[keyID][i].redeemHeight = uint24(block.number);
+            if((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) != uint(uint160(msg.sender))) {
+                continue;
+            }
+
+            bytes memory keyID = getKeyIDFromPubkey(_pubkey);
+            if(availables[keyID].amount == 0) {
+                continue;
+            }
+            if(availables[keyID].redeemHeight != 0) {
+                continue;
+            }
+
+            string memory safe3Addr = getSafe3Addr(_pubkey);
+            bytes32 h = sha256(abi.encodePacked(safe3Addr));
+            bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
+            if(!verifySig(tempPubkey, msgHash, _sig)) {
+                continue;
+            }
+
+            address safe4Addr = getSafe4Addr(tempPubkey);
+            payable(safe4Addr).transfer(availables[keyID].amount);
+            availables[keyID].safe4Addr = safe4Addr;
+            availables[keyID].redeemHeight = uint24(block.number);
+        }
+    }
+
+    function redeemLockeds(bytes[] memory _pubkeys, bytes[] memory _sigs, string[] memory _enodes) public override {
+        require(_pubkeys.length == _sigs.length && _sigs.length == _enodes.length, "invalid params");
+        for(uint i = 0; i < _pubkeys.length; i++) {
+            bytes memory _pubkey = _pubkeys[i];
+            bytes memory _sig = _sigs[i];
+            string memory _enode = _enodes[i];
+            if(!(_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) && !(_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03))) {
+                continue;
+            }
+
+            bytes memory tempPubkey;
+            if(_pubkey.length == 65) {
+                tempPubkey = getPubkey4(_pubkey);
+            } else {
+                tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
+            }
+            if((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) != uint(uint160(msg.sender))) {
+                continue;
+            }
+
+            bytes memory keyID = getKeyIDFromPubkey(_pubkey);
+            if(locks[keyID].length == 0) {
+                continue;
+            }
+
+            string memory safe3Addr = getSafe3Addr(_pubkey);
+            bytes32 h = sha256(abi.encodePacked(safe3Addr));
+            bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
+            if(!verifySig(tempPubkey, msgHash, _sig)) {
+                continue;
+            }
+
+            address safe4Addr = getSafe4Addr(tempPubkey);
+            for(uint k = 0; k < locks[keyID].length; k++) {
+                LockedData memory data = locks[keyID][k];
+                if(data.redeemHeight != 0 || data.amount == 0 || data.lockDay == 0) {
+                    continue;
+                }
+                uint lockID = getAccountManager().fromSafe3{value: data.amount}(safe4Addr, data.lockDay, data.remainLockHeight);
+                if(data.isMN) {
+                    getMasterNodeLogic().fromSafe3(safe4Addr, data.amount, data.lockDay, lockID, _enode);
+                }
+                locks[keyID][k].safe4Addr = safe4Addr;
+                locks[keyID][k].redeemHeight = uint24(block.number);
+            }
         }
     }
 
     function applyRedeemSpecial(bytes memory _pubkey, bytes memory _sig) public override {
-        require(_pubkey.length == 65 && _pubkey[0] == 0x04, "must be uncompressed pubkey, [0]=0x04");
+        require((_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) || (_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03)), "invalid pubkey");
 
-        bytes memory tempPubkey = getPubkey4(_pubkey);
+        bytes memory tempPubkey;
+        if(_pubkey.length == 65) {
+            tempPubkey = getPubkey4(_pubkey);
+        } else {
+            tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
+        }
         require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(uint160(msg.sender)), "pubkey is incompatiable with caller");
 
         bytes memory keyID = getKeyIDFromPubkey(_pubkey);
@@ -121,7 +164,6 @@ contract Safe3 is ISafe3, System {
         require(specials[keyID].applyHeight == 0, "has applied");
 
         string memory safe3Addr = getSafe3Addr(_pubkey);
-        // require(safe3Addr.equal(specials[keyID].safe3Addr), "pubkey is incompatiable with Safe3 address");
 
         bytes32 h = sha256(abi.encodePacked(safe3Addr));
         bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
@@ -253,7 +295,6 @@ contract Safe3 is ISafe3, System {
     }
 
     function getKeyIDFromPubkey(bytes memory _pubkey) internal pure returns (bytes memory) {
-        require(_pubkey.length == 65 && _pubkey[0] == 0x04, "must be uncompressed pubkey, [0]=0x04");
         bytes32 h = sha256(_pubkey);
         bytes20 r = ripemd160(abi.encodePacked(h));
         bytes memory t = new bytes(21);
@@ -278,7 +319,6 @@ contract Safe3 is ISafe3, System {
     }
 
     function getSafe3Addr(bytes memory _pubkey) internal pure returns (string memory) {
-        require(_pubkey.length == 65 && _pubkey[0] == 0x04, "must be uncompressed pubkey");
         return string(Base58.encode(getKeyIDFromPubkey(_pubkey)));
     }
 
@@ -299,7 +339,7 @@ contract Safe3 is ISafe3, System {
     }
 
     function getPubkey4(bytes memory _pubkey) internal pure returns (bytes memory) {
-        if(_pubkey.length == 65 && _pubkey[0] == 0x04) {
+        if(_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) {
             bytes memory temp = new bytes(64);
             for(uint i = 0; i < 64; i++) {
                 temp[i] = _pubkey[i + 1];
