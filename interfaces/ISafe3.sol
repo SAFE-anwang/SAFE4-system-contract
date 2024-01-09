@@ -33,7 +33,8 @@ interface ISafe3 {
     }
 
     function redeemAvailables(bytes[] memory _pubkeys, bytes[] memory _sigs) external;
-    function redeemLockeds(bytes[] memory _pubkeys, bytes[] memory _sigs, string[] memory _enodes) external;
+    function redeemLockeds(bytes[] memory _pubkeys, bytes[] memory _sigs) external;
+    function redeemMasterNodes(bytes[] memory _pubkeys, bytes[] memory _sigs, string[] memory _enodes) external;
 
     function applyRedeemSpecial(bytes memory _pubkey, bytes memory _sig) external;
     function vote4Special(string memory _safe3Addr, uint _voteResult) external;

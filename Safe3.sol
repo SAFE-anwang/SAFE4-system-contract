@@ -51,9 +51,9 @@ contract Safe3 is ISafe3, System {
     mapping(bytes => SpecialData) specials;
 
     event RedeemAvailable(string _safe3Addr, uint _amount, address _safe4Addr);
-    event RedeemLock(string _safe3Addr, uint _amount, uint _lockID);
-    event RedeemMasterNode(string _safe3Addr, address _safe4Addr);
-    event ApplyRedeemSpecial(string _safe3Addr, address _safe4Addr);
+    event RedeemLocked(string _safe3Addr, uint _amount, address _safe4Addr, uint _lockID);
+    event RedeemMasterNode(string _safe3Addr, address _safe4Addr, uint _lockID);
+    event ApplyRedeemSpecial(string _safe3Addr, uint _amount, address _safe4Addr);
     event RedeemSpecialReject(string _safe3Addr);
     event RedeemSpecialAgree(string _safe3Addr);
     event RedeemSpecialVote(string _safe3Addr, address _voter, uint _voteResult);
@@ -78,9 +78,6 @@ contract Safe3 is ISafe3, System {
             }
 
             bytes memory keyID = getKeyIDFromPubkey(_pubkey);
-            if(availables[keyID].amount == 0) {
-                continue;
-            }
             if(availables[keyID].redeemHeight != 0) {
                 continue;
             }
@@ -96,10 +93,56 @@ contract Safe3 is ISafe3, System {
             payable(safe4Addr).transfer(availables[keyID].amount);
             availables[keyID].safe4Addr = safe4Addr;
             availables[keyID].redeemHeight = uint24(block.number);
+            emit RedeemAvailable(safe3Addr, availables[keyID].amount, safe4Addr);
         }
     }
 
-    function redeemLockeds(bytes[] memory _pubkeys, bytes[] memory _sigs, string[] memory _enodes) public override {
+    function redeemLockeds(bytes[] memory _pubkeys, bytes[] memory _sigs) public override {
+        require(_pubkeys.length == _sigs.length, "invalid params");
+        for(uint i = 0; i < _pubkeys.length; i++) {
+            bytes memory _pubkey = _pubkeys[i];
+            bytes memory _sig = _sigs[i];
+            if(!(_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) && !(_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03))) {
+                continue;
+            }
+
+            bytes memory tempPubkey;
+            if(_pubkey.length == 65) {
+                tempPubkey = getPubkey4(_pubkey);
+            } else {
+                tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
+            }
+            if((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) != uint(uint160(msg.sender))) {
+                continue;
+            }
+
+            bytes memory keyID = getKeyIDFromPubkey(_pubkey);
+            if(locks[keyID].length == 0) {
+                continue;
+            }
+
+            string memory safe3Addr = getSafe3Addr(_pubkey);
+            bytes32 h = sha256(abi.encodePacked(safe3Addr));
+            bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
+            if(!verifySig(tempPubkey, msgHash, _sig)) {
+                continue;
+            }
+
+            address safe4Addr = getSafe4Addr(tempPubkey);
+            for(uint k = 0; k < locks[keyID].length; k++) {
+                LockedData memory data = locks[keyID][k];
+                if(data.redeemHeight != 0 || data.isMN) {
+                    continue;
+                }
+                uint lockID = getAccountManager().fromSafe3{value: data.amount}(safe4Addr, data.lockDay, data.remainLockHeight);
+                locks[keyID][k].safe4Addr = safe4Addr;
+                locks[keyID][k].redeemHeight = uint24(block.number);
+                emit RedeemLocked(safe3Addr, data.amount, safe4Addr, lockID);
+            }
+        }
+    }
+
+    function redeemMasterNodes(bytes[] memory _pubkeys, bytes[] memory _sigs, string[] memory _enodes) public override {
         require(_pubkeys.length == _sigs.length && _sigs.length == _enodes.length, "invalid params");
         for(uint i = 0; i < _pubkeys.length; i++) {
             bytes memory _pubkey = _pubkeys[i];
@@ -132,9 +175,10 @@ contract Safe3 is ISafe3, System {
             }
 
             address safe4Addr = getSafe4Addr(tempPubkey);
-            for(uint k = 0; k < locks[keyID].length; k++) {
+            uint k;
+            for(k = 0; k < locks[keyID].length; k++) {
                 LockedData memory data = locks[keyID][k];
-                if(data.redeemHeight != 0 || data.amount == 0 || data.lockDay == 0) {
+                if(data.redeemHeight != 0 || !data.isMN) {
                     continue;
                 }
                 uint lockID = getAccountManager().fromSafe3{value: data.amount}(safe4Addr, data.lockDay, data.remainLockHeight);
@@ -143,6 +187,8 @@ contract Safe3 is ISafe3, System {
                 }
                 locks[keyID][k].safe4Addr = safe4Addr;
                 locks[keyID][k].redeemHeight = uint24(block.number);
+                emit RedeemMasterNode(safe3Addr, safe4Addr, lockID);
+                break;
             }
         }
     }
@@ -171,6 +217,8 @@ contract Safe3 is ISafe3, System {
 
         specials[keyID].safe4Addr = getSafe4Addr(tempPubkey);
         specials[keyID].applyHeight = uint24(block.number);
+
+        emit ApplyRedeemSpecial(safe3Addr, specials[keyID].amount, specials[keyID].safe4Addr);
     }
 
     function vote4Special(string memory _safe3Addr, uint _voteResult) public override onlySN {
