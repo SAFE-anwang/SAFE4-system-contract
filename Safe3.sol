@@ -58,135 +58,91 @@ contract Safe3 is ISafe3, System {
     event RedeemSpecialAgree(string _safe3Addr);
     event RedeemSpecialVote(string _safe3Addr, address _voter, uint _voteResult);
 
-    function redeemAvailables(bytes[] memory _pubkeys, bytes[] memory _sigs) public override {
-        require(_pubkeys.length == _sigs.length, "invalid params");
-        for(uint i = 0; i < _pubkeys.length; i++) {
-            bytes memory _pubkey = _pubkeys[i];
-            bytes memory _sig = _sigs[i];
-            if(!(_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) && !(_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03))) {
-                continue;
-            }
+    function redeemAvailable(bytes memory _pubkey, bytes memory _sig) public override {
+        require((_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) || (_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03)), "invalid pubkey");
 
-            bytes memory tempPubkey;
-            if(_pubkey.length == 65) {
-                tempPubkey = getPubkey4(_pubkey);
-            } else {
-                tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
-            }
-            if((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) != uint(uint160(msg.sender))) {
-                continue;
-            }
-
-            bytes memory keyID = getKeyIDFromPubkey(_pubkey);
-            if(availables[keyID].redeemHeight != 0) {
-                continue;
-            }
-
-            string memory safe3Addr = getSafe3Addr(_pubkey);
-            bytes32 h = sha256(abi.encodePacked(safe3Addr));
-            bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
-            if(!verifySig(tempPubkey, msgHash, _sig)) {
-                continue;
-            }
-
-            address safe4Addr = getSafe4Addr(tempPubkey);
-            payable(safe4Addr).transfer(availables[keyID].amount);
-            availables[keyID].safe4Addr = safe4Addr;
-            availables[keyID].redeemHeight = uint24(block.number);
-            emit RedeemAvailable(safe3Addr, availables[keyID].amount, safe4Addr);
+        bytes memory tempPubkey;
+        if(_pubkey.length == 65) {
+            tempPubkey = getPubkey4(_pubkey);
+        } else {
+            tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
         }
+        require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(uint160(msg.sender)), "pubkey is incompatible with caller");
+
+        bytes memory keyID = getKeyIDFromPubkey(_pubkey);
+        require(availables[keyID].amount > 0, "non-existent available amount");
+        require(availables[keyID].redeemHeight == 0, "has redeemed");
+        
+        string memory safe3Addr = getSafe3Addr(_pubkey);
+        bytes32 h = sha256(abi.encodePacked(safe3Addr));
+        bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
+        require(verifySig(tempPubkey, msgHash, _sig), "invalid signature");
+
+        address safe4Addr = getSafe4Addr(tempPubkey);
+        payable(safe4Addr).transfer(availables[keyID].amount);
+        availables[keyID].safe4Addr = safe4Addr;
+        availables[keyID].redeemHeight = uint24(block.number);
+        emit RedeemAvailable(safe3Addr, availables[keyID].amount, safe4Addr);
     }
 
-    function redeemLockeds(bytes[] memory _pubkeys, bytes[] memory _sigs) public override {
-        require(_pubkeys.length == _sigs.length, "invalid params");
-        for(uint i = 0; i < _pubkeys.length; i++) {
-            bytes memory _pubkey = _pubkeys[i];
-            bytes memory _sig = _sigs[i];
-            if(!(_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) && !(_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03))) {
-                continue;
-            }
+    function redeemLocked(bytes memory _pubkey, bytes memory _sig) public override {
+        require((_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) || (_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03)), "invalid pubkey");
 
-            bytes memory tempPubkey;
-            if(_pubkey.length == 65) {
-                tempPubkey = getPubkey4(_pubkey);
-            } else {
-                tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
-            }
-            if((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) != uint(uint160(msg.sender))) {
-                continue;
-            }
+        bytes memory tempPubkey;
+        if(_pubkey.length == 65) {
+            tempPubkey = getPubkey4(_pubkey);
+        } else {
+            tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
+        }
+        require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) != uint(uint160(msg.sender)), "pubkey is incompatible with caller");
 
-            bytes memory keyID = getKeyIDFromPubkey(_pubkey);
-            if(locks[keyID].length == 0) {
-                continue;
-            }
+        bytes memory keyID = getKeyIDFromPubkey(_pubkey);
+        require(locks[keyID].length > 0, "non-existent locked amount");
 
-            string memory safe3Addr = getSafe3Addr(_pubkey);
-            bytes32 h = sha256(abi.encodePacked(safe3Addr));
-            bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
-            if(!verifySig(tempPubkey, msgHash, _sig)) {
-                continue;
-            }
+        string memory safe3Addr = getSafe3Addr(_pubkey);
+        bytes32 h = sha256(abi.encodePacked(safe3Addr));
+        bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
+        require(verifySig(tempPubkey, msgHash, _sig), "invalid signature");
 
-            address safe4Addr = getSafe4Addr(tempPubkey);
-            for(uint k = 0; k < locks[keyID].length; k++) {
-                LockedData memory data = locks[keyID][k];
-                if(data.redeemHeight != 0 || data.isMN) {
-                    continue;
-                }
+        address safe4Addr = getSafe4Addr(tempPubkey);
+        for(uint16 i = 0; i < locks[keyID].length; i++) {
+            LockedData storage data = locks[keyID][i];
+            if(data.redeemHeight == 0 && !data.isMN) {
                 uint lockID = getAccountManager().fromSafe3{value: data.amount}(safe4Addr, data.lockDay, data.remainLockHeight);
-                locks[keyID][k].safe4Addr = safe4Addr;
-                locks[keyID][k].redeemHeight = uint24(block.number);
+                data.safe4Addr = safe4Addr;
+                data.redeemHeight = uint24(block.number);
                 emit RedeemLocked(safe3Addr, data.amount, safe4Addr, lockID);
             }
         }
     }
 
-    function redeemMasterNodes(bytes[] memory _pubkeys, bytes[] memory _sigs, string[] memory _enodes) public override {
-        require(_pubkeys.length == _sigs.length && _sigs.length == _enodes.length, "invalid params");
-        for(uint i = 0; i < _pubkeys.length; i++) {
-            bytes memory _pubkey = _pubkeys[i];
-            bytes memory _sig = _sigs[i];
-            string memory _enode = _enodes[i];
-            if(!(_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) && !(_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03))) {
-                continue;
-            }
+    function redeemMasterNode(bytes memory _pubkey, bytes memory _sig, string memory _enode) public override {
+        require((_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) || (_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03)), "invalid pubkey");
 
-            bytes memory tempPubkey;
-            if(_pubkey.length == 65) {
-                tempPubkey = getPubkey4(_pubkey);
-            } else {
-                tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
-            }
-            if((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) != uint(uint160(msg.sender))) {
-                continue;
-            }
+        bytes memory tempPubkey;
+        if(_pubkey.length == 65) {
+            tempPubkey = getPubkey4(_pubkey);
+        } else {
+            tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
+        }
+        require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) != uint(uint160(msg.sender)), "pubkey is incompatible with caller");
 
-            bytes memory keyID = getKeyIDFromPubkey(_pubkey);
-            if(locks[keyID].length == 0) {
-                continue;
-            }
+        bytes memory keyID = getKeyIDFromPubkey(_pubkey);
+        require(locks[keyID].length > 0, "non-existent masternode");
 
-            string memory safe3Addr = getSafe3Addr(_pubkey);
-            bytes32 h = sha256(abi.encodePacked(safe3Addr));
-            bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
-            if(!verifySig(tempPubkey, msgHash, _sig)) {
-                continue;
-            }
+        string memory safe3Addr = getSafe3Addr(_pubkey);
+        bytes32 h = sha256(abi.encodePacked(safe3Addr));
+        bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
+        require(verifySig(tempPubkey, msgHash, _sig), "invalid signature");
 
-            address safe4Addr = getSafe4Addr(tempPubkey);
-            uint k;
-            for(k = 0; k < locks[keyID].length; k++) {
-                LockedData memory data = locks[keyID][k];
-                if(data.redeemHeight != 0 || !data.isMN) {
-                    continue;
-                }
+        address safe4Addr = getSafe4Addr(tempPubkey);
+        for(uint16 i = 0; i < locks[keyID].length; i++) {
+            LockedData storage data = locks[keyID][i];
+            if(data.redeemHeight == 0 && data.isMN) {
                 uint lockID = getAccountManager().fromSafe3{value: data.amount}(safe4Addr, data.lockDay, data.remainLockHeight);
-                if(data.isMN) {
-                    getMasterNodeLogic().fromSafe3(safe4Addr, data.amount, data.lockDay, lockID, _enode);
-                }
-                locks[keyID][k].safe4Addr = safe4Addr;
-                locks[keyID][k].redeemHeight = uint24(block.number);
+                getMasterNodeLogic().fromSafe3(safe4Addr, data.amount, data.lockDay, lockID, _enode);
+                data.safe4Addr = safe4Addr;
+                data.redeemHeight = uint24(block.number);
                 emit RedeemMasterNode(safe3Addr, safe4Addr, lockID);
                 break;
             }
@@ -264,59 +220,106 @@ contract Safe3 is ISafe3, System {
         emit RedeemSpecialVote(_safe3Addr, msg.sender, _voteResult);
     }
 
-    function getAvailable(string memory _safe3Addr) public view override returns (AvailableSafe3Info memory) {
-        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
-        return AvailableSafe3Info(_safe3Addr, availables[keyID].amount, availables[keyID].safe4Addr, availables[keyID].redeemHeight);
+    function getAvailableNum() public view override returns (uint) {
+        return keyIDs.length;
     }
 
-    function getLocked(string memory _safe3Addr) public view override returns (LockedSafe3Info[] memory) {
-        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
-        LockedSafe3Info[] memory ret = new LockedSafe3Info[](locks[keyID].length);
-        for(uint i = 0; i < locks[keyID].length; i++) {
-            LockedData memory data = locks[keyID][i];
-            ret[i] = LockedSafe3Info(_safe3Addr, data.amount, string(abi.encodePacked(StringUtil.toHex(data.txid), "-", StringUtil.toString(data.n))), data.lockHeight, data.unlockHeight, data.remainLockHeight, data.lockDay, data.isMN, data.safe4Addr, data.redeemHeight);
-        }
-        return ret;
-    }
+    function getAvailables(uint _start, uint _count) public view override returns (AvailableSafe3Info[] memory) {
+        require(_start >= 0 && _start < keyIDs.length, "invalid _start, must be in [0, getAvaliableCount()]");
+        require(_count <= 10, "max return 10 records");
 
-    function getSpecial(string memory _safe3Addr) public view override returns (SpecialSafe3Info memory) {
-        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
-        SpecialData memory data = specials[keyID];
-        SpecialSafe3Info memory ret;
-        ret.safe3Addr = _safe3Addr;
-        ret.amount = data.amount;
-        ret.applyHeight = data.applyHeight;
-        ret.voters = new address[](data.voters.length);
-        for(uint i = 0; i < data.voters.length; i++) {
-            ret.voters[i] = data.voters[i];
+        uint num = _count;
+        if(_start + _count >= keyIDs.length) {
+            num = keyIDs.length - _start;
         }
-        ret.voteResults = new uint[](data.voteResults.length);
-        for(uint i = 0; i < data.voteResults.length; i++) {
-            ret.voteResults[i] = data.voteResults[i];
-        }
-        ret.safe4Addr = data.safe4Addr;
-        ret.redeemHeight = data.redeemHeight;
-        return ret;
-    }
 
-    function getAllAvailable() public view override returns (AvailableSafe3Info[] memory) {
-        AvailableSafe3Info[] memory ret = new AvailableSafe3Info[](keyIDs.length);
-        for(uint i = 0; i < keyIDs.length; i++) {
-            bytes memory keyID = keyIDs[i];
+        AvailableSafe3Info[] memory ret = new AvailableSafe3Info[](num);
+        bytes memory keyID;
+        for(uint i = 0; i < num; i++) {
+            keyID = keyIDs[i + _start];
             ret[i] = AvailableSafe3Info(string(Base58.encode(keyID)), availables[keyID].amount, availables[keyID].safe4Addr, availables[keyID].redeemHeight);
         }
         return ret;
     }
 
-    function getAllLocked() public view override returns (LockedSafe3Info[] memory) {
-        LockedSafe3Info[] memory ret = new LockedSafe3Info[](lockedNum);
-        uint pos = 0;
-        for(uint i = 0; i < lockedKeyIDs.length; i++) {
-            bytes memory keyID = lockedKeyIDs[i];
-            for(uint k = 0; k < locks[keyID].length; k++) {
-                LockedData memory data = locks[keyID][k];
-                ret[pos++] = LockedSafe3Info(string(Base58.encode(keyID)), data.amount, string(abi.encodePacked(StringUtil.toHex(data.txid), "-", StringUtil.toString(data.n))), data.lockHeight, data.unlockHeight, data.remainLockHeight, data.lockDay, data.isMN, data.safe4Addr, data.redeemHeight);
+    function getAvailable(string memory _safe3Addr) public view override returns (AvailableSafe3Info memory) {
+        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
+        return AvailableSafe3Info(_safe3Addr, availables[keyID].amount, availables[keyID].safe4Addr, availables[keyID].redeemHeight);
+    }
+
+    function getAllLockedNum() public view override returns (uint) {
+        return lockedNum;
+    }
+
+    function getLockeds(uint _start, uint _count) public view override returns (LockedSafe3Info[] memory) {
+        require(_start >= 0 && _start < lockedKeyIDs.length, "invalid _start, must be in [0, getLockedCount()]");
+        require(_count <= 10, "max return 10 records");
+
+        uint num = _count;
+        if(_start + _count >= lockedNum) {
+            num = lockedKeyIDs.length - _start;
+        }
+
+        LockedSafe3Info[] memory ret = new LockedSafe3Info[](num);
+
+        uint i;
+        uint total;
+        bytes memory keyID;
+        for(i = 0; i < lockedKeyIDs.length; i++) {
+            keyID = lockedKeyIDs[i];
+            if(total + locks[keyID].length > _start) {
+                break;
             }
+            total += locks[keyID].length;
+        }
+        require(i < lockedKeyIDs.length, "invalid start");
+
+        uint pos;
+        LockedData memory data;
+        for(uint k = i; k < lockedKeyIDs.length; k++) {
+            keyID = lockedKeyIDs[k];
+            if(k == i) {
+                for(uint m = _start - total; m < locks[keyID].length; m++) {
+                    data = locks[keyID][m];
+                    ret[pos++] = LockedSafe3Info(string(Base58.encode(keyID)), data.amount, string(abi.encodePacked(StringUtil.toHex(data.txid), "-", StringUtil.toString(data.n))), data.lockHeight, data.unlockHeight, data.remainLockHeight, data.lockDay, data.isMN, data.safe4Addr, data.redeemHeight);
+                    if(pos == num) {
+                        return ret;
+                    }
+                }
+            } else {
+                for(uint m = 0; m < locks[keyID].length; m++) {
+                    data = locks[keyID][m];
+                    ret[pos++] = LockedSafe3Info(string(Base58.encode(keyID)), data.amount, string(abi.encodePacked(StringUtil.toHex(data.txid), "-", StringUtil.toString(data.n))), data.lockHeight, data.unlockHeight, data.remainLockHeight, data.lockDay, data.isMN, data.safe4Addr, data.redeemHeight);
+                    if(pos == num) {
+                        return ret;
+                    }
+                }
+            }
+        }
+        return ret;
+    }
+
+    function getLockedNum(string memory _safe3Addr) public view override returns (uint) {
+        return locks[getKeyIDFromAddress(_safe3Addr)].length;
+    }
+
+    function getLocked(string memory _safe3Addr, uint _start, uint _count) public view override returns (LockedSafe3Info[] memory) {
+        require(_count <= 10, "max return 10 records");
+        
+        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
+        require(locks[keyID].length > 0, "non-existent locked amount");
+        require(_start >= 0 && _start < locks[keyID].length, "invalid _start, must be in [0, getLockedNum(addr)]");
+
+        uint num = _count;
+        if(_start + _count >= locks[keyID].length) {
+            num = locks[keyID].length - _start;
+        }
+
+        LockedSafe3Info[] memory ret = new LockedSafe3Info[](num);
+        LockedData memory data;
+        for(uint i = 0; i < num; i++) {
+            data = locks[keyID][i + _start];
+            ret[i] = LockedSafe3Info(_safe3Addr, data.amount, string(abi.encodePacked(StringUtil.toHex(data.txid), "-", StringUtil.toString(data.n))), data.lockHeight, data.unlockHeight, data.remainLockHeight, data.lockDay, data.isMN, data.safe4Addr, data.redeemHeight);
         }
         return ret;
     }
@@ -339,6 +342,26 @@ contract Safe3 is ISafe3, System {
             ret[i].safe4Addr = data.safe4Addr;
             ret[i].redeemHeight = data.redeemHeight;
         }
+        return ret;
+    }
+
+    function getSpecial(string memory _safe3Addr) public view override returns (SpecialSafe3Info memory) {
+        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
+        SpecialData memory data = specials[keyID];
+        SpecialSafe3Info memory ret;
+        ret.safe3Addr = _safe3Addr;
+        ret.amount = data.amount;
+        ret.applyHeight = data.applyHeight;
+        ret.voters = new address[](data.voters.length);
+        for(uint i = 0; i < data.voters.length; i++) {
+            ret.voters[i] = data.voters[i];
+        }
+        ret.voteResults = new uint[](data.voteResults.length);
+        for(uint i = 0; i < data.voteResults.length; i++) {
+            ret.voteResults[i] = data.voteResults[i];
+        }
+        ret.safe4Addr = data.safe4Addr;
+        ret.redeemHeight = data.redeemHeight;
         return ret;
     }
 
@@ -395,5 +418,13 @@ contract Safe3 is ISafe3, System {
             return temp;
         }
         return _pubkey;
+    }
+
+    function getSlice(bytes memory _bs, uint _offset, uint _num) internal pure returns (bytes memory) {
+        bytes memory ret = new bytes(_num);
+        for(uint i = 0; i < _num; i++) {
+            ret[i] = _bs[_offset + i];
+        }
+        return ret;
     }
 }

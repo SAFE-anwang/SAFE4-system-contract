@@ -32,17 +32,23 @@ interface ISafe3 {
         uint redeemHeight;
     }
 
-    function redeemAvailables(bytes[] memory _pubkeys, bytes[] memory _sigs) external;
-    function redeemLockeds(bytes[] memory _pubkeys, bytes[] memory _sigs) external;
-    function redeemMasterNodes(bytes[] memory _pubkeys, bytes[] memory _sigs, string[] memory _enodes) external;
+    function redeemAvailable(bytes memory _pubkey, bytes memory _sig) external;
+    function redeemLocked(bytes memory _pubkey, bytes memory _sig) external;
+    function redeemMasterNode(bytes memory _pubkey, bytes memory _sig, string memory _enode) external;
 
     function applyRedeemSpecial(bytes memory _pubkey, bytes memory _sig) external;
     function vote4Special(string memory _safe3Addr, uint _voteResult) external;
 
+    function getAvailableNum() external view returns (uint);
+    function getAvailables(uint _start, uint _count) external view returns (AvailableSafe3Info[] memory);
     function getAvailable(string memory _safe3Addr) external view returns (AvailableSafe3Info memory);
-    function getLocked(string memory _safe3Addr) external view returns (LockedSafe3Info[] memory);
-    function getSpecial(string memory _safe3Addr) external view returns (SpecialSafe3Info memory);
-    function getAllAvailable() external view returns (AvailableSafe3Info[] memory);
-    function getAllLocked() external view returns (LockedSafe3Info[] memory);
+
+    function getAllLockedNum() external view returns (uint);
+    function getLockeds(uint _start, uint _count) external view returns (LockedSafe3Info[] memory);
+
+    function getLockedNum(string memory _safe3Addr) external view returns (uint);
+    function getLocked(string memory _safe3Addr, uint _start, uint _count) external view returns (LockedSafe3Info[] memory);
+
     function getAllSpecial() external view returns (SpecialSafe3Info[] memory);
+    function getSpecial(string memory _safe3Addr) external view returns (SpecialSafe3Info memory);
 }
