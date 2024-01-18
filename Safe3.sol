@@ -252,12 +252,12 @@ contract Safe3 is ISafe3, System {
     }
 
     function getLockeds(uint _start, uint _count) public view override returns (LockedSafe3Info[] memory) {
-        require(_start >= 0 && _start < lockedKeyIDs.length, "invalid _start, must be in [0, getLockedCount()]");
+        require(_start >= 0 && _start < lockedNum, "invalid _start, must be in [0, getLockedCount()]");
         require(_count <= 10, "max return 10 records");
 
         uint num = _count;
         if(_start + _count >= lockedNum) {
-            num = lockedKeyIDs.length - _start;
+            num = lockedNum - _start;
         }
 
         LockedSafe3Info[] memory ret = new LockedSafe3Info[](num);
