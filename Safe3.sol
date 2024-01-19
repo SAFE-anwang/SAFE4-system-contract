@@ -220,12 +220,12 @@ contract Safe3 is ISafe3, System {
         emit RedeemSpecialVote(_safe3Addr, msg.sender, _voteResult);
     }
 
-    function getAvailableNum() public view override returns (uint) {
+    function getAllAvailableNum() public view override returns (uint) {
         return keyIDs.length;
     }
 
-    function getAvailables(uint _start, uint _count) public view override returns (AvailableSafe3Info[] memory) {
-        require(_start >= 0 && _start < keyIDs.length, "invalid _start, must be in [0, getAvaliableCount()]");
+    function getAvailableInfos(uint _start, uint _count) public view override returns (AvailableSafe3Info[] memory) {
+        require(_start >= 0 && _start < keyIDs.length, "invalid _start, must be in [0, getAllAvailableNum()]");
         require(_count <= 10, "max return 10 records");
 
         uint num = _count;
@@ -242,7 +242,7 @@ contract Safe3 is ISafe3, System {
         return ret;
     }
 
-    function getAvailable(string memory _safe3Addr) public view override returns (AvailableSafe3Info memory) {
+    function getAvailableInfo(string memory _safe3Addr) public view override returns (AvailableSafe3Info memory) {
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
         return AvailableSafe3Info(_safe3Addr, availables[keyID].amount, availables[keyID].safe4Addr, availables[keyID].redeemHeight);
     }
@@ -251,50 +251,22 @@ contract Safe3 is ISafe3, System {
         return lockedNum;
     }
 
-    function getLockeds(uint _start, uint _count) public view override returns (LockedSafe3Info[] memory) {
-        require(_start >= 0 && _start < lockedNum, "invalid _start, must be in [0, getLockedCount()]");
+    function getLockedAddrNum() public view returns (uint) {
+        return lockedKeyIDs.length;
+    }
+
+    function getLockedAddrs(uint _start, uint _count) external view override returns (string[] memory) {
+        require(_start >= 0 && _start < lockedKeyIDs.length, "invalid _start, must be in [0, getLockedAddrNum()]");
         require(_count <= 10, "max return 10 records");
 
         uint num = _count;
-        if(_start + _count >= lockedNum) {
-            num = lockedNum - _start;
+        if(_start + _count >= lockedKeyIDs.length) {
+            num = lockedKeyIDs.length - _start;
         }
 
-        LockedSafe3Info[] memory ret = new LockedSafe3Info[](num);
-
-        uint i;
-        uint total;
-        bytes memory keyID;
-        for(i = 0; i < lockedKeyIDs.length; i++) {
-            keyID = lockedKeyIDs[i];
-            if(total + locks[keyID].length > _start) {
-                break;
-            }
-            total += locks[keyID].length;
-        }
-        require(i < lockedKeyIDs.length, "invalid start");
-
-        uint pos;
-        LockedData memory data;
-        for(uint k = i; k < lockedKeyIDs.length; k++) {
-            keyID = lockedKeyIDs[k];
-            if(k == i) {
-                for(uint m = _start - total; m < locks[keyID].length; m++) {
-                    data = locks[keyID][m];
-                    ret[pos++] = LockedSafe3Info(string(Base58.encode(keyID)), data.amount, string(abi.encodePacked(StringUtil.toHex(data.txid), "-", StringUtil.toString(data.n))), data.lockHeight, data.unlockHeight, data.remainLockHeight, data.lockDay, data.isMN, data.safe4Addr, data.redeemHeight);
-                    if(pos == num) {
-                        return ret;
-                    }
-                }
-            } else {
-                for(uint m = 0; m < locks[keyID].length; m++) {
-                    data = locks[keyID][m];
-                    ret[pos++] = LockedSafe3Info(string(Base58.encode(keyID)), data.amount, string(abi.encodePacked(StringUtil.toHex(data.txid), "-", StringUtil.toString(data.n))), data.lockHeight, data.unlockHeight, data.remainLockHeight, data.lockDay, data.isMN, data.safe4Addr, data.redeemHeight);
-                    if(pos == num) {
-                        return ret;
-                    }
-                }
-            }
+        string[] memory ret = new string[](num);
+        for(uint i = 0; i < num; i++) {
+            ret[i] = string(Base58.encode(lockedKeyIDs[i + _start]));
         }
         return ret;
     }
@@ -303,7 +275,7 @@ contract Safe3 is ISafe3, System {
         return locks[getKeyIDFromAddress(_safe3Addr)].length;
     }
 
-    function getLocked(string memory _safe3Addr, uint _start, uint _count) public view override returns (LockedSafe3Info[] memory) {
+    function getLockedInfo(string memory _safe3Addr, uint _start, uint _count) public view override returns (LockedSafe3Info[] memory) {
         require(_count <= 10, "max return 10 records");
         
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
@@ -324,11 +296,25 @@ contract Safe3 is ISafe3, System {
         return ret;
     }
 
-    function getAllSpecial() public view override returns (SpecialSafe3Info[] memory) {
-        SpecialSafe3Info[] memory ret = new SpecialSafe3Info[](specialKeyIDs.length);
-        for(uint i = 0; i < specialKeyIDs.length; i++) {
-            SpecialData memory data = specials[specialKeyIDs[i]];
-            ret[i].safe3Addr = string(Base58.encode(specialKeyIDs[i]));
+    function getAllSpecialNum() public view override returns (uint) {
+        return specialKeyIDs.length;
+    }
+
+    function getSpecialInfos(uint _start, uint _count) public view override returns (SpecialSafe3Info[] memory) {
+        require(_start >= 0 && _start < specialKeyIDs.length, "invalid _start, must be in [0, getAllSpecialNum()]");
+        require(_count <= 10, "max return 10 records");
+
+        uint num = _count;
+        if(_start + _count >= specialKeyIDs.length) {
+            num = specialKeyIDs.length - _start;
+        }
+
+        SpecialSafe3Info[] memory ret = new SpecialSafe3Info[](num);
+        bytes memory keyID;
+        for(uint i = 0; i < num; i++) {
+            keyID = specialKeyIDs[i + _start];
+            SpecialData memory data = specials[keyID];
+            ret[i].safe3Addr = string(Base58.encode(keyID));
             ret[i].amount = data.amount;
             ret[i].applyHeight = data.applyHeight;
             ret[i].voters = new address[](data.voters.length);
@@ -345,7 +331,7 @@ contract Safe3 is ISafe3, System {
         return ret;
     }
 
-    function getSpecial(string memory _safe3Addr) public view override returns (SpecialSafe3Info memory) {
+    function getSpecialInfo(string memory _safe3Addr) public view override returns (SpecialSafe3Info memory) {
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
         SpecialData memory data = specials[keyID];
         SpecialSafe3Info memory ret;
