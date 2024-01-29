@@ -272,6 +272,25 @@ contract SNVote is ISNVote, System {
         return (retAddrs, retNums);
     }
 
+    function getIDNum(address _addr) public view override returns (uint) {
+        return dst2ids[_addr].length;
+    }
+
+    function getIDs(address _addr, uint _start, uint _count) public view override returns (uint[] memory) {
+        require(_start < dst2ids[_addr].length, "invalid _start, must be in [0, getIDNum())");
+        require(_count > 0 && _count <= 100, "max return 100 ids");
+
+        uint num = _count;
+        if(_start + _count >= dst2ids[_addr].length) {
+            num = dst2ids[_addr].length - _start;
+        }
+        uint[] memory ret = new uint[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = dst2ids[_addr][i + _start];
+        }
+        return ret;
+    }
+
     function existDst4Voter(address _voterAddr, address _dstAddr) internal view returns (bool, uint) {
         address[] memory dsts = voter2dsts[_voterAddr];
         for(uint i; i < dsts.length; i++) {
@@ -401,7 +420,6 @@ contract SNVote is ISNVote, System {
         // freeze record
         if(isSN(_dstAddr)) { // vote
             getAccountManager().setRecordVoteInfo(_recordID, _dstAddr, getPropertyValue("record_snvote_lockday"));
-            getSuperNodeLogic().changeVoteInfo(_dstAddr, _voterAddr, _recordID, amount, num, 1);
             emit SNVOTE_VOTE(_voterAddr, _dstAddr, _recordID, num);
         } else { // approval
             emit SNVOTE_APPROVAL(_voterAddr, _dstAddr, _recordID, num);
@@ -576,7 +594,6 @@ contract SNVote is ISNVote, System {
         // unfreeze record
         if(isSN(dstAddr)) { // vote
             getAccountManager().setRecordVoteInfo(_recordID, address(0), 0);
-            getSuperNodeLogic().changeVoteInfo(dstAddr, _voterAddr, _recordID, amount, num, 0);
             emit SNVOTE_REMOVE_VOTE(_voterAddr, dstAddr, _recordID, num);
         } else { // proxy
             emit SNVOTE_REMOVE_APPROVAL(_voterAddr, dstAddr, _recordID, num);

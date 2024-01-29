@@ -56,4 +56,9 @@ interface ISNVote {
     function getVoterNum(address _addr) external view returns (uint);
     // get supernode's/proxy's voters & voteNums
     function getVoters(address _addr, uint _start, uint _count) external view returns (address[] memory, uint[] memory);
+
+    // get supernode's/proxy's voter record id number
+    function getIDNum(address _addr) external view returns (uint);
+    // get supernode's/proxy's voter record ids
+    function getIDs(address _addr, uint _start, uint _count) external view returns (uint[] memory);
 }
