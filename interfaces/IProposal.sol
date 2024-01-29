@@ -11,11 +11,14 @@ interface IProposal {
         uint startPayTime;
         uint endPayTime;
         string description;
-        address[] voters;
-        uint[] voteResults;
         uint state;
         uint createHeight;
         uint updateHeight;
+    }
+
+    struct VoteInfo {
+        address voter;
+        uint voteResult;
     }
 
     function reward() external payable;
@@ -28,8 +31,17 @@ interface IProposal {
     function changeStartPayTime(uint _id, uint _startPayTime) external;
     function changeEndPayTime(uint _id, uint _endPayTime) external;
     function changeDescription(uint _id, string memory _description) external;
+
     function getInfo(uint _id) external view returns (ProposalInfo memory);
-    function getAll() external view returns (ProposalInfo[] memory);
-    function getMines() external view returns (ProposalInfo[] memory);
+
+    function getVoterNum(uint _id) external view returns (uint);
+    function getVoteInfo(uint _id, uint _start, uint _count) external view returns (VoteInfo[] memory);
+
+    function getNum() external view returns (uint);
+    function getAll(uint _start, uint _count) external view returns (uint[] memory);
+
+    function getMineNum() external view returns (uint);
+    function getMines(uint _start, uint _count) external view returns (uint[] memory);
+
     function exist(uint _id) external view returns (bool);
 }

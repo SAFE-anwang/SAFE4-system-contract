@@ -6,6 +6,7 @@ import "./System.sol";
 contract Proposal is IProposal, System {
     uint pp_no;
     mapping(uint => ProposalInfo) proposals;
+    mapping(uint => VoteInfo[]) voteInfos;
     mapping(address => uint[]) addr2ids;
     mapping(uint => address) id2addr;
     uint[] ids;
@@ -56,21 +57,19 @@ contract Proposal is IProposal, System {
         require(proposals[_id].state == 0, "proposal has been confirmed");
         require(_voteResult == Constant.VOTE_AGREE || _voteResult == Constant.VOTE_REJECT || _voteResult == Constant.VOTE_ABSTAIN, "invalue vote result, must be agree(1), reject(2), abstain(3)");
         require(block.timestamp < proposals[_id].startPayTime, "proposal is out of day");
-        address[] storage voters = proposals[_id].voters;
-        uint i = 0;
-        bool flag = false;
-        for(i = 0; i < voters.length; i++) {
-            if(voters[i] == msg.sender) {
+        VoteInfo[] storage votes = voteInfos[_id];
+        uint i;
+        bool flag;
+        for(; i < votes.length; i++) {
+            if(votes[i].voter == msg.sender) {
                 flag = true;
                 break;
             }
         }
-        uint[] storage voteResults = proposals[_id].voteResults;
         if(flag) {
-            voteResults[i] = _voteResult;
+            votes[i].voteResult = _voteResult;
         } else {
-            voters.push(msg.sender);
-            voteResults.push(_voteResult);
+            votes.push(VoteInfo(msg.sender, _voteResult));
         }
         emit ProposalVote(_id, msg.sender, _voteResult);
 
@@ -78,11 +77,11 @@ contract Proposal is IProposal, System {
             return;
         }
 
-        uint agreeCount = 0;
-        uint rejectCount = 0;
+        uint agreeCount;
+        uint rejectCount;
         uint snCount = getSNNum();
-        for(i = 0; i < voteResults.length; i++) {
-             if(voteResults[i] == Constant.VOTE_AGREE) {
+        for(i = 0; i < votes.length; i++) {
+             if(votes[i].voteResult == Constant.VOTE_AGREE) {
                 agreeCount++;
             } else { // reject or abstain
                 rejectCount++;
@@ -105,7 +104,7 @@ contract Proposal is IProposal, System {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(bytes(_title).length >= Constant.MIN_PP_TITLE_LEN && bytes(_title).length <= Constant.MAX_PP_TITLE_LEN, "invalid title");
-        require(proposals[_id].voters.length == 0, "voted proposal can't update title");
+        require(voteInfos[_id].length == 0, "voted proposal can't update title");
         proposals[_id].title = _title;
         proposals[_id].updateHeight = block.number;
     }
@@ -115,7 +114,7 @@ contract Proposal is IProposal, System {
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(_payAmount > 0 && _payAmount <= getBalance(), "invalid pay amount");
         require(_payAmount / proposals[_id].payTimes != 0, "pay amount is too small");
-        require(proposals[_id].voters.length == 0, "voted proposal can't update pay-amount");
+        require(voteInfos[_id].length == 0, "voted proposal can't update pay-amount");
         proposals[_id].payAmount = _payAmount;
         proposals[_id].updateHeight = block.number;
     }
@@ -125,7 +124,7 @@ contract Proposal is IProposal, System {
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(_payTimes > 0 && _payTimes <= Constant.MAX_PP_PAY_TIMES, "invalid pay times");
         require(proposals[_id].payAmount / _payTimes != 0, "pay times is too big");
-        require(proposals[_id].voters.length == 0, "voted proposal can't update pay-times");
+        require(voteInfos[_id].length == 0, "voted proposal can't update pay-times");
         proposals[_id].payTimes = _payTimes;
         proposals[_id].updateHeight = block.number;
     }
@@ -134,7 +133,7 @@ contract Proposal is IProposal, System {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(_startPayTime >= block.timestamp && _startPayTime <= proposals[_id].endPayTime, "invalid start pay time");
-        require(proposals[_id].voters.length == 0, "voted proposal can't update start-pay-time");
+        require(voteInfos[_id].length == 0, "voted proposal can't update start-pay-time");
         proposals[_id].startPayTime = _startPayTime;
         proposals[_id].updateHeight = block.number;
     }
@@ -143,7 +142,7 @@ contract Proposal is IProposal, System {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(_endPayTime >= proposals[_id].startPayTime && _endPayTime >= block.timestamp, "invalid end pay time");
-        require(proposals[_id].voters.length == 0, "voted proposal can't update end-pay-time");
+        require(voteInfos[_id].length == 0, "voted proposal can't update end-pay-time");
         proposals[_id].endPayTime = _endPayTime;
         proposals[_id].updateHeight = block.number;
     }
@@ -152,7 +151,7 @@ contract Proposal is IProposal, System {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(bytes(_description).length >= Constant.MIN_PP_DESCRIPTIO_LEN && bytes(_description).length <= Constant.MAX_PP_DESCRIPTIO_LEN, "invalid description");
-        require(proposals[_id].voters.length == 0, "voted proposal can't update description");
+        require(voteInfos[_id].length == 0, "voted proposal can't update description");
         proposals[_id].description = _description;
         proposals[_id].updateHeight = block.number;
     }
@@ -161,21 +160,62 @@ contract Proposal is IProposal, System {
         return proposals[_id];
     }
 
-    function getAll() public view override returns (ProposalInfo[] memory) {
-        ProposalInfo[] memory pps = new ProposalInfo[](ids.length);
-        for(uint i = 0; i < ids.length; i++) {
-            pps[i] = proposals[ids[i]];
-        }
-        return pps;
+    function getVoterNum(uint _id) public view override returns (uint) {
+        return voteInfos[_id].length;
     }
 
-    function getMines() public view override returns (ProposalInfo[] memory) {
-        uint[] memory mineIDs = addr2ids[msg.sender];
-        ProposalInfo[] memory pps = new ProposalInfo[](mineIDs.length);
-        for(uint i = 0; i < mineIDs.length; i++) {
-            pps[i] = proposals[mineIDs[i]];
+    function getVoteInfo(uint _id, uint _start, uint _count) public view override returns (VoteInfo[] memory) {
+        require(_start < voteInfos[_id].length, "invalid _start, must be in [0, getVoterNum())");
+        require(_count > 0 && _count <= 100, "max return 100 voteInfos");
+
+        uint num = _count;
+        if(_start + _count >= voteInfos[_id].length) {
+            num = voteInfos[_id].length - _start;
         }
-        return pps;
+        VoteInfo[] memory ret = new VoteInfo[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = voteInfos[_id][i + _start];
+        }
+        return ret;
+    }
+
+    function getNum() public view override returns (uint) {
+        return ids.length;
+    }
+
+    function getAll(uint _start, uint _count) public view override returns (uint[] memory) {
+        require(_start < ids.length, "invalid _start, must be in [0, getNum())");
+        require(_count > 0 && _count <= 100, "max return 100 proposals");
+
+        uint num = _count;
+        if(_start + _count >= ids.length) {
+            num = ids.length - _start;
+        }
+        uint[] memory ret = new uint[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = ids[i + _start];
+        }
+        return ret;
+    }
+
+    function getMineNum() public view override returns (uint) {
+        return addr2ids[msg.sender].length;
+    }
+
+    function getMines(uint _start, uint _count) public view override returns (uint[] memory) {
+        uint[] memory mineIDs = addr2ids[msg.sender];
+        require(_start < mineIDs.length, "invalid _start, must be in [0, getMineNum())");
+        require(_count > 0 && _count <= 100, "max return 100 proposals");
+
+        uint num = _count;
+        if(_start + _count >= mineIDs.length) {
+            num = mineIDs.length - _start;
+        }
+        uint[] memory ret = new uint[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = mineIDs[i + _start];
+        }
+        return ret;
     }
 
     function exist(uint _id) public view override returns (bool) {
@@ -189,8 +229,8 @@ contract Proposal is IProposal, System {
             return;
         }
         uint space = (pp.endPayTime - pp.startPayTime) / (pp.payTimes - 1);
-        uint usedAmount = 0;
-        for(uint i = 0; i < pp.payTimes - 1; i++) {
+        uint usedAmount;
+        for(uint i; i < pp.payTimes - 1; i++) {
             getAccountManager().depositWithSecond{value: pp.payAmount / pp.payTimes}(pp.creator, pp.startPayTime + space * i - block.timestamp);
             usedAmount += pp.payAmount / pp.payTimes;
         }
