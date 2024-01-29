@@ -19,7 +19,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         info.enode = _enode;
         info.description = _description;
         info.isOfficial = false;
-        info.stateInfo = StateInfo(Constant.NODE_STATE_INIT, block.number);
+        info.state = Constant.NODE_STATE_INIT;
         info.founders.push(MemberInfo(_lockID, tx.origin, _amount, block.number));
         info.incentivePlan = plan;
         info.lastRewardHeight = 0;
@@ -66,7 +66,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     }
 
     function updateState(address _addr, uint _state) public override onlyMasterNodeLogic {
-        addr2info[_addr].stateInfo = StateInfo(_state, block.number);
+        addr2info[_addr].state = _state;
         addr2info[_addr].updateHeight = block.number;
     }
 
@@ -90,7 +90,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         MasterNodeInfo memory info = addr2info[_addr];
         // remove id
         uint pos;
-        for(uint i = 0; i < ids.length; i++) {
+        for(uint i; i < ids.length; i++) {
             if(ids[i] == info.id) {
                 pos = i;
                 break;
@@ -123,11 +123,11 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
 
     function getNext() public view override returns (address) {
         uint minAmount = getPropertyValue("masternode_min_amount") * Constant.COIN;
-        uint count = 0;
+        uint count;
         MasterNodeInfo[] memory mns = new MasterNodeInfo[](ids.length);
-        for(uint i = 0; i < ids.length; i++) {
+        for(uint i; i < ids.length; i++) {
             MasterNodeInfo memory info = addr2info[id2addr[ids[i]]];
-            if(info.stateInfo.state != Constant.NODE_STATE_START) {
+            if(info.state != Constant.NODE_STATE_START) {
                 continue;
             }
             uint lockAmount;
@@ -151,41 +151,71 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
             return selectNext(mns, count).addr;
         }
         // select official addr2info
-        MasterNodeInfo[] memory officials = getOfficials();
-        if(officials.length != 0) {
-            return selectNext(officials, count).addr;
-        } else {
+        uint officialNum = getOfficialNum();
+        if(officialNum == 0) {
             return id2addr[(block.number % ids.length) + 1];
         }
-    }
-
-    function getAll() public view override returns (MasterNodeInfo[] memory) {
-        MasterNodeInfo[] memory ret = new MasterNodeInfo[](ids.length);
-        for(uint i = 0; i < ids.length; i++) {
-            ret[i] = addr2info[id2addr[ids[i]]];
-        }
-        return ret;
-    }
-
-    function getOfficials() public view override returns (MasterNodeInfo[] memory) {
-        uint count;
-        for(uint i = 0; i < ids.length; i++) {
+        MasterNodeInfo[] memory officials = new MasterNodeInfo[](officialNum);
+        uint index;
+        for(uint i; i < ids.length; i++) {
             if(addr2info[id2addr[ids[i]]].isOfficial) {
-                count++;
+                officials[index++] = addr2info[id2addr[ids[i]]];
             }
         }
-        MasterNodeInfo[] memory ret = new MasterNodeInfo[](count);
-        uint index = 0;
-        for(uint i = 0; i < ids.length; i++) {
-            if(addr2info[id2addr[ids[i]]].isOfficial) {
-                ret[index++] = addr2info[id2addr[ids[i]]];
-            }
-        }
-        return ret;
+        return selectNext(officials, officialNum).addr;
     }
 
     function getNum() public view override returns (uint) {
         return ids.length;
+    }
+
+    function getAll(uint _start, uint _count) public view override returns (address[] memory) {
+        require(_start < ids.length, "invalid _start, must be in [0, getNum())");
+        require(_count > 0 && _count <= 100, "max return 100 masternodes");
+
+        uint num = _count;
+        if(_start + _count >= ids.length) {
+            num = ids.length - _start;
+        }
+        address[] memory ret = new address[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = id2addr[ids[i + _start]];
+        }
+        return ret;
+    }
+
+    function getOfficialNum() public view override returns (uint) {
+        uint num;
+        for(uint i; i < ids.length; i++) {
+            if(addr2info[id2addr[ids[i]]].isOfficial) {
+                num++;
+            }
+        }
+        return num;
+    }
+
+    function getOfficials(uint _start, uint _count) public view override returns (address[] memory) {
+        uint officialNum = getOfficialNum();
+        require(_start < officialNum, "invalid _start, must be in [0, getOfficialNum())");
+        require(_count > 0 && _count <= 100, "max return 100 masternodes");
+
+        uint[] memory temp = new uint[](officialNum);
+        uint index;
+        for(uint i; i < ids.length; i++) {
+            if(addr2info[id2addr[ids[i]]].isOfficial) {
+                temp[index++] = ids[i];
+            }
+        }
+
+        uint num = _count;
+        if(_start + _count >= officialNum) {
+            num = officialNum - _start;
+        }
+        address[] memory ret = new address[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = id2addr[temp[i + _start]];
+        }
+        return ret;
     }
 
     function exist(address _addr) public view override returns (bool) {
@@ -202,7 +232,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
 
     function existLockID(address _addr, uint _lockID) public view override returns (bool) {
         MasterNodeInfo memory mn = addr2info[_addr];
-        for(uint i = 0; i < mn.founders.length; i++) {
+        for(uint i; i < mn.founders.length; i++) {
             if(mn.founders[i].lockID == _lockID) {
                 return true;
             }
@@ -219,7 +249,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
             return false;
         }
         uint lockAmount = info.founders[0].amount;
-        for(uint i = 0; i < info.founders.length; i++) {
+        for(uint i; i < info.founders.length; i++) {
             if(block.number < getAccountManager().getRecordByID(info.founders[i].lockID).unlockHeight) {
                 lockAmount += info.founders[i].amount;
             }

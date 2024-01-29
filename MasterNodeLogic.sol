@@ -69,11 +69,10 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         uint creatorReward = msg.value * info.incentivePlan.creator / Constant.MAX_INCENTIVE;
         uint partnerReward = msg.value* info.incentivePlan.partner / Constant.MAX_INCENTIVE;
 
-        uint maxCount = info.founders.length;
-        address[] memory tempAddrs = new address[](maxCount);
-        uint[] memory tempAmounts = new uint[](maxCount);
-        uint[] memory tempRewardTypes = new uint[](maxCount);
-        uint count = 0;
+        address[] memory tempAddrs = new address[](info.founders.length);
+        uint[] memory tempAmounts = new uint[](info.founders.length);
+        uint[] memory tempRewardTypes = new uint[](info.founders.length);
+        uint count;
         // reward to creator
         if(creatorReward != 0) {
             tempAddrs[count] = info.creator;
@@ -85,8 +84,8 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         uint minAmount = getPropertyValue("masternode_min_amount") * Constant.COIN;
         // reward to partner
         if(partnerReward != 0) {
-            uint total = 0;
-            for(uint i = 0; i < info.founders.length; i++) {
+            uint total;
+            for(uint i; i < info.founders.length; i++) {
                 IMasterNodeStorage.MemberInfo memory partner = info.founders[i];
                 if(total + partner.amount <= minAmount) {
                     uint tempAmount = partnerReward * partner.amount / minAmount;
@@ -130,7 +129,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
 
     function removeMember(address _addr, uint _lockID) public override onlyMnSnAmContract {
         IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfo(_addr);
-        for(uint i = 0; i < info.founders.length; i++) {
+        for(uint i; i < info.founders.length; i++) {
             if(info.founders[i].lockID == _lockID) {
                 if(i == 0) {
                     // unfreeze partner
@@ -160,7 +159,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(msg.sender == getMasterNodeStorage().getInfo(_addr).creator, "caller isn't masternode creator");
         getMasterNodeStorage().updateAddress(_addr, _newAddr);
         IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfo(_newAddr);
-        for(uint i = 0; i < info.founders.length; i++) {
+        for(uint i; i < info.founders.length; i++) {
             getAccountManager().updateRecordFreezeAddr(info.founders[i].lockID, _newAddr);
         }
     }
@@ -190,7 +189,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
             return;
         }
         IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfoByID(_id);
-        uint oldState = info.stateInfo.state;
+        uint oldState = info.state;
         getMasterNodeStorage().updateState(info.addr, _state);
         emit MNStateUpdate(info.addr, _state, oldState);
     }

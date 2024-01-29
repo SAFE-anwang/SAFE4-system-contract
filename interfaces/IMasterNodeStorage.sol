@@ -10,14 +10,9 @@ interface IMasterNodeStorage {
     }
 
     struct IncentivePlan {
-        uint creator; // creator percent [0, 10%]
-        uint partner; // partner percent [40%, 50$]
-        uint voter; // voter percent [40%, 50%]
-    }
-
-    struct StateInfo {
-        uint state;
-        uint height;
+        uint creator; // creator percent [0, 50%]
+        uint partner; // partner percent [0%, 50%]
+        uint voter; // voter percent: 0%
     }
 
     struct MasterNodeInfo {
@@ -27,7 +22,7 @@ interface IMasterNodeStorage {
         string enode; // masternode enode, contain node id & node ip & node port
         string description; // masternode description
         bool isOfficial; // official or not
-        StateInfo stateInfo; // masternode state information
+        uint state; // masternode state
         MemberInfo[] founders; // masternode founders
         IncentivePlan incentivePlan; // incentive plan
         uint lastRewardHeight; // last reward height
@@ -49,9 +44,13 @@ interface IMasterNodeStorage {
     function getInfo(address _addr) external view returns (MasterNodeInfo memory);
     function getInfoByID(uint _id) external view returns (MasterNodeInfo memory);
     function getNext() external view returns (address);
-    function getAll() external view returns (MasterNodeInfo[] memory);
-    function getOfficials() external view returns (MasterNodeInfo[] memory);
+
     function getNum() external view returns (uint);
+    function getAll(uint _start, uint _count) external view returns (address[] memory);
+
+    function getOfficialNum() external view returns (uint);
+    function getOfficials(uint _start, uint _count) external view returns (address[] memory);
+
     function exist(address _addr) external view returns (bool);
     function existID(uint _id) external view returns (bool);
     function existEnode(string memory _enode) external view returns (bool);
