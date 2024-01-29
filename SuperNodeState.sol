@@ -9,15 +9,15 @@ contract SuperNodeState is INodeState, System {
 
     function upload(uint[] memory _ids, uint[] memory _states) public override onlySN {
         require(_ids.length == _states.length, "id list isn't matched with state list");
-        for(uint i = 0; i < _ids.length; i++) {
+        for(uint i; i < _ids.length; i++) {
             uint id = _ids[i];
             if(!getSuperNodeStorage().existID(id)) {
                 continue;
             }
             id2entry[id][msg.sender] = _states[i];
 
-            bool exist = false;
-            for(uint k = 0; k < id2addrs[id].length; k++) {
+            bool exist;
+            for(uint k; k < id2addrs[id].length; k++) {
                 if(id2addrs[id][k] == msg.sender) {
                     exist = true;
                     break;
@@ -33,15 +33,15 @@ contract SuperNodeState is INodeState, System {
 
     function get(uint _id) public view override returns (StateEntry[] memory) {
         address[] memory addrs = id2addrs[_id];
-        uint count = 0;
-        for(uint i = 0; i < addrs.length; i++) {
+        uint count;
+        for(uint i; i < addrs.length; i++) {
             if(id2entry[_id][addrs[i]] != 0) {
                 count++;
             }
         }
         StateEntry[] memory entries = new StateEntry[](count);
-        uint k = 0;
-        for(uint i = 0; i < addrs.length; i++) {
+        uint k;
+        for(uint i; i < addrs.length; i++) {
             if(id2entry[_id][addrs[i]] != 0) {
                 entries[k++] = StateEntry(addrs[i], id2entry[_id][addrs[i]]);
             }
@@ -50,13 +50,12 @@ contract SuperNodeState is INodeState, System {
     }
 
     function update(uint _id, uint _state) internal {
-        uint num = 0;
+        uint num;
         uint snNum = getSNNum();
         address[] memory addrs = id2addrs[_id];
-        bool flag = false;
-        for(uint i = 0; i < addrs.length; i++) {
-            address addr = addrs[i];
-            if(_state == id2entry[_id][addr]) {
+        bool flag;
+        for(uint i; i < addrs.length; i++) {
+            if(_state == id2entry[_id][addrs[i]]) {
                 if(++num > snNum * 2 / 3) {
                     flag = true;
                     break;
@@ -64,7 +63,7 @@ contract SuperNodeState is INodeState, System {
             }
         }
         if(flag) {
-            for(uint i = 0; i < addrs.length; i++) {
+            for(uint i; i < addrs.length; i++) {
                 id2entry[_id][addrs[i]] = 0;
             }
             // delete id2addrs[_id];
