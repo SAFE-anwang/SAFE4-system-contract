@@ -21,12 +21,39 @@ interface ISNVote {
     function removeVoteOrApproval(uint[] memory _recordIDs) external;
     function removeVoteOrApproval2(address _voterAddr, uint _recordID) external;
     function proxyVote(address _snAddr) external;
-    function getSuperNodes4Voter(address _voterAddr) external view returns (address[] memory, uint[] memory);
-    function getRecordIDs4Voter(address _voterAddr) external view returns (uint[] memory);
-    function getVoters4SN(address _snAddr) external view returns (address[] memory, uint[] memory);
-    function getVoteNum4SN(address _snAddr) external view returns (uint);
-    function getProxies4Voter(address _voterAddr) external view returns (address[] memory, uint[] memory);
-    function getProxiedRecordIDs4Voter(address _voterAddr) external view returns (uint[] memory);
-    function getVoters4Proxy(address _proxyAddr) external view returns (address[] memory, uint[] memory);
-    function getVoteNum4Proxy(address _proxyAddr) external view returns (uint);
+
+    // get voter's total amount
+    function getAmount4Voter(address _voterAddr) external view returns (uint);
+    // get voter's total voteNum
+    function getVoteNum4Voter(address _voterAddr) external view returns (uint);
+
+    // get voter's supernode number
+    function getSNNum4Voter(address _voterAddr) external view returns (uint);
+    // get voter's supernodes & voteNums
+    function getSNs4Voter(address _voterAddr, uint _start, uint _count) external view returns (address[] memory, uint[] memory);
+
+    // get voter's proxy number
+    function getProxyNum4Voter(address _voterAddr) external view returns (uint);
+    // get voter's proxies & voteNums
+    function getProxies4Voter(address _voterAddr, uint _start, uint _count) external view returns (address[] memory, uint[] memory);
+
+    // get voter's voted record number
+    function getVotedIDNum4Voter(address _voterAddr) external view returns (uint);
+    // get voter's voted record ids
+    function getVotedIDs4Voter(address _voterAddr, uint _start, uint _count) external view returns (uint[] memory);
+
+    // get voter's proxied record number
+    function getProxiedIDNum4Voter(address _voterAddr) external view returns(uint);
+    // get voter's proxied record ids
+    function getProxiedIDs4Voter(address _voterAddr, uint _start, uint _count) external view returns (uint[] memory);
+
+    // get supernode's/proxy's total amount
+    function getTotalAmount(address _addr) external view returns (uint);
+    // get supernodes's/proxy's total voteNum
+    function getTotalVoteNum(address _addr) external view returns (uint);
+
+    // get supernode's/proxy's voter number
+    function getVoterNum(address _addr) external view returns (uint);
+    // get supernode's/proxy's voters & voteNums
+    function getVoters(address _addr, uint _start, uint _count) external view returns (address[] memory, uint[] memory);
 }

@@ -33,8 +33,8 @@ contract SNVote is ISNVote, System {
         } else {
             require(isValidMN(_dstAddr), "invalid proxy address");
         }
-        uint id = 0;
-        for(uint i = 0; i < _recordIDs.length; i++) {
+        uint id;
+        for(uint i; i < _recordIDs.length; i++) {
             id = _recordIDs[i];
             if(_recordIDs[i] == 0) {
                 // generate new record id
@@ -47,7 +47,7 @@ contract SNVote is ISNVote, System {
 
     function removeVoteOrApproval(uint[] memory _recordIDs) public override {
         require(!isSN(msg.sender), "supernode can't remove vote");
-        for(uint i = 0; i < _recordIDs.length; i++) {
+        for(uint i; i < _recordIDs.length; i++) {
             if(_recordIDs[i] == 0) {
                 continue;
             }
@@ -68,7 +68,7 @@ contract SNVote is ISNVote, System {
         uint recordID;
         address voterAddr;
         uint[] memory ids = dst2ids[msg.sender];
-        for(uint i = 0; i < ids.length; i++) {
+        for(uint i; i < ids.length; i++) {
             recordID = ids[i];
             voterAddr = id2record[recordID].voterAddr;
             remove(voterAddr, recordID); // remove vote or approval
@@ -76,131 +76,205 @@ contract SNVote is ISNVote, System {
         }
     }
 
-    // get voter's supernode
-    function getSuperNodes4Voter(address _voterAddr) public view override returns (address[] memory retAddrs, uint[] memory retNums) {
-        uint count = 0;
+    function getAmount4Voter(address _voterAddr) public view override returns (uint) {
+        return voter2amount[_voterAddr];
+    }
+
+    function getVoteNum4Voter(address _voterAddr) public view override returns (uint) {
+        return voter2num[_voterAddr];
+    }
+
+    // get voter's supernode number
+    function getSNNum4Voter(address _voterAddr) public view override returns (uint) {
+        uint num;
         address[] memory dsts = voter2dsts[_voterAddr];
-        for(uint i = 0; i < dsts.length; i++) {
+        for(uint i; i < dsts.length; i++) {
             if(isSN(dsts[i])) {
-                count++;
+                num++;
             }
         }
-        if(count == 0) {
-            return (retAddrs, retNums);
-        }
-        retAddrs = new address[](count);
-        retNums = new uint[](count);
-        uint index = 0;
-        for(uint i = 0; i < dsts.length; i++) {
-            if(isSN(dsts[i])) {
-                retAddrs[index] = dsts[i];
-                retNums[index++] = voter2details[_voterAddr][dsts[i]].totalNum;
-            }
-        }
+        return num;
     }
 
-    // get voter's records
-    function getRecordIDs4Voter(address _voterAddr) public view override returns (uint[] memory retIDs) {
-        uint[] memory ids = voter2ids[_voterAddr];
-        uint id = 0;
-        uint count = 0;
-        for(uint i = 0; i < ids.length; i++) {
-            id = ids[i];
-            if(isSN(id2record[id].dstAddr)) {
-                count++;
-            }
-        }
-        if(count == 0) {
-            return retIDs;
-        }
-        retIDs = new uint[](count);
-        uint index = 0;
-        for(uint i = 0; i < ids.length; i++) {
-            id = ids[i];
-            if(isSN(id2record[id].dstAddr)) {
-                retIDs[index++] = id;
-            }
-        }
-    }
+    function getSNs4Voter(address _voterAddr, uint _start, uint _count) public view override returns (address[] memory, uint[] memory) {
+        uint snNum = getSNNum4Voter(_voterAddr);
+        require(_start < snNum, "invalid _start, must be in [0, getSNNum4Voter())");
+        require(_count > 0 && _count <= 100, "max return 100 SNs");
 
-    // get supernode's voters
-    function getVoters4SN(address _snAddr) public view override returns (address[] memory retAddrs, uint[] memory retNums) {
-        retAddrs = dst2voters[_snAddr];
-        retNums = new uint[](retAddrs.length);
-        for(uint i = 0; i < retAddrs.length; i++) {
-            retNums[i] = dst2details[_snAddr][retAddrs[i]].totalNum;
-        }
-    }
-
-    // get supernode's votenum
-    function getVoteNum4SN(address _snAddr) public view override returns (uint) {
-        return dst2num[_snAddr];
-    }
-
-    // get voter's proxy
-    function getProxies4Voter(address _voterAddr) public view override returns (address[] memory retAddrs, uint[] memory retNums) {
-        uint count = 0;
+        address[] memory tempAddrs = new address[](snNum);
+        uint[] memory tempNums = new uint[](snNum);
         address[] memory dsts = voter2dsts[_voterAddr];
-        for(uint i = 0; i < dsts.length; i++) {
-            if(isMN(dsts[i])) {
-                count++;
+        uint index;
+        for(uint i; i < dsts.length; i++) {
+            if(isSN(dsts[i])) {
+                tempAddrs[index] = dsts[i];
+                tempNums[index++] = voter2details[_voterAddr][dsts[i]].totalNum;
             }
         }
-        if(count == 0) {
-            return (retAddrs, retNums);
+
+        uint num = _count;
+        if(_start + _count >= snNum) {
+            num = snNum - _start;
         }
-        retAddrs = new address[](count);
-        retNums = new uint[](count);
-        uint index = 0;
-        for(uint i = 0; i < dsts.length; i++) {
-            if(isMN(dsts[i])) {
-                retAddrs[index] = dsts[i];
-                retNums[index++] = voter2details[_voterAddr][dsts[i]].totalNum;
-            }
+        address[] memory retAddrs = new address[](num);
+        uint[] memory retNums = new uint[](num);
+        for(uint i; i < num; i++) {
+            retAddrs[i] = tempAddrs[i + _start];
+            retNums[i] = tempNums[i + _start];
         }
+        return(retAddrs, retNums);
     }
 
-    // get voter's proxied record
-    function getProxiedRecordIDs4Voter(address _voterAddr) public view override returns (uint[] memory retIDs) {
+    function getProxyNum4Voter(address _voterAddr) public view override returns (uint) {
+        uint num;
+        address[] memory dsts = voter2dsts[_voterAddr];
+        for(uint i; i < dsts.length; i++) {
+            if(isMN(dsts[i])) {
+                num++;
+            }
+        }
+        return num;
+    }
+
+    function getProxies4Voter(address _voterAddr, uint _start, uint _count) public view override returns (address[] memory, uint[] memory) {
+        uint proxyNum = getProxyNum4Voter(_voterAddr);
+        require(_start < proxyNum, "invalid _start, must be in [0, getProxyNum4Voter())");
+        require(_count > 0 && _count <= 100, "max return 100 proxies");
+
+        address[] memory tempAddrs = new address[](proxyNum);
+        uint[] memory tempNums = new uint[](proxyNum);
+        address[] memory dsts = voter2dsts[_voterAddr];
+        uint index;
+        for(uint i; i < dsts.length; i++) {
+            if(isMN(dsts[i])) {
+                tempAddrs[index] = dsts[i];
+                tempNums[index++] = voter2details[_voterAddr][dsts[i]].totalNum;
+            }
+        }
+
+        uint num = _count;
+        if(_start + _count >= proxyNum) {
+            num = proxyNum - _start;
+        }
+        address[] memory retAddrs = new address[](num);
+        uint[] memory retNums = new uint[](num);
+        for(uint i; i < num; i++) {
+            retAddrs[i] = tempAddrs[i + _start];
+            retNums[i] = tempNums[i + _start];
+        }
+        return (retAddrs, retNums);
+    }
+
+    function getVotedIDNum4Voter(address _voterAddr) public view override returns (uint) {
+        uint num;
         uint[] memory ids = voter2ids[_voterAddr];
-        uint id = 0;
-        uint count = 0;
-        for(uint i = 0; i < ids.length; i++) {
-            id = ids[i];
-            if(isMN(id2record[id].dstAddr)) {
-                count++;
+        for(uint i; i < ids.length; i++) {
+            if(isSN(id2record[ids[i]].dstAddr)) {
+                num++;
             }
         }
-        if(count == 0) {
-            return retIDs;
-        }
-        retIDs = new uint[](count);
-        uint index = 0;
-        for(uint i = 0; i < ids.length; i++) {
-            id = ids[i];
-            if(isMN(id2record[id].dstAddr)) {
-                retIDs[index++] = id;
+        return num;
+    }
+
+    function getVotedIDs4Voter(address _voterAddr, uint _start, uint _count) public view override returns (uint[] memory) {
+        uint idNum = getVotedIDNum4Voter(_voterAddr);
+        require(_start < idNum, "invalid _start, must be in [0, getVotedIDNum4Voter())");
+        require(_count > 0 && _count <= 100, "max return 100 ids");
+
+        uint[] memory temp = new uint[](idNum);
+        uint[] memory ids = voter2ids[_voterAddr];
+        uint index;
+        for(uint i; i < ids.length; i++) {
+            if(isSN(id2record[ids[i]].dstAddr)) {
+                temp[index++] = ids[i];
             }
         }
-    }
 
-    // get proxy's voters
-    function getVoters4Proxy(address _proxyAddr) public view override returns (address[] memory retAddrs, uint[] memory retNums) {
-        retAddrs = dst2voters[_proxyAddr];
-        retNums = new uint[](retAddrs.length);
-        for(uint i = 0; i < retAddrs.length; i++) {
-            retNums[i] = dst2details[_proxyAddr][retAddrs[i]].totalNum;
+        uint num = _count;
+        if(_start + _count >= idNum) {
+            num = idNum - _start;
         }
+        uint[] memory ret = new uint[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = temp[i + _start];
+        }
+        return ret;
     }
 
-    // get proxy's votenum
-    function getVoteNum4Proxy(address _proxyAddr) public view override returns (uint) {
-        return dst2num[_proxyAddr];
+    function getProxiedIDNum4Voter(address _voterAddr) public view override returns (uint) {
+        uint num;
+        uint[] memory ids = voter2ids[_voterAddr];
+        for(uint i; i < ids.length; i++) {
+            if(isMN(id2record[ids[i]].dstAddr)) {
+                num++;
+            }
+        }
+        return num;
+    }
+
+    function getProxiedIDs4Voter(address _voterAddr, uint _start, uint _count) public view override returns (uint[] memory) {
+        uint idNum = getProxiedIDNum4Voter(_voterAddr);
+        require(_start < idNum, "invalid _start, must be in [0, getProxiedIDNum4Voter())");
+        require(_count > 0 && _count <= 100, "max return 100 ids");
+
+        uint[] memory temp = new uint[](idNum);
+        uint[] memory ids = voter2ids[_voterAddr];
+        uint index;
+        for(uint i; i < ids.length; i++) {
+            if(isMN(id2record[ids[i]].dstAddr)) {
+                temp[index++] = ids[i];
+            }
+        }
+
+        uint num = _count;
+        if(_start + _count >= idNum) {
+            num = idNum - _start;
+        }
+        uint[] memory ret = new uint[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = temp[i + _start];
+        }
+        return ret;
+    }
+
+    function getTotalAmount(address _addr) public view override returns (uint) {
+        return dst2amount[_addr];
+    }
+
+    function getTotalVoteNum(address _addr) public view override returns (uint) {
+        return dst2num[_addr];
+    }
+
+    function getVoterNum(address _addr) public view override returns (uint) {
+        return dst2voters[_addr].length;
+    }
+
+    function getVoters(address _addr, uint _start, uint _count) public view override returns (address[] memory, uint[] memory) {
+        require(_start < dst2voters[_addr].length, "invalid _start, must be in [0, getVoterNum())");
+        require(_count > 0 && _count <= 100, "max return 100 voters");
+
+        address[] memory tempAddrs = dst2voters[_addr];
+        uint[] memory tempNums = new uint[](tempAddrs.length);
+        for(uint i; i < tempAddrs.length; i++) {
+            tempNums[i] = dst2details[_addr][tempAddrs[i]].totalNum;
+        }
+
+        uint num = _count;
+        if(_start + _count >= tempAddrs.length) {
+            num = tempAddrs.length - _start;
+        }
+        address[] memory retAddrs = new address[](num);
+        uint[] memory retNums = new uint[](num);
+        for(uint i; i < num; i++) {
+            retAddrs[i] = tempAddrs[i + _start];
+            retNums[i] = tempNums[i + _start];
+        }
+        return (retAddrs, retNums);
     }
 
     function existDst4Voter(address _voterAddr, address _dstAddr) internal view returns (bool, uint) {
         address[] memory dsts = voter2dsts[_voterAddr];
-        for(uint i = 0; i < dsts.length; i++) {
+        for(uint i; i < dsts.length; i++) {
             if(dsts[i] == _dstAddr) {
                 return (true, i);
             }
@@ -210,7 +284,7 @@ contract SNVote is ISNVote, System {
 
     function existVoter4Dst(address _dstAddr, address _voterAddr) internal view returns (bool, uint) {
         address[] memory voters = dst2voters[_dstAddr];
-        for(uint i = 0; i < voters.length; i++) {
+        for(uint i; i < voters.length; i++) {
             if(voters[i] == _voterAddr) {
                 return (true, i);
             }
@@ -220,7 +294,7 @@ contract SNVote is ISNVote, System {
 
     function existID4Voter(address _voterAddr, uint _recordID) internal view returns (bool, uint) {
         uint[] memory recordIDs = voter2ids[_voterAddr];
-        for(uint i = 0; i < recordIDs.length; i++) {
+        for(uint i; i < recordIDs.length; i++) {
             if(recordIDs[i] == _recordID) {
                 return (true, i);
             }
@@ -230,7 +304,7 @@ contract SNVote is ISNVote, System {
 
     function existID4Dst(address _dstAddr, uint _recordID) internal view returns (bool, uint) {
         uint[] memory recordIDs = dst2ids[_dstAddr];
-        for(uint i = 0; i < recordIDs.length; i++) {
+        for(uint i; i < recordIDs.length; i++) {
             if(recordIDs[i] == _recordID) {
                 return (true, i);
             }
@@ -253,16 +327,14 @@ contract SNVote is ISNVote, System {
         voter2num[_voterAddr] += _num;
 
         // update dst list
-        bool flag = false;
-        uint pos = 0;
+        bool flag;
+        uint pos;
         (flag, pos) = existDst4Voter(_voterAddr, _dstAddr);
         if(!flag) {
             voter2dsts[_voterAddr].push(_dstAddr);
         }
 
         // update record list
-        flag = false;
-        pos = 0;
         (flag, pos) = existID4Voter(_voterAddr, _recordID);
         if(!flag) {
             voter2ids[_voterAddr].push(_recordID);
@@ -284,16 +356,14 @@ contract SNVote is ISNVote, System {
         dst2num[_dstAddr] += _num;
 
         // update voter list
-        bool flag = false;
-        uint pos = 0;
+        bool flag;
+        uint pos;
         (flag, pos) = existVoter4Dst(_dstAddr, _voterAddr);
         if(!flag) {
             dst2voters[_dstAddr].push(_voterAddr);
         }
 
         // update record list
-        flag = false;
-        pos = 0;
         (flag, pos) = existID4Dst(_dstAddr, _recordID);
         if(!flag) {
             dst2ids[_dstAddr].push(_recordID);
@@ -340,8 +410,8 @@ contract SNVote is ISNVote, System {
 
     function remove4Voter(address _voterAddr, address _dstAddr, uint _recordID, uint _amount, uint _num) internal {
         // update detail
-        bool flag = false;
-        uint pos = 0;
+        bool flag;
+        uint pos;
         (flag, pos) = existDst4Voter(_voterAddr, _dstAddr);
         if(!flag) {
             return;
@@ -352,7 +422,7 @@ contract SNVote is ISNVote, System {
         uint[] storage recordIDs = detail.recordIDs;
         flag = false;
         pos = 0;
-        for(uint i = 0; i < recordIDs.length; i++) {
+        for(uint i; i < recordIDs.length; i++) {
             if(recordIDs[i] == _recordID) {
                 flag = true;
                 pos = i;
@@ -389,8 +459,6 @@ contract SNVote is ISNVote, System {
 
         // update dst list
         if(recordIDs.length == 0) {
-            flag = false;
-            pos = 0;
             (flag, pos) = existDst4Voter(_voterAddr, _dstAddr);
             if(flag) {
                 address[] storage dsts = voter2dsts[_voterAddr];
@@ -400,8 +468,6 @@ contract SNVote is ISNVote, System {
         }
 
         // update record id list
-        flag = false;
-        pos = 0;
         (flag, pos) = existID4Voter(_voterAddr, _recordID);
         if(flag) {
             uint[] storage ids = voter2ids[_voterAddr];
@@ -412,8 +478,8 @@ contract SNVote is ISNVote, System {
 
     function remove4Dst(address _dstAddr, address _voterAddr, uint _recordID, uint _amount, uint _num) internal {
         // update detail
-        bool flag = false;
-        uint pos = 0;
+        bool flag;
+        uint pos;
         (flag, pos) = existVoter4Dst(_dstAddr, _voterAddr);
         if(!flag) {
             return;
@@ -424,7 +490,7 @@ contract SNVote is ISNVote, System {
         uint[] storage recordIDs = detail.recordIDs;
         flag = false;
         pos = 0;
-        for(uint i = 0; i < recordIDs.length; i++) {
+        for(uint i; i < recordIDs.length; i++) {
             if(recordIDs[i] == _recordID) {
                 flag = true;
                 pos = i;
@@ -458,11 +524,9 @@ contract SNVote is ISNVote, System {
         } else {
             dst2num[_dstAddr] -= _num;
         }
-        
+
         // update voter list
         if(recordIDs.length == 0) {
-            flag = false;
-            pos = 0;
             (flag, pos) = existVoter4Dst(_dstAddr, _voterAddr);
             if(flag) {
                 address[] storage voters = dst2voters[_dstAddr];
@@ -472,8 +536,6 @@ contract SNVote is ISNVote, System {
         }
 
         // update record id list
-        flag = false;
-        pos = 0;
         (flag, pos) = existID4Dst(_dstAddr, _recordID);
         if(flag) {
             uint[] storage ids = dst2ids[_dstAddr];
