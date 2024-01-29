@@ -70,25 +70,27 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         uint creatorReward = msg.value * info.incentivePlan.creator / Constant.MAX_INCENTIVE;
         uint partnerReward = msg.value * info.incentivePlan.partner / Constant.MAX_INCENTIVE;
         uint voterReward = msg.value - creatorReward - partnerReward;
+        uint founderReward;
 
-        uint maxCount = info.founders.length + info.voteInfo.voters.length;
-        address[] memory tempAddrs = new address[](maxCount);
-        uint[] memory tempAmounts = new uint[](maxCount);
-        uint[] memory tempRewardTypes = new uint[](maxCount);
-        uint count = 0;
+        uint founderNum = info.founders.length;
+        address[] memory tempAddrs = new address[](founderNum);
+        uint[] memory tempAmounts = new uint[](founderNum);
+        uint[] memory tempRewardTypes = new uint[](founderNum);
+        uint count;
         // reward to creator
         if(creatorReward != 0) {
             tempAddrs[count] = info.creator;
             tempAmounts[count] = creatorReward;
             tempRewardTypes[count] = Constant.REWARD_CREATOR;
             count++;
+            founderReward += creatorReward;
         }
 
         uint minAmount = getPropertyValue("supernode_min_amount") * Constant.COIN;
         // reward to partner
         if(partnerReward != 0) {
-            uint total = 0;
-            for(uint i = 0; i < info.founders.length; i++) {
+            uint total;
+            for(uint i; i < info.founders.length; i++) {
                 ISuperNodeStorage.MemberInfo memory partner = info.founders[i];
                 if(total + partner.amount <= minAmount) {
                     uint tempAmount = partnerReward * partner.amount / minAmount;
@@ -123,39 +125,58 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
                     break;
                 }
             }
+            founderReward += partnerReward;
         }
+
         // reward to voter
+        ISNVote snvote = getSNVote();
         if(voterReward != 0) {
-            if(info.voteInfo.voters.length > 0) {
-                for(uint i = 0; i < info.voteInfo.voters.length; i++) {
-                    ISuperNodeStorage.MemberInfo memory voter = info.voteInfo.voters[i];
-                    uint tempAmount = voterReward * voter.amount / info.voteInfo.totalAmount;
-                    if(tempAmount != 0) {
-                        int pos = ArrayUtil.find(tempAddrs, voter.addr);
-                        if(pos == -1) {
-                            tempAddrs[count] = voter.addr;
-                            tempAmounts[count] = tempAmount;
-                            tempRewardTypes[count] = Constant.REWARD_VOTER;
-                            count++;
-                        } else {
-                            tempAmounts[uint(pos)] += tempAmount;
+            address tempAddr = _addr;
+            uint tempReward = voterReward;
+            uint totalVoteNum = getSNVote().getTotalVoteNum(tempAddr);
+            uint voterNum = getSNVote().getVoterNum(tempAddr);
+            if(voterNum > 0) {
+                uint batchNum = voterNum / 100;
+                if(voterNum % 100 != 0) {
+                    batchNum++;
+                }
+                for(uint i; i < batchNum; i++) {
+                    address[] memory voterAddrs;
+                    uint[] memory voteNums;
+                    (voterAddrs, voteNums) = snvote.getVoters(tempAddr, 100*i, 100);
+                    address[] memory tempAddrs2 = new address[](voterAddrs.length);
+                    uint[] memory tempAmounts2 = new uint[](voterAddrs.length);
+                    uint[] memory tempRewardTypes2 = new uint[](voterAddrs.length);
+                    uint tempVoterReward;
+                    uint index;
+                    for(uint k; k < voterAddrs.length; k++) {
+                        uint tempAmount = tempReward * voteNums[k] / totalVoteNum;
+                        if(tempAmount != 0) {
+                            tempAddrs2[index] = voterAddrs[k];
+                            tempAmounts2[index] = tempAmount;
+                            tempRewardTypes2[index++] = Constant.REWARD_VOTER;
+                            tempVoterReward += tempAmount;
                         }
+                    }
+                    if(tempVoterReward != 0) {
+                        getAccountManager().reward{value: tempVoterReward}(tempAddrs2, tempAmounts2);
+                        emit SystemReward(tempAddr, Constant.REWARD_SN, tempAddrs2, tempRewardTypes2, tempAmounts2);
                     }
                 }
             } else {
                 // no voters, reward to creator
                 tempAmounts[0] += voterReward;
+                founderReward += voterReward;
             }
         }
-        // reward to address
-        getAccountManager().reward{value: msg.value}(tempAddrs, tempAmounts);
+        getAccountManager().reward{value: founderReward}(tempAddrs, tempAmounts);
         emit SystemReward(_addr, Constant.REWARD_SN, tempAddrs, tempRewardTypes, tempAmounts);
         getSuperNodeStorage().updateLastRewardHeight(_addr, block.number);
     }
 
     function removeMember(address _addr, uint _lockID) public override onlyMnSnAmContract {
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_addr);
-        for(uint i = 0; i < info.founders.length; i++) {
+        for(uint i; i < info.founders.length; i++) {
             if(info.founders[i].lockID == _lockID) {
                 if(i == 0) {
                     // unfreeze partner
@@ -163,8 +184,18 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
                         getAccountManager().setRecordFreezeInfo(info.founders[k].lockID, address(0), 0);
                     }
                     // release voter
-                    for(uint k = 0; k < info.voteInfo.voters.length; k++) {
-                        getAccountManager().setRecordVoteInfo(info.voteInfo.voters[k].lockID, address(0), 0);
+                    uint idNum = getSNVote().getIDNum(_addr);
+                    if(idNum > 0) {
+                        uint batchNum = idNum / 100;
+                        if(idNum % 100 != 0) {
+                            batchNum++;
+                        }
+                        for(uint k; k < batchNum; k++) {
+                            uint[] memory votedIDs = getSNVote().getIDs(_addr, k * 100, 100);
+                            for(uint m; m < votedIDs.length; m++) {
+                                getAccountManager().setRecordVoteInfo(votedIDs[m], address(0), 0);
+                            }
+                        }
                     }
                 }
                 getSuperNodeStorage().removeMember(_addr, i);
@@ -180,11 +211,23 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
         getSuperNodeStorage().updateAddress(_addr, _newAddr);
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_newAddr);
-        for(uint i = 0; i < info.founders.length; i++) {
+        for(uint i; i < info.founders.length; i++) {
             getAccountManager().updateRecordFreezeAddr(info.founders[i].lockID, _newAddr);
         }
-        for(uint i = 0; i < info.voteInfo.voters.length; i++) {
-            getAccountManager().updateRecordVoteAddr(info.voteInfo.voters[i].lockID, _newAddr);
+
+        // update voters' frozen addr
+        uint idNum = getSNVote().getIDNum(_addr);
+        if(idNum > 0) {
+            uint batchNum = idNum / 100;
+            if(idNum % 100 != 0) {
+                batchNum++;
+            }
+            for(uint k; k < batchNum; k++) {
+                uint[] memory votedIDs = getSNVote().getIDs(_addr, k * 100, 100);
+                for(uint m; m < votedIDs.length; m++) {
+                    getAccountManager().updateRecordVoteAddr(votedIDs[m], _newAddr);
+                }
+            }
         }
     }
 
@@ -221,19 +264,8 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
             return;
         }
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfoByID(_id);
-        uint oldState = info.stateInfo.state;
+        uint oldState = info.state;
         getSuperNodeStorage().updateState(info.addr, _state);
         emit SNStateUpdate(info.addr, _state, oldState);
-    }
-
-    function changeVoteInfo(address _addr, address _voter, uint _recordID, uint _amount, uint _num, uint _type) public override onlySNVoteContract {
-        if(!getSuperNodeStorage().exist(_addr)) {
-            return;
-        }
-        if(_type == 0) { // reduce vote
-            getSuperNodeStorage().reduceVote(_addr, _voter, _recordID, _amount, _num);
-        } else { // increase vote
-            getSuperNodeStorage().increaseVote(_addr, _voter, _recordID, _amount, _num);
-        }
     }
 }

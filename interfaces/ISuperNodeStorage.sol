@@ -11,20 +11,8 @@ interface ISuperNodeStorage {
 
     struct IncentivePlan {
         uint creator; // creator percent [0, 10%]
-        uint partner; // partner percent [40%, 50$]
+        uint partner; // partner percent [40%, 50%]
         uint voter; // voter percent [40%, 50%]
-    }
-
-    struct StateInfo {
-        uint state;
-        uint height;
-    }
-
-    struct VoteInfo {
-        MemberInfo[] voters; // all voters
-        uint totalAmount; // total voter's amount
-        uint totalNum; // total vote number
-        uint height; // last vote height
     }
 
     struct SuperNodeInfo {
@@ -35,10 +23,9 @@ interface ISuperNodeStorage {
         string enode; // supernode enode, contain node id & node ip & node port
         string description; // supernode description
         bool isOfficial; // official or not
-        StateInfo stateInfo; // masternode state information
+        uint state; // supernode state information
         MemberInfo[] founders; // supernode founders
         IncentivePlan incentivePlan; // incentive plan
-        VoteInfo voteInfo; // vote information
         uint lastRewardHeight; // last reward height
         uint createHeight; // supernode create height
         uint updateHeight; // supernode update height
@@ -54,16 +41,19 @@ interface ISuperNodeStorage {
     function updateState(address _addr, uint _state) external;
     function removeMember(address _addr, uint _index) external;
     function dissolve(address _addr) external;
-    function increaseVote(address _addr, address _voter, uint _recordID, uint _amount, uint _num) external;
-    function reduceVote(address _addr, address _voter, uint _recordID, uint _amount, uint _num) external;
     function updateLastRewardHeight(address _addr, uint _height) external;
 
     function getInfo(address _addr) external view returns (SuperNodeInfo memory);
     function getInfoByID(uint _id) external view returns (SuperNodeInfo memory);
-    function getAll() external view returns (SuperNodeInfo[] memory);
-    function getTops() external view returns (SuperNodeInfo[] memory);
-    function getOfficials() external view returns (SuperNodeInfo[] memory);
+
     function getNum() external view returns (uint);
+    function getAll(uint _start, uint _count) external view returns (address[] memory);
+
+    function getTops() external view returns (address[] memory);
+
+    function getOfficialNum() external view returns (uint);
+    function getOfficials(uint _start, uint _count) external view returns (address[] memory);
+
     function exist(address _addr) external view returns (bool);
     function existID(uint _id) external view returns (bool);
     function existName(string memory _name) external view returns (bool);

@@ -21,7 +21,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         info.enode = _enode;
         info.description = _description;
         info.isOfficial = false;
-        info.stateInfo = StateInfo(Constant.NODE_STATE_INIT, block.number);
+        info.state = Constant.NODE_STATE_INIT;
         info.founders.push(MemberInfo(_lockID, tx.origin, _amount, block.number));
         info.incentivePlan = _incentivePlan;
         info.lastRewardHeight = 0;
@@ -77,7 +77,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     }
 
     function updateState(address _addr, uint _state) public override onlySuperNodeLogic {
-        addr2info[_addr].stateInfo = StateInfo(_state, block.number);
+        addr2info[_addr].state = _state;
         addr2info[_addr].updateHeight = block.number;
     }
 
@@ -101,7 +101,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         SuperNodeInfo memory info = addr2info[_addr];
         // remove id
         uint pos;
-        for(uint i = 0; i < ids.length; i++) {
+        for(uint i; i < ids.length; i++) {
             if(ids[i] == info.id) {
                 pos = i;
                 break;
@@ -121,44 +121,6 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         delete addr2info[_addr];
     }
 
-    function reduceVote(address _addr, address _voter, uint _recordID, uint _amount, uint _num) public override onlySuperNodeLogic {
-        VoteInfo storage voteInfo = addr2info[_addr].voteInfo;
-        uint i;
-        for(; i < voteInfo.voters.length; i++) {
-            if(_voter == voteInfo.voters[i].addr && _recordID == voteInfo.voters[i].lockID) {
-                break;
-            }
-        }
-        if(i == voteInfo.voters.length) {
-            return;
-        }
-        voteInfo.voters[i] = voteInfo.voters[voteInfo.voters.length - 1];
-        voteInfo.voters.pop();
-
-        if(voteInfo.totalAmount <= _amount) {
-            voteInfo.totalAmount = 0;
-        } else {
-            voteInfo.totalAmount -= _amount;
-        }
-
-        if(voteInfo.totalNum <= _num) {
-            voteInfo.totalNum = 0;
-        } else {
-            voteInfo.totalNum -= _num;
-        }
-
-        addr2info[_addr].updateHeight = block.number;
-    }
-
-    function increaseVote(address _addr, address _voter, uint _recordID, uint _amount, uint _num) public override onlySuperNodeLogic {
-        VoteInfo storage voteInfo = addr2info[_addr].voteInfo;
-        voteInfo.voters.push(MemberInfo(_recordID, _voter, _amount, block.number));
-        voteInfo.totalAmount += _amount;
-        voteInfo.totalNum += _num;
-        voteInfo.height = block.number;
-        addr2info[_addr].updateHeight = block.number;
-    }
-
     function updateLastRewardHeight(address _addr, uint _height) public override onlySuperNodeLogic {
         addr2info[_addr].lastRewardHeight = _height;
         addr2info[_addr].updateHeight = block.number;
@@ -172,22 +134,33 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         return addr2info[id2addr[_id]];
     }
 
-    function getAll() public view override returns (SuperNodeInfo[] memory) {
-        SuperNodeInfo[] memory ret = new SuperNodeInfo[](ids.length);
-        for(uint i = 0; i < ids.length; i++) {
-            ret[i] = addr2info[id2addr[ids[i]]];
+    function getNum() public view override returns (uint) {
+        return ids.length;
+    }
+
+    function getAll(uint _start, uint _count) public view override returns (address[] memory) {
+        require(_start < ids.length, "invalid _start, exceed supernode number");
+        require(_count > 0 && _count <= 100, "return 1-100 supernodes");
+
+        uint num = _count;
+        if(_start + _count >= ids.length) {
+            num = ids.length - _start;
+        }
+        address[] memory ret = new address[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = id2addr[ids[i + _start]];
         }
         return ret;
     }
 
-    function getTops() public view override returns (SuperNodeInfo[] memory) {
+    function getTops() public view override returns (address[] memory) {
         uint minAmount = getPropertyValue("supernode_min_amount") * Constant.COIN;
         address[] memory addrs = new address[](ids.length);
-        uint num = 0;
-        for(uint i = 0; i < ids.length; i++) {
+        uint num;
+        for(uint i; i < ids.length; i++) {
             address addr = id2addr[ids[i]];
             SuperNodeInfo memory info = addr2info[addr];
-            if(info.stateInfo.state != Constant.NODE_STATE_START) {
+            if(info.state != Constant.NODE_STATE_START) {
                 continue;
             }
             uint lockAmount;
@@ -209,7 +182,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         }
 
         if(num == 0) {
-            return getOfficials();
+            return getOfficials(0, getPropertyValue("supernode_max_num"));
         }
 
         if(num > 1) {
@@ -222,32 +195,45 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         if(num > maxNum) {
             num = maxNum;
         }
-        SuperNodeInfo[] memory ret = new SuperNodeInfo[](num);
-        for(uint i = 0; i < num; i++) {
-            ret[i] = addr2info[addrs[i]];
+        address[] memory ret = new address[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = addrs[i];
         }
         return ret;
     }
 
-    function getOfficials() public view override returns (SuperNodeInfo[] memory) {
-        uint count;
-        for(uint i = 0; i < ids.length; i++) {
+    function getOfficialNum() public view override returns (uint) {
+        uint num;
+        for(uint i; i < ids.length; i++) {
             if(addr2info[id2addr[ids[i]]].isOfficial) {
-                count++;
+                num++;
             }
         }
-        SuperNodeInfo[] memory ret = new SuperNodeInfo[](count);
-        uint index = 0;
-        for(uint i = 0; i < ids.length; i++) {
-            if(addr2info[id2addr[ids[i]]].isOfficial) {
-                ret[index++] = addr2info[id2addr[ids[i]]];
-            }
-        }
-        return ret;
+        return num;
     }
 
-    function getNum() public view override returns (uint) {
-        return getTops().length;
+    function getOfficials(uint _start, uint _count) public view override returns (address[] memory) {
+        uint officialNum = getOfficialNum();
+        require(_start < officialNum, "invalid _start, must be in [0, getOfficialNum())");
+        require(_count > 0 && _count <= 100, "max return 100 supernodes");
+
+        uint[] memory temp = new uint[](officialNum);
+        uint index;
+        for(uint i; i < ids.length; i++) {
+            if(addr2info[id2addr[ids[i]]].isOfficial) {
+                temp[index++] = ids[i];
+            }
+        }
+
+        uint num = _count;
+        if(_start + _count >= officialNum) {
+            num = officialNum - _start;
+        }
+        address[] memory ret = new address[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = id2addr[temp[i + _start]];
+        }
+        return ret;
     }
 
     function exist(address _addr) public view override returns (bool) {
@@ -267,7 +253,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     }
 
     function existLockID(address _addr, uint _lockID) public view override returns (bool) {
-        for(uint i = 0; i < addr2info[_addr].founders.length; i++) {
+        for(uint i; i < addr2info[_addr].founders.length; i++) {
             if(addr2info[_addr].founders[i].lockID == _lockID) {
                 return true;
             }
@@ -299,9 +285,9 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         if(!isValid(_addr)) {
             return false;
         }
-        SuperNodeInfo[] memory tops = getTops();
-        for(uint i = 0; i < tops.length; i++) {
-            if(_addr == tops[i].addr) {
+        address[] memory tops = getTops();
+        for(uint i; i < tops.length; i++) {
+            if(_addr == tops[i]) {
                 return true;
             }
         }
@@ -314,8 +300,8 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         if (i == j) return;
         address middle = _arr[_left + (_right - _left) / 2];
         while(i <= j) {
-            while(addr2info[_arr[i]].voteInfo.totalNum > addr2info[middle].voteInfo.totalNum) i++;
-            while(addr2info[middle].voteInfo.totalNum > addr2info[_arr[j]].voteInfo.totalNum && j > 0) j--;
+            while(getSNVote().getVoterNum(_arr[i]) > getSNVote().getVoterNum(middle)) i++;
+            while(getSNVote().getVoterNum(middle) > getSNVote().getVoterNum(_arr[j]) && j > 0) j--;
             if(i <= j) {
                 (_arr[i], _arr[j]) = (_arr[j], _arr[i]);
                 i++;

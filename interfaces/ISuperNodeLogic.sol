@@ -13,5 +13,4 @@ interface ISuperNodeLogic {
     function changeDescription(address _addr, string memory _description) external;
     function changeIsOfficial(address _addr, bool _flag) external;
     function changeState(uint _id, uint _state) external;
-    function changeVoteInfo(address _addr, address _voter, uint _recordID, uint _amount, uint _num, uint _type) external;
 }
