@@ -142,13 +142,19 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         require(_start < ids.length, "invalid _start, exceed supernode number");
         require(_count > 0 && _count <= 100, "return 1-100 supernodes");
 
+        address[] memory addrs = new address[](ids.length);
+        for(uint i; i < ids.length; i++) {
+            addrs[i] = id2addr[ids[i]];
+        }
+        sortByVoteNum(addrs, 0, ids.length - 1);
+
         uint num = _count;
         if(_start + _count >= ids.length) {
             num = ids.length - _start;
         }
         address[] memory ret = new address[](num);
         for(uint i; i < num; i++) {
-            ret[i] = id2addr[ids[i + _start]];
+            ret[i] = addrs[i + _start];
         }
         return ret;
     }
