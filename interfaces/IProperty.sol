@@ -23,11 +23,17 @@ interface IProperty {
     function add(string memory _name, uint _value, string memory _description) external;
     function applyUpdate(string memory _name, uint _value, string memory _reason) external;
     function vote4Update(string memory _name, uint _result) external;
+
     function getInfo(string memory _name) external view returns (PropertyInfo memory);
     function getUnconfirmedInfo(string memory _name) external view returns (UnconfirmedPropertyInfo memory);
     function getValue(string memory _name) external view returns (uint);
-    function getAll() external view returns (PropertyInfo[] memory);
-    function getAllUnconfirmed() external view returns (UnconfirmedPropertyInfo[] memory);
+
+    function getNum() external view returns (uint);
+    function getAll(uint _start, uint _count) external view returns (string[] memory);
+
+    function getUnconfirmedNum() external view returns (uint);
+    function getAllUnconfirmed(uint _start, uint _count) external view returns (string[] memory);
+
     function exist(string memory _name) external view returns (bool);
     function existUnconfirmed(string memory _name) external view returns (bool);
 }

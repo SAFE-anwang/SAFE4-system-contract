@@ -48,8 +48,8 @@ contract Property is IProperty, System {
         require(existUnconfirmed(_name), "non-existent unconfirmed property");
         require(_voteResult == Constant.VOTE_AGREE || _voteResult == Constant.VOTE_REJECT || _voteResult == Constant.VOTE_ABSTAIN, "invalue vote result, must be agree(1), reject(2), abstain(3)");
         UnconfirmedPropertyInfo storage info = unconfirmedProperties[_name];
-        uint i = 0;
-        for(i = 0; i < info.voters.length; i++) {
+        uint i;
+        for(; i < info.voters.length; i++) {
             if(info.voters[i] == msg.sender) {
                 break;
             }
@@ -60,8 +60,8 @@ contract Property is IProperty, System {
             info.voters.push(msg.sender);
             info.voteResults.push(_voteResult);
         }
-        uint agreeCount = 0;
-        uint rejectCount = 0;
+        uint agreeCount;
+        uint rejectCount;
         uint snCount = getSNNum();
         for(i = 0; i < info.voters.length; i++) {
             if(info.voteResults[i] == Constant.VOTE_AGREE) {
@@ -97,18 +97,38 @@ contract Property is IProperty, System {
         return properties[_name].value;
     }
 
-    function getAll() public view override returns (PropertyInfo[] memory) {
-        PropertyInfo[] memory ret = new PropertyInfo[](confirmedNames.length);
-        for(uint i = 0; i < confirmedNames.length; i++) {
-            ret[i] = properties[confirmedNames[i]];
+    function getNum() public view override returns (uint) {
+        return confirmedNames.length;
+    }
+
+    function getAll(uint _start, uint _count) public view override returns (string[] memory) {
+        require(_start < confirmedNames.length, "invalid _start, must be in [0, getNum())");
+        require(_count > 0 && _count <= 100, "max return 100 properties");
+        uint num = _count;
+        if(_start + _count >= confirmedNames.length) {
+            num = confirmedNames.length - _start;
+        }
+        string[] memory ret = new string[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = confirmedNames[i + _start];
         }
         return ret;
     }
 
-    function getAllUnconfirmed() public view override returns (UnconfirmedPropertyInfo[] memory) {
-        UnconfirmedPropertyInfo[] memory ret = new UnconfirmedPropertyInfo[](unconfirmedNames.length);
-        for(uint i = 0; i < unconfirmedNames.length; i++) {
-            ret[i] = unconfirmedProperties[unconfirmedNames[i]];
+    function getUnconfirmedNum() public view override returns (uint) {
+        return unconfirmedNames.length;
+    }
+
+    function getAllUnconfirmed(uint _start, uint _count) public view override returns (string[] memory) {
+        require(_start < unconfirmedNames.length, "invalid _start, must be in [0, getUnconfirmedNum())");
+        require(_count > 0 && _count <= 100, "max return 100 properties");
+        uint num = _count;
+        if(_start + _count >= unconfirmedNames.length) {
+            num = unconfirmedNames.length - _start;
+        }
+        string[] memory ret = new string[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = unconfirmedNames[i + _start];
         }
         return ret;
     }
@@ -123,7 +143,7 @@ contract Property is IProperty, System {
 
     function removeUnconfirmedName(string memory _name) internal {
         delete unconfirmedProperties[_name];
-        for(uint i = 0; i < unconfirmedNames.length; i++) {
+        for(uint i; i < unconfirmedNames.length; i++) {
             if(unconfirmedNames[i].equal(_name)) {
                 unconfirmedNames[i] = unconfirmedNames[unconfirmedNames.length - 1];
                 unconfirmedNames.pop();
