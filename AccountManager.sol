@@ -7,7 +7,7 @@ contract AccountManager is IAccountManager, System {
     mapping(address => uint) balances; // for available, id = 0
     uint record_no; // record no.
     mapping(address => AccountRecord[]) addr2records; // for locked or available(unlocked)
-    mapping(uint => uint) id2index;
+    mapping(uint => uint) id2index; 
     mapping(uint => address) id2addr;
     mapping(uint => RecordUseInfo) id2useinfo;
 
@@ -52,18 +52,30 @@ contract AccountManager is IAccountManager, System {
 
     // withdraw all
     function withdraw() public override returns (uint) {
-        uint amount = 0;
-        uint[] memory ids;
-        (amount, ids) = getAvailableAmount(msg.sender);
+        uint amount;
+        uint num;
+        (amount, num) = getAvailableAmount(msg.sender);
         require(amount > 0, "insufficient amount");
+
+        uint[] memory ids = new uint[](num);
+        uint index;
+        if(balances[msg.sender] != 0) {
+            ids[index++] = 0;
+        }
+        AccountRecord[] memory records = addr2records[msg.sender];
+        for(uint i; i < records.length; i++) {
+            if(block.number >= records[i].unlockHeight && block.number >= id2useinfo[records[i].id].unfreezeHeight && block.number >= id2useinfo[records[i].id].releaseHeight) {
+                ids[index++] = records[i].id;
+            }
+        }
         return withdrawByID(ids);
     }
 
     // withdraw by specify amount
     function withdrawByID(uint[] memory _ids) public override returns (uint) {
         require(_ids.length > 0, "invalid record ids");
-        uint amount = 0;
-        for(uint i = 0; i < _ids.length; i++) {
+        uint amount;
+        for(uint i; i < _ids.length; i++) {
             if(_ids[i] == 0) {
                 amount += balances[msg.sender];
             } else {
@@ -76,7 +88,7 @@ contract AccountManager is IAccountManager, System {
         }
         if(amount != 0) {
             payable(msg.sender).transfer(amount);
-            for(uint i = 0; i < _ids.length; i++) {
+            for(uint i; i < _ids.length; i++) {
                 if(_ids[i] != 0) {
                     AccountRecord memory record = getRecordByID(_ids[i]);
                     RecordUseInfo memory useinfo = id2useinfo[_ids[i]];
@@ -102,17 +114,29 @@ contract AccountManager is IAccountManager, System {
         require(_to != address(0), "transfer to the zero address");
         require(_amount > 0, "invalid amount");
 
-        uint amount = 0;
-        uint[] memory ids;
-        (amount, ids) = getAvailableAmount(msg.sender);
+        uint amount;
+        uint num;
+        (amount, num) = getAvailableAmount(msg.sender);
         require(amount >= _amount, "insufficient balance");
+
+        uint[] memory ids = new uint[](num);
+        uint index;
+        if(balances[msg.sender] != 0) {
+            ids[index++] = 0;
+        }
+        AccountRecord[] memory records = addr2records[msg.sender];
+        for(uint i; i < records.length; i++) {
+            if(block.number >= records[i].unlockHeight && block.number >= id2useinfo[records[i].id].unfreezeHeight && block.number >= id2useinfo[records[i].id].releaseHeight) {
+                ids[index++] = records[i].id;
+            }
+        }
 
         uint id = addRecord(_to, _amount, _lockDay);
         emit SafeTransfer(msg.sender, _to, _amount, _lockDay, id);
 
         // update record
         AccountRecord[] memory temp_records = new AccountRecord[](ids.length);
-        for(uint i = 0; i < ids.length; i++) {
+        for(uint i; i < ids.length; i++) {
             if(ids[i] != 0) {
                 temp_records[i] = addr2records[msg.sender][id2index[ids[i]]];
             } else {
@@ -120,8 +144,8 @@ contract AccountManager is IAccountManager, System {
             }
         }
         //sortRecordByAmount(temp_records, 0, temp_records.length - 1);
-        uint usedAmount = 0;
-        for(uint i = 0; i < temp_records.length; i++) {
+        uint usedAmount;
+        for(uint i; i < temp_records.length; i++) {
             if(usedAmount + temp_records[i].amount <= _amount) {
                 if(temp_records[i].id != 0) {
                     RecordUseInfo memory useinfo = id2useinfo[temp_records[i].id];
@@ -161,7 +185,7 @@ contract AccountManager is IAccountManager, System {
     function reward(address[] memory _addrs, uint[] memory _amounts) public payable override onlyMnOrSnContract {
         require(msg.value > 0, "invalid amount");
         require(_addrs.length == _amounts.length, "invalid addrs and amounts");
-        for(uint i = 0; i < _addrs.length; i++) {
+        for(uint i; i < _addrs.length; i++) {
             addRecord(_addrs[i], _amounts[i], 0);
         }
     }
@@ -169,7 +193,7 @@ contract AccountManager is IAccountManager, System {
     // move balance of id0 to new id
     function moveID0(address _addr) public override onlySNVoteContract returns (uint) {
         uint amount = balances[_addr];
-        require(amount != 0, "balance of id(0) is zero");
+        require(amount > 0, "balance of id(0) is zero");
         uint id = ++record_no;
         AccountRecord[] storage records = addr2records[_addr];
         records.push(AccountRecord(id, _addr, amount, 0, 0, 0));
@@ -272,130 +296,182 @@ contract AccountManager is IAccountManager, System {
         emit SafeAddLockDay(_id, oldLockDay, record.lockDay);
     }
 
-    // get total amount
-    function getTotalAmount(address _addr) public view override returns (uint, uint[] memory) {
+    // get total amount and total record number
+    function getTotalAmount(address _addr) public view override returns (uint, uint) {
+        uint amount;
+        uint num;
+        if(balances[_addr] != 0) {
+            amount += balances[_addr];
+            num++;
+        }
+
         AccountRecord[] memory records = addr2records[_addr];
-        uint count = records.length;
-        uint tempAmount = balances[_addr];
-        if(tempAmount != 0) {
-            count++;
-        }
-        uint amount = 0;
-        uint[] memory ids = new uint[](count);
-        uint index = 0;
-        if(tempAmount != 0) {
-            amount += tempAmount;
-            ids[index++] = 0;
-        }
-        for(uint i = 0; i < records.length; i++) {
+        for(uint i; i < records.length; i++) {
             amount += records[i].amount;
-            ids[index++] = records[i].id;
         }
-        return (amount, ids);
+        num += records.length;
+        return (amount, num);
     }
 
-    // get available amount
-    function getAvailableAmount(address _addr) public view override returns (uint, uint[] memory) {
-        uint curHeight = block.number;
+    function getTotalIDs(address _addr, uint _start, uint _count) public view override returns (uint[] memory) {
+        uint totalAmount;
+        uint totalNum;
+        (totalAmount, totalNum) = getTotalAmount(_addr);
+
+        require(_start < totalNum, "invalid _start, must be in [0, totalNum)");
+        require(_count > 0 && _count <= 100, "max return 100 ids");
+
+        uint[] memory temp = new uint[](totalNum);
+        uint index;
+        if(balances[_addr] != 0) {
+            temp[index++] = 0;
+        }
         AccountRecord[] memory records = addr2records[_addr];
-        uint tempAmount = balances[_addr];
-
-        // get available count
-        uint count = 0;
-        if(tempAmount != 0) {
-            count++;
-        }
-        for(uint i = 0; i < records.length; i++) {
-            if(curHeight >= records[i].unlockHeight && curHeight >= id2useinfo[records[i].id].unfreezeHeight && curHeight >= id2useinfo[records[i].id].releaseHeight) {
-                count++;
-            }
+        for(uint i; i < records.length; i++) {
+            temp[index++] = records[i].id;
         }
 
-        // get available amount and id list
-        uint[] memory ids = new uint[](count);
-        uint amount = 0;
-        uint index = 0;
-        if(tempAmount != 0) {
-            amount += tempAmount;
-            ids[index++] = 0;
+        uint num = _count;
+        if(_start + _count >= totalNum) {
+            num = totalNum - _start;
         }
-        for(uint i = 0; i < records.length; i++) {
-            if(curHeight >= records[i].unlockHeight && curHeight >= id2useinfo[records[i].id].unfreezeHeight && curHeight >= id2useinfo[records[i].id].releaseHeight) {
+        uint[] memory ret = new uint[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = temp[i + _start];
+        }
+        return ret;
+    }
+
+    // get available amount and available record number
+    function getAvailableAmount(address _addr) public view override returns (uint, uint) {
+        uint amount;
+        uint num;
+        if(balances[_addr] != 0) {
+            amount += balances[_addr];
+            num++;
+        }
+
+        AccountRecord[] memory records = addr2records[_addr];
+        for(uint i; i < records.length; i++) {
+            if(block.number >= records[i].unlockHeight && block.number >= id2useinfo[records[i].id].unfreezeHeight && block.number >= id2useinfo[records[i].id].releaseHeight) {
                 amount += records[i].amount;
-                ids[index++] = records[i].id;
+                num++;
             }
         }
-
-        return (amount, ids);
+        return (amount, num);
     }
 
-    // get locked amount
-    function getLockedAmount(address _addr) public view override returns (uint, uint[] memory) {
-        uint curHeight = block.number;
-        AccountRecord[] memory records = addr2records[_addr];
+    function getAvailableIDs(address _addr, uint _start, uint _count) public view override returns (uint[] memory) {
+        uint availableAmount;
+        uint availableNum;
+        (availableAmount, availableNum) = getAvailableAmount(_addr);
 
-        // get locked count
-        uint count = 0;
-        for(uint i = 0; i < records.length; i++) {
-            if(curHeight < records[i].unlockHeight) {
-                count++;
+        require(_start < availableNum, "invalid _start, must be in [0, availableNum)");
+        require(_count > 0 && _count <= 100, "max return 100 ids");
+
+        uint[] memory temp = new uint[](availableNum);
+        uint index;
+        if(balances[_addr] != 0) {
+            temp[index++] = 0;
+        }
+        AccountRecord[] memory records = addr2records[_addr];
+        for(uint i; i < records.length; i++) {
+            if(block.number >= records[i].unlockHeight && block.number >= id2useinfo[records[i].id].unfreezeHeight && block.number >= id2useinfo[records[i].id].releaseHeight) {
+                temp[index++] = records[i].id;
             }
         }
 
-        // get locked amount and id list
-        uint[] memory ids = new uint[](count);
-        uint amount = 0;
-        uint index = 0;
-        for(uint i = 0; i < records.length; i++) {
-            if(curHeight < records[i].unlockHeight) {
+        uint num = _count;
+        if(_start + _count >= availableNum) {
+            num = availableNum - _start;
+        }
+        uint[] memory ret = new uint[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = temp[i + _start];
+        }
+        return ret;
+    }
+
+    // get locked amount and locked record number
+    function getLockedAmount(address _addr) public view override returns (uint, uint) {
+        uint amount;
+        uint num;
+        AccountRecord[] memory records = addr2records[_addr];
+        for(uint i; i < records.length; i++) {
+            if(block.number < records[i].unlockHeight) {
                 amount += records[i].amount;
-                ids[index++] = records[i].id;
+                num++;
             }
         }
-        return (amount, ids);
+        return (amount, num);
     }
 
-    // get used amount
-    function getUsedAmount(address _addr) public view override returns (uint, uint[] memory) {
-        uint curHeight = block.number;
-        AccountRecord[] memory records = addr2records[_addr];
+    function getLockedIDs(address _addr, uint _start, uint _count) public view override returns (uint[] memory) {
+        uint lockedAmount;
+        uint lockedNum;
+        (lockedAmount, lockedNum) = getLockedAmount(_addr);
 
-        // get used count
-        uint count = 0;
-        for(uint i = 0; i < records.length; i++) {
-            if(curHeight < id2useinfo[records[i].id].unfreezeHeight || curHeight < id2useinfo[records[i].id].releaseHeight) {
-                count++;
+        require(_start < lockedNum, "invalid _start, must be in [0, lockedNum)");
+        require(_count > 0 && _count <= 100, "max return 100 ids");
+
+        uint[] memory temp = new uint[](lockedNum);
+        uint index;
+        AccountRecord[] memory records = addr2records[_addr];
+        for(uint i; i < records.length; i++) {
+            if(block.number < records[i].unlockHeight) {
+                temp[index++] = records[i].id;
             }
         }
 
-        // get used amount and id list
-        uint[] memory ids = new uint[](count);
-        uint amount = 0;
-        uint index = 0;
-        for(uint i = 0; i < records.length; i++) {
-            if(curHeight < id2useinfo[records[i].id].unfreezeHeight || curHeight < id2useinfo[records[i].id].releaseHeight) {
+        uint num = _count;
+        if(_start + _count >= lockedNum) {
+            num = lockedNum - _start;
+        }
+        uint[] memory ret = new uint[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = temp[i + _start];
+        }
+        return ret;
+    }
+
+    // get used amount and used record num
+    function getUsedAmount(address _addr) public view override returns (uint, uint) {
+        uint amount;
+        uint num;
+        AccountRecord[] memory records = addr2records[_addr];
+        for(uint i; i < records.length; i++) {
+            if(block.number < id2useinfo[records[i].id].unfreezeHeight || block.number < id2useinfo[records[i].id].releaseHeight) {
                 amount += records[i].amount;
-                ids[index++] = records[i].id;
+                num++;
             }
         }
-        return (amount, ids);
+        return (amount, num);
     }
 
-    // get account records
-    function getRecords(address _addr) public view override returns (AccountRecord[] memory) {
+    function getUsedIDs(address _addr, uint _start, uint _count) public view override returns (uint[] memory) {
+        uint usedAmount;
+        uint usedNum;
+        (usedAmount, usedNum) = getUsedAmount(_addr);
+
+        require(_start < usedNum, "invalid _start, must be in [0, usedNum)");
+        require(_count > 0 && _count <= 100, "max return 100 ids");
+
+        uint[] memory temp = new uint[](usedNum);
+        uint index;
         AccountRecord[] memory records = addr2records[_addr];
-        uint count = records.length;
-        uint tempAmount = balances[_addr];
-        if(tempAmount != 0) {
-            count++;
+        for(uint i; i < records.length; i++) {
+            if(block.number < id2useinfo[records[i].id].unfreezeHeight || block.number < id2useinfo[records[i].id].releaseHeight) {
+                temp[index++] = records[i].id;
+            }
         }
-        AccountRecord[] memory ret = new AccountRecord[](count);
-        uint index = 0;
-        if(tempAmount != 0) {
-            ret[index++] = AccountRecord(0, _addr, tempAmount, 0, 0, 0);
+
+        uint num = _count;
+        if(_start + _count >= usedNum) {
+            num = usedNum - _start;
         }
-        for(uint i = 0; i < records.length; i++) {
-            ret[index++] = records[i];
+        uint[] memory ret = new uint[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = temp[i + _start];
         }
         return ret;
     }
@@ -452,25 +528,4 @@ contract AccountManager is IAccountManager, System {
         delete id2addr[_id];
         delete id2useinfo[_id];
     }
-
-    // // sort by amount
-    // function sortRecordByAmount(AccountRecord[] memory _arr, uint _left, uint _right) internal pure {
-    //     uint i = _left;
-    //     uint j = _right;
-    //     if (i == j) return;
-    //     AccountRecord memory middle = _arr[_left + (_right - _left) / 2];
-    //     while(i <= j) {
-    //         while(_arr[i].amount < middle.amount) i++;
-    //         while(middle.amount < _arr[j].amount && j > 0) j--; 
-    //         if(i <= j) {
-    //             (_arr[i], _arr[j]) = (_arr[j], _arr[i]);
-    //             i++;
-    //             if(j != 0) j--;
-    //         }
-    //     }
-    //     if(_left < j)
-    //         sortRecordByAmount(_arr, _left, j);
-    //     if(i < _right)
-    //         sortRecordByAmount(_arr, i, _right);
-    // }
 }
