@@ -151,18 +151,13 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
             return selectNext(mns, count).addr;
         }
         // select official addr2info
-        uint officialNum = getOfficialNum();
-        if(officialNum == 0) {
+        // select official addr2info
+        address[] memory officials = getOfficials();
+        if(officials.length != 0) {
+            return selectNext2(officials, officials.length);
+        } else {
             return id2addr[(block.number % ids.length) + 1];
         }
-        MasterNodeInfo[] memory officials = new MasterNodeInfo[](officialNum);
-        uint index;
-        for(uint i; i < ids.length; i++) {
-            if(addr2info[id2addr[ids[i]]].isOfficial) {
-                officials[index++] = addr2info[id2addr[ids[i]]];
-            }
-        }
-        return selectNext(officials, officialNum).addr;
     }
 
     function getNum() public view override returns (uint) {
@@ -184,36 +179,19 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         return ret;
     }
 
-    function getOfficialNum() public view override returns (uint) {
+    function getOfficials() public view override returns (address[] memory) {
         uint num;
         for(uint i; i < ids.length; i++) {
             if(addr2info[id2addr[ids[i]]].isOfficial) {
                 num++;
             }
         }
-        return num;
-    }
-
-    function getOfficials(uint _start, uint _count) public view override returns (address[] memory) {
-        uint officialNum = getOfficialNum();
-        require(_start < officialNum, "invalid _start, must be in [0, getOfficialNum())");
-        require(_count > 0 && _count <= 100, "max return 100 masternodes");
-
-        uint[] memory temp = new uint[](officialNum);
+        address[] memory ret = new address[](num);
         uint index;
         for(uint i; i < ids.length; i++) {
             if(addr2info[id2addr[ids[i]]].isOfficial) {
-                temp[index++] = ids[i];
+                ret[index++] = id2addr[ids[i]];
             }
-        }
-
-        uint num = _count;
-        if(_start + _count >= officialNum) {
-            num = officialNum - _start;
-        }
-        address[] memory ret = new address[](num);
-        for(uint i; i < num; i++) {
-            ret[i] = id2addr[temp[i + _start]];
         }
         return ret;
     }
@@ -267,6 +245,18 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
             if(temp > _arr[i].lastRewardHeight) {
                 pos = i;
                 temp = _arr[i].lastRewardHeight;
+            }
+        }
+        return _arr[pos];
+    }
+
+    function selectNext2(address[] memory _arr, uint len) internal view returns (address) {
+        uint pos;
+        uint temp = getInfo(_arr[pos]).lastRewardHeight;
+        for(uint i = 1; i < len; i++) {
+            if(temp > getInfo(_arr[i]).lastRewardHeight) {
+                pos = i;
+                temp = getInfo(_arr[i]).lastRewardHeight;
             }
         }
         return _arr[pos];

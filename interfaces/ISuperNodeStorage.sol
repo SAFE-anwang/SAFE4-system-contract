@@ -50,9 +50,7 @@ interface ISuperNodeStorage {
     function getAll(uint _start, uint _count) external view returns (address[] memory);
 
     function getTops() external view returns (address[] memory);
-
-    function getOfficialNum() external view returns (uint);
-    function getOfficials(uint _start, uint _count) external view returns (address[] memory);
+    function getOfficials() external view returns (address[] memory);
 
     function exist(address _addr) external view returns (bool);
     function existID(uint _id) external view returns (bool);

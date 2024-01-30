@@ -188,7 +188,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         }
 
         if(num == 0) {
-            return getOfficials(0, getPropertyValue("supernode_max_num"));
+            return getOfficials();
         }
 
         if(num > 1) {
@@ -208,36 +208,19 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         return ret;
     }
 
-    function getOfficialNum() public view override returns (uint) {
+    function getOfficials() public view override returns (address[] memory) {
         uint num;
         for(uint i; i < ids.length; i++) {
             if(addr2info[id2addr[ids[i]]].isOfficial) {
                 num++;
             }
         }
-        return num;
-    }
-
-    function getOfficials(uint _start, uint _count) public view override returns (address[] memory) {
-        uint officialNum = getOfficialNum();
-        require(_start < officialNum, "invalid _start, must be in [0, getOfficialNum())");
-        require(_count > 0 && _count <= 100, "max return 100 supernodes");
-
-        uint[] memory temp = new uint[](officialNum);
+        address[] memory ret = new address[](num);
         uint index;
         for(uint i; i < ids.length; i++) {
             if(addr2info[id2addr[ids[i]]].isOfficial) {
-                temp[index++] = ids[i];
+                ret[index++] = id2addr[ids[i]];
             }
-        }
-
-        uint num = _count;
-        if(_start + _count >= officialNum) {
-            num = officialNum - _start;
-        }
-        address[] memory ret = new address[](num);
-        for(uint i; i < num; i++) {
-            ret[i] = id2addr[temp[i + _start]];
         }
         return ret;
     }
