@@ -75,9 +75,10 @@ contract AccountManager is IAccountManager, System {
     function withdrawByID(uint[] memory _ids) public override returns (uint) {
         require(_ids.length > 0, "invalid record ids");
         uint amount;
+        uint temp = balances[msg.sender];
         for(uint i; i < _ids.length; i++) {
             if(_ids[i] == 0) {
-                amount += balances[msg.sender];
+                amount += temp;
             } else {
                 AccountRecord memory record = getRecordByID(_ids[i]);
                 RecordUseInfo memory useinfo = id2useinfo[_ids[i]];
@@ -102,7 +103,7 @@ contract AccountManager is IAccountManager, System {
                         delRecord(_ids[i]);
                     }
                 } else {
-                    balances[msg.sender] = 0;
+                    balances[msg.sender] -= temp;
                 }
             }
         }
@@ -520,10 +521,8 @@ contract AccountManager is IAccountManager, System {
         AccountRecord[] storage records = addr2records[msg.sender];
         uint pos = id2index[_id];
         records[pos] = records[records.length - 1];
+        id2index[records[pos].id] = pos;
         records.pop();
-        if(records.length != 0) {
-            id2index[records[pos].id] = pos;
-        }
         delete id2index[_id];
         delete id2addr[_id];
         delete id2useinfo[_id];
