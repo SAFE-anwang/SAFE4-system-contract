@@ -225,7 +225,7 @@ contract Proposal is IProposal, System {
     function handle(uint _id) internal {
         ProposalInfo memory pp = proposals[_id];
         if(pp.payTimes == 1) {
-            getAccountManager().depositWithSecond{value: pp.payAmount}(pp.creator, pp.startPayTime);
+            getAccountManager().depositWithSecond{value: pp.payAmount}(pp.creator, pp.startPayTime - block.timestamp);
             return;
         }
         uint space = (pp.endPayTime - pp.startPayTime) / (pp.payTimes - 1);
