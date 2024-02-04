@@ -89,11 +89,13 @@ contract Proposal is IProposal, System {
             if(agreeCount > snCount * 2 / 3) {
                 handle(_id);
                 proposals[_id].state = Constant.VOTE_AGREE;
+                proposals[_id].updateHeight = block.number;
                 emit ProposalState(_id, Constant.VOTE_AGREE);
                 return;
             }
             if(rejectCount >= snCount * 1 / 3) {
                 proposals[_id].state = Constant.VOTE_REJECT;
+                proposals[_id].updateHeight = block.number;
                 emit ProposalState(_id, Constant.VOTE_REJECT);
                 return;
             }
