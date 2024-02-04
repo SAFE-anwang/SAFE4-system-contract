@@ -52,7 +52,8 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(record.amount >= getPropertyValue("supernode_append_min_amount") * Constant.COIN, "less than min append lock amount");
         require(record.lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
-        require(block.number >= useinfo.unfreezeHeight, "record is freezen");
+        require(block.number >= useinfo.unfreezeHeight && block.number >= useinfo.releaseHeight, "record is freezen");
+        getSNVote().removeVoteOrApproval2(msg.sender, _lockID);
         if(isSN(useinfo.frozenAddr)) {
             getSuperNodeLogic().removeMember(useinfo.frozenAddr, _lockID);
         } else if(isMN(useinfo.frozenAddr)) {

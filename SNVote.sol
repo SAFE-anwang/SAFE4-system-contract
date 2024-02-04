@@ -55,7 +55,7 @@ contract SNVote is ISNVote, System {
         }
     }
 
-    function removeVoteOrApproval2(address _voterAddr, uint _recordID) public override onlyAccountManagerContract {
+    function removeVoteOrApproval2(address _voterAddr, uint _recordID) public override onlyAmOrSnContract {
         if(_recordID == 0) {
             return;
         }
