@@ -289,8 +289,8 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         if (i == j) return;
         address middle = _arr[_left + (_right - _left) / 2];
         while(i <= j) {
-            while(getSNVote().getVoterNum(_arr[i]) > getSNVote().getVoterNum(middle)) i++;
-            while(getSNVote().getVoterNum(middle) > getSNVote().getVoterNum(_arr[j]) && j > 0) j--;
+            while(getSNVote().getTotalVoteNum(_arr[i]) > getSNVote().getTotalVoteNum(middle)) i++;
+            while(getSNVote().getTotalVoteNum(middle) > getSNVote().getTotalVoteNum(_arr[j]) && j > 0) j--;
             if(i <= j) {
                 (_arr[i], _arr[j]) = (_arr[j], _arr[i]);
                 i++;
