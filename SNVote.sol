@@ -45,6 +45,17 @@ contract SNVote is ISNVote, System {
         }
     }
 
+    function voteOrApprovalWithAmount(bool _isVote, address _dstAddr) public payable override {
+        require(!isSN(msg.sender), "supernode can't vote others");
+        if(_isVote) {
+            require(isValidSN(_dstAddr), "invalid supernode address");
+        } else {
+            require(isValidMN(_dstAddr), "invalid proxy address");
+        }
+        uint recordID = getAccountManager().depositReturnNewID{value: msg.value}(msg.sender);
+        add(msg.sender, _dstAddr, recordID);
+    }
+
     function removeVoteOrApproval(uint[] memory _recordIDs) public override {
         require(!isSN(msg.sender), "supernode can't remove vote");
         for(uint i; i < _recordIDs.length; i++) {

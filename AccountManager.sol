@@ -51,6 +51,17 @@ contract AccountManager is IAccountManager, System {
         return id;
     }
 
+    function depositReturnNewID(address _to) public payable override returns (uint) {
+        require(msg.value > 0, "invalid amount");
+        uint id = ++record_no;
+        AccountRecord[] storage records = addr2records[_to];
+        records.push(AccountRecord(id, _to, msg.value, 0, 0, 0));
+        id2index[id] = records.length - 1;
+        id2addr[id] = _to;
+        emit SafeDeposit(_to, msg.value, 0, id);
+        return id;
+    }
+
     // withdraw all
     function withdraw() public override returns (uint) {
         uint amount;

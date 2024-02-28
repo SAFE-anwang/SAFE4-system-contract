@@ -18,6 +18,7 @@ interface ISNVote {
     }
 
     function voteOrApproval(bool _isVote, address _dstAddr, uint[] memory _recordIDs) external;
+    function voteOrApprovalWithAmount(bool _isVote, address _dstAddr) external payable;
     function removeVoteOrApproval(uint[] memory _recordIDs) external;
     function removeVoteOrApproval2(address _voterAddr, uint _recordID) external;
     function proxyVote(address _snAddr) external;
