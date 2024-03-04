@@ -67,7 +67,7 @@ contract Safe3 is ISafe3, System {
         } else {
             tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
         }
-        require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(uint160(msg.sender)), "pubkey is incompatible with caller");
+        // require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(uint160(msg.sender)), "pubkey is incompatible with caller");
 
         bytes memory keyID = getKeyIDFromPubkey(_pubkey);
         require(availables[keyID].amount > 0, "non-existent available amount");
@@ -94,7 +94,7 @@ contract Safe3 is ISafe3, System {
         } else {
             tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
         }
-        require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) != uint(uint160(msg.sender)), "pubkey is incompatible with caller");
+        // require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) != uint(uint160(msg.sender)), "pubkey is incompatible with caller");
 
         bytes memory keyID = getKeyIDFromPubkey(_pubkey);
         require(locks[keyID].length > 0, "non-existent locked amount");
@@ -125,7 +125,7 @@ contract Safe3 is ISafe3, System {
         } else {
             tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
         }
-        require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) != uint(uint160(msg.sender)), "pubkey is incompatible with caller");
+        // require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) != uint(uint160(msg.sender)), "pubkey is incompatible with caller");
 
         bytes memory keyID = getKeyIDFromPubkey(_pubkey);
         require(locks[keyID].length > 0, "non-existent masternode");
@@ -158,7 +158,7 @@ contract Safe3 is ISafe3, System {
         } else {
             tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
         }
-        require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(uint160(msg.sender)), "pubkey is incompatiable with caller");
+        // require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(uint160(msg.sender)), "pubkey is incompatiable with caller");
 
         bytes memory keyID = getKeyIDFromPubkey(_pubkey);
         require(specials[keyID].amount > 0, "non-existent available amount");
