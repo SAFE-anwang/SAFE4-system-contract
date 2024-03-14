@@ -25,7 +25,7 @@ library Secp256k1 {
     }
 
     function getDecompressed(bytes memory _pubkey) internal pure returns (bytes memory) {
-        require(_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[1] == 0x03), "invalid pubkey");
+        require(_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03), "invalid pubkey");
         bytes memory ret = new bytes(65);
         uint8 prefix = uint8(_pubkey[0]);
         bytes32 x;
