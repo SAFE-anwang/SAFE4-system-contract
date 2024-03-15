@@ -227,6 +227,7 @@ contract AccountManager is IAccountManager, System {
         records.push(AccountRecord(id, _addr, msg.value, _lockDay, block.number, block.number + _remainLockHeight));
         id2index[id] = records.length - 1;
         id2addr[id] = _addr;
+        emit SafeDeposit(_addr, msg.value, _lockDay, id);
         return id;
     }
 
