@@ -4,6 +4,8 @@ pragma solidity >=0.8.6 <=0.8.19;
 import "./System.sol";
 
 contract SuperNodeState is INodeState, System {
+    mapping(uint => mapping(address => uint)) id2entry_old;
+    mapping(uint => address[]) id2addrs_old;
     mapping(uint => address[]) id2addrs;
     mapping(uint => uint[]) id2states;
 
