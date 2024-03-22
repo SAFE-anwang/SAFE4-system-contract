@@ -41,8 +41,8 @@ library Constant {
     // constant
     uint internal constant COIN = 1000000000000000000;
 
-    uint internal constant DAYS_IN_MONTH = 30;
-    uint internal constant SECONDS_IN_DAY = 86400;
+    uint internal constant DAYS_IN_MONTH = 1;
+    uint internal constant SECONDS_IN_DAY = 300;
 
     // for property
     uint internal constant MIN_PROPERTY_NAME_LEN = 4;
