@@ -62,6 +62,36 @@ contract AccountManager is IAccountManager, System {
         return id;
     }
 
+    function batchDeposit(address _to, uint _times, uint _spaceDay, uint _startDay) public payable override returns (uint[] memory) {
+        require(msg.value > 0, "invalid value");
+        require(_to != address(0), "invalid target address");
+        require(_times > 0, "invalid times");
+        require(msg.value / _times > 0, "invalid batch value");
+        uint[] memory ids = new uint[](_times);
+        uint batchValue = msg.value / _times;
+        uint i;
+        for(; i < _times - 1; i++) {
+            ids[i] = this.deposit{value: batchValue}(_to, _startDay + (i + 1) * _spaceDay);
+        }
+        ids[i] = this.deposit{value: batchValue + msg.value % _times}(_to, _startDay + (i + 1) * _spaceDay);
+        return ids;
+    }
+
+    function batchDeposit(address[] memory _addrs, uint _times, uint _spaceDay, uint _startDay) public payable override returns (uint[] memory) {
+        require(msg.value > 0, "invalid value");
+        require(_addrs.length == _times, "address count is different with times");
+        require(_times > 0, "invalid times");
+        require(msg.value / _times > 0, "invalid batch value");
+        uint[] memory ids = new uint[](_times);
+        uint batchValue = msg.value / _times;
+        uint i;
+        for(; i < _times - 1; i++) {
+            ids[i] = this.deposit{value: batchValue}(_addrs[i], _startDay + (i + 1) * _spaceDay);
+        }
+        ids[i] = this.deposit{value: batchValue + msg.value % _times}(_addrs[i], _startDay + (i + 1) * _spaceDay);
+        return ids;
+    }
+
     // withdraw all
     function withdraw() public override returns (uint) {
         uint amount;
