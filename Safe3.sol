@@ -58,6 +58,14 @@ contract Safe3 is ISafe3, System {
     event RedeemSpecialAgree(string _safe3Addr);
     event RedeemSpecialVote(string _safe3Addr, address _voter, uint _voteResult);
 
+    bool internal lock; // re-entrant lock
+    modifier noReentrant() {
+        require(!lock, "Error: reentrant call");
+        lock = true;
+        _;
+        lock = false;
+    }
+
     function addAvailable(string memory _safe3Addr) public payable onlyOwner {
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
         require(availables[keyID].amount == 0, "existent safe3 address");
@@ -92,7 +100,7 @@ contract Safe3 is ISafe3, System {
         }
     }
 
-    function redeemAvailable(bytes memory _pubkey, bytes memory _sig) public override {
+    function redeemAvailable(bytes memory _pubkey, bytes memory _sig) public override noReentrant {
         require((_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) || (_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03)), "invalid pubkey");
 
         bytes memory tempPubkey;
@@ -211,7 +219,7 @@ contract Safe3 is ISafe3, System {
         emit ApplyRedeemSpecial(safe3Addr, specials[keyID].amount, specials[keyID].safe4Addr);
     }
 
-    function vote4Special(string memory _safe3Addr, uint _voteResult) public override onlySN {
+    function vote4Special(string memory _safe3Addr, uint _voteResult) public override onlySN noReentrant {
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
         require(specials[keyID].amount != 0, "non-existent special safe3 address");
         require(specials[keyID].applyHeight > 0, "need apply first");
