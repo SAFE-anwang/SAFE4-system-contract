@@ -23,8 +23,8 @@ interface IAccountManager {
     function deposit(address _to, uint _lockDay) external payable returns (uint);
     function depositWithSecond(address _to, uint _lockSecond) external payable returns (uint);
     function depositReturnNewID(address _to) external payable returns (uint);
-    function batchDeposit(address _to, uint _times, uint _spaceDay, uint _startDay) external payable returns (uint[] memory);
-    function batchDeposit(address[] memory _addrs, uint _times, uint _spaceDay, uint _startDay) external payable returns (uint[] memory);
+    function batchDeposit4One(address _to, uint _times, uint _spaceDay, uint _startDay) external payable returns (uint[] memory);
+    function batchDeposit4Multi(address[] memory _addrs, uint _times, uint _spaceDay, uint _startDay) external payable returns (uint[] memory);
 
     function withdraw() external returns (uint);
     function withdrawByID(uint[] memory _ids) external returns(uint);

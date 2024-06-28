@@ -21,6 +21,14 @@ contract AccountManager is IAccountManager, System {
     event SafeRelease(uint _id, address _addr); // remove vote
     event SafeAddLockDay(uint _id, uint _oldLockDay, uint _newLockDay);
 
+    bool internal lock; // re-entrant lock
+    modifier noReentrant() {
+        require(!lock, "Error: reentrant call");
+        lock = true;
+        _;
+        lock = false;
+    }
+
     // deposit
     function deposit(address _to, uint _lockDay) public payable override returns (uint) {
         require(msg.value > 0, "invalid amount");
@@ -62,7 +70,7 @@ contract AccountManager is IAccountManager, System {
         return id;
     }
 
-    function batchDeposit(address _to, uint _times, uint _spaceDay, uint _startDay) public payable override returns (uint[] memory) {
+    function batchDeposit4One(address _to, uint _times, uint _spaceDay, uint _startDay) public payable override returns (uint[] memory) {
         require(msg.value > 0, "invalid value");
         require(_to != address(0), "invalid target address");
         require(_times > 0, "invalid times");
@@ -77,7 +85,7 @@ contract AccountManager is IAccountManager, System {
         return ids;
     }
 
-    function batchDeposit(address[] memory _addrs, uint _times, uint _spaceDay, uint _startDay) public payable override returns (uint[] memory) {
+    function batchDeposit4Multi(address[] memory _addrs, uint _times, uint _spaceDay, uint _startDay) public payable override returns (uint[] memory) {
         require(msg.value > 0, "invalid value");
         require(_addrs.length == _times, "address count is different with times");
         require(_times > 0, "invalid times");
@@ -93,7 +101,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     // withdraw all
-    function withdraw() public override returns (uint) {
+    function withdraw() public override noReentrant returns (uint) {
         uint amount;
         uint num;
         (amount, num) = getAvailableAmount(msg.sender);
