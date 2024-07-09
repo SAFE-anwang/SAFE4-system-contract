@@ -48,6 +48,9 @@ interface IMasterNodeStorage {
     function getNum() external view returns (uint);
     function getAll(uint _start, uint _count) external view returns (address[] memory);
 
+    function getMineNum() external view returns (uint);
+    function getMines(uint _start, uint _count) external view returns (address[] memory);
+
     function getOfficials() external view returns (address[] memory);
 
     function exist(address _addr) external view returns (bool);
