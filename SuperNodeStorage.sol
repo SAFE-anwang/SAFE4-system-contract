@@ -159,32 +159,32 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         return ret;
     }
 
-    function getMineNum() public view override returns (uint) {
+    function getAddrNum4Creator(address _creator) public view override returns (uint) {
         uint num;
         for(uint i; i < ids.length; i++) {
-            if(addr2info[id2addr[ids[i]]].creator == msg.sender) {
+            if(addr2info[id2addr[ids[i]]].creator == _creator) {
                 num++;
             }
         }
         return num;
     }
 
-    function getMines(uint _start, uint _count) public view override returns (address[] memory) {
-        uint mineNum = getMineNum();
-        require(_start < mineNum, "invalid _start, must be in [0, getMineNum())");
+    function getAddrs4Creator(address _creator, uint _start, uint _count) public view override returns (address[] memory) {
+        uint addrNum = getAddrNum4Creator(_creator);
+        require(_start < addrNum, "invalid _start, must be in [0, getAddrNum4Creator())");
         require(_count > 0 && _count <= 100, "max return 100 supernodes");
 
-        address[] memory temp = new address[](mineNum);
+        address[] memory temp = new address[](addrNum);
         uint index;
         for(uint i; i < ids.length; i++) {
-            if(addr2info[id2addr[ids[i]]].creator == msg.sender) {
+            if(addr2info[id2addr[ids[i]]].creator == _creator) {
                 temp[index++] = id2addr[ids[i]];
             }
         }
 
         uint num = _count;
-        if(_start + _count >= mineNum) {
-            num = mineNum - _start;
+        if(_start + _count >= addrNum) {
+            num = addrNum - _start;
         }
         index = 0;
         address[] memory ret = new address[](num);
