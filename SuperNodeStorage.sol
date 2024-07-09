@@ -159,6 +159,41 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         return ret;
     }
 
+    function getMineNum() public view override returns (uint) {
+        uint num;
+        for(uint i; i < ids.length; i++) {
+            if(addr2info[id2addr[ids[i]]].creator == msg.sender) {
+                num++;
+            }
+        }
+        return num;
+    }
+
+    function getMines(uint _start, uint _count) public view override returns (address[] memory) {
+        uint mineNum = getMineNum();
+        require(_start < mineNum, "invalid _start, must be in [0, getMineNum())");
+        require(_count > 0 && _count <= 100, "max return 100 supernodes");
+
+        address[] memory temp = new address[](mineNum);
+        uint index;
+        for(uint i; i < ids.length; i++) {
+            if(addr2info[id2addr[ids[i]]].creator == msg.sender) {
+                temp[index++] = id2addr[ids[i]];
+            }
+        }
+
+        uint num = _count;
+        if(_start + _count >= mineNum) {
+            num = mineNum - _start;
+        }
+        index = 0;
+        address[] memory ret = new address[](num);
+        for(uint i; i < num; i++) {
+            ret[index++] = temp[_start + i];
+        }
+        return ret;
+    }
+
     function getTops() public view override returns (address[] memory) {
         uint minAmount = getPropertyValue("supernode_min_amount") * Constant.COIN;
         address[] memory addrs = new address[](ids.length);
