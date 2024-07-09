@@ -21,6 +21,11 @@ contract SNVote is ISNVote, System {
     mapping(address => address[]) dst2voters; // supernode or proxy to voter list
     mapping(address => uint[]) dst2ids; // supernode or proxy to record list
 
+    uint allAmount; // all supernodes received amount
+    uint allVoteNum; // all supernodes received voteNum
+    uint allProxiedAmount; // all proxies received amount
+    uint allProxiedVoteNum; // all proxies received voteNum
+
     event SNVOTE_VOTE(address _voterAddr, address _snAddr, uint _recordID, uint _voteNum);
     event SNVOTE_APPROVAL(address _voterAddr, address _proxyAddr, uint _recordID, uint _voteNum);
     event SNVOTE_REMOVE_VOTE(address _voterAddr, address _snAddr, uint _recordID, uint _voteNum);
@@ -302,6 +307,22 @@ contract SNVote is ISNVote, System {
         return ret;
     }
 
+    function getAllAmount() public view override returns (uint) {
+        return allAmount;
+    }
+
+    function getAllVoteNum() public view override returns (uint) {
+        return allVoteNum;
+    }
+
+    function getAllProxiedAmount() public view override returns (uint) {
+        return allProxiedAmount;
+    }
+
+    function getAllProxiedVoteNum() public view override returns (uint) {
+        return allProxiedVoteNum;
+    }
+
     function existDst4Voter(address _voterAddr, address _dstAddr) internal view returns (bool, uint) {
         address[] memory dsts = voter2dsts[_voterAddr];
         for(uint i; i < dsts.length; i++) {
@@ -430,9 +451,13 @@ contract SNVote is ISNVote, System {
 
         // freeze record
         if(isSN(_dstAddr)) { // vote
+            allAmount += amount;
+            allVoteNum += num;
             getAccountManager().setRecordVoteInfo(_recordID, _dstAddr, getPropertyValue("record_snvote_lockday"));
             emit SNVOTE_VOTE(_voterAddr, _dstAddr, _recordID, num);
         } else { // approval
+            allProxiedAmount += amount;
+            allProxiedVoteNum += num;
             emit SNVOTE_APPROVAL(_voterAddr, _dstAddr, _recordID, num);
         }
     }
@@ -604,9 +629,13 @@ contract SNVote is ISNVote, System {
 
         // unfreeze record
         if(isSN(dstAddr)) { // vote
+            allAmount -= amount;
+            allVoteNum -= num;
             getAccountManager().setRecordVoteInfo(_recordID, address(0), 0);
             emit SNVOTE_REMOVE_VOTE(_voterAddr, dstAddr, _recordID, num);
         } else { // proxy
+            allProxiedAmount -= amount;
+            allProxiedVoteNum -= num;
             emit SNVOTE_REMOVE_APPROVAL(_voterAddr, dstAddr, _recordID, num);
         }
     }
