@@ -179,6 +179,41 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         return ret;
     }
 
+    function getAddrNum4Creator(address _creator) public view override returns (uint) {
+        uint num;
+        for(uint i; i < ids.length; i++) {
+            if(addr2info[id2addr[ids[i]]].creator == _creator) {
+                num++;
+            }
+        }
+        return num;
+    }
+
+    function getAddrs4Creator(address _creator, uint _start, uint _count) public view override returns (address[] memory) {
+        uint addrNum = getAddrNum4Creator(_creator);
+        require(_start < addrNum, "invalid _start, must be in [0, getAddrNum4Creator())");
+        require(_count > 0 && _count <= 100, "max return 100 masternodes");
+
+        address[] memory temp = new address[](addrNum);
+        uint index;
+        for(uint i; i < ids.length; i++) {
+            if(addr2info[id2addr[ids[i]]].creator == _creator) {
+                temp[index++] = id2addr[ids[i]];
+            }
+        }
+
+        uint num = _count;
+        if(_start + _count >= addrNum) {
+            num = addrNum - _start;
+        }
+        index = 0;
+        address[] memory ret = new address[](num);
+        for(uint i; i < num; i++) {
+            ret[index++] = temp[_start + i];
+        }
+        return ret;
+    }
+
     function getOfficials() public view override returns (address[] memory) {
         uint num;
         for(uint i; i < ids.length; i++) {
