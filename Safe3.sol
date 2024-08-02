@@ -115,7 +115,7 @@ contract Safe3 is ISafe3, System {
         address safe4Addr = getSafe4Addr(tempPubkey);
         for(uint16 i; i < locks[keyID].length; i++) {
             LockedData storage data = locks[keyID][i];
-            if(data.redeemHeight == 0 && !data.isMN) {
+            if(data.amount > 0 && data.redeemHeight == 0 && !data.isMN) {
                 uint lockID = getAccountManager().fromSafe3{value: data.amount}(safe4Addr, data.lockDay, data.remainLockHeight);
                 data.safe4Addr = safe4Addr;
                 data.redeemHeight = uint24(block.number);
@@ -146,7 +146,7 @@ contract Safe3 is ISafe3, System {
         address safe4Addr = getSafe4Addr(tempPubkey);
         for(uint16 i; i < locks[keyID].length; i++) {
             LockedData storage data = locks[keyID][i];
-            if(data.redeemHeight == 0 && data.isMN) {
+            if(data.amount > 0 && data.redeemHeight == 0 && data.isMN) {
                 uint lockID = getAccountManager().fromSafe3{value: data.amount}(safe4Addr, data.lockDay, data.remainLockHeight);
                 getMasterNodeLogic().fromSafe3(safe4Addr, data.amount, data.lockDay, lockID, _enode);
                 data.safe4Addr = safe4Addr;
@@ -358,6 +358,39 @@ contract Safe3 is ISafe3, System {
         return ret;
     }
 
+    function existAvailableNeedToRedeem(string memory _safe3Addr) public view override returns (bool) {
+        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
+        return (availables[keyID].amount > 0 && availables[keyID].redeemHeight == 0);
+    }
+
+    function existLockedNeedToRedeem(string memory _safe3Addr) public view override returns (bool) {
+        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
+        if(locks[keyID].length == 0) {
+            return false;
+        }
+        for(uint16 i; i < locks[keyID].length; i++) {
+            LockedData memory data = locks[keyID][i];
+            if(data.amount > 0 && data.redeemHeight == 0 && !data.isMN) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function existMasterNodeNeedToRedeem(string memory _safe3Addr) public view override returns (bool) {
+        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
+        if(locks[keyID].length == 0) {
+            return false;
+        }
+        for(uint16 i; i < locks[keyID].length; i++) {
+            LockedData memory data = locks[keyID][i];
+            if(data.amount > 0 && data.redeemHeight == 0 && data.isMN) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function getKeyIDFromPubkey(bytes memory _pubkey) internal pure returns (bytes memory) {
         bytes32 h = sha256(_pubkey);
         bytes20 r = ripemd160(abi.encodePacked(h));
@@ -411,13 +444,5 @@ contract Safe3 is ISafe3, System {
             return temp;
         }
         return _pubkey;
-    }
-
-    function getSlice(bytes memory _bs, uint _offset, uint _num) internal pure returns (bytes memory) {
-        bytes memory ret = new bytes(_num);
-        for(uint i; i < _num; i++) {
-            ret[i] = _bs[_offset + i];
-        }
-        return ret;
     }
 }
