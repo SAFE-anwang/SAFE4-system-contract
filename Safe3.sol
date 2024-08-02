@@ -68,36 +68,23 @@ contract Safe3 is ISafe3, System {
 
     function addAvailable(string memory _safe3Addr) public payable onlyOwner {
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
-        require(availables[keyID].amount == 0, "existent safe3 address");
-        require(msg.value > 0, "invalid amount");
-        keyIDs.push(keyID);
+        if(availables[keyID].amount == 0) {
+            keyIDs.push(keyID);
+        }
         availables[keyID] = AvailableData(uint96(msg.value), 0, address(0));
     }
 
-    function addLocked(string memory _safe3Addr) public payable onlyOwner {
+    function addLocked(string memory _safe3Addr, bool _isMN) public payable onlyOwner {
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
-        require(msg.value > 0, "invalid amount");
         lockedNum++;
         LockedData[] storage datas = locks[keyID];
+        bytes32 txid = _isMN ? bytes32(0x2222222222222222222222222222222222222222222222222222222222222222) : bytes32(0x1111111111111111111111111111111111111111111111111111111111111111);
+        uint24 remainLockHeight = _isMN ? 810400 : 551200;
+        uint16 lockDay = _isMN ? 720 : 360;
         if(datas.length == 0) {
             lockedKeyIDs.push(keyID);
-            datas.push(LockedData(0x1111111111111111111111111111111111111111111111111111111111111111, 0, uint96(msg.value), 4500000, 5551200, 551200, 360, false, 0, address(0)));
-        } else {
-            datas.push(LockedData(0x1111111111111111111111111111111111111111111111111111111111111111, 0, uint96(msg.value), 4500000, 5551200, 551200, 360, false, 0, address(0)));
         }
-    }
-
-    function addMN(string memory _safe3Addr) public payable onlyOwner {
-        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
-        require(msg.value > 0, "invalid amount");
-        lockedNum++;
-        LockedData[] storage datas = locks[keyID];
-        if(datas.length == 0) {
-            lockedKeyIDs.push(keyID);
-            datas.push(LockedData(0x2222222222222222222222222222222222222222222222222222222222222222, 0, uint96(msg.value), 4500000, 5551200, 810400, 720, true, 0, address(0)));
-        } else {
-            datas.push(LockedData(0x2222222222222222222222222222222222222222222222222222222222222222, 0, uint96(msg.value), 4500000, 5551200, 810400, 720, true, 0, address(0)));
-        }
+        datas.push(LockedData(txid, 0, uint96(msg.value), 4500000, 5551200, remainLockHeight, lockDay, _isMN, 0, address(0)));
     }
 
     function redeemAvailable(bytes memory _pubkey, bytes memory _sig) public override noReentrant {
