@@ -32,9 +32,9 @@ interface ISafe3 {
         uint redeemHeight;
     }
 
-    function redeemAvailable(bytes memory _pubkey, bytes memory _sig) external;
-    function redeemLocked(bytes memory _pubkey, bytes memory _sig) external;
-    function redeemMasterNode(bytes memory _pubkey, bytes memory _sig, string memory _enode) external;
+    function batchRedeemAvailable(bytes[] memory _pubkeys, bytes[] memory _sigs) external;
+    function batchRedeemLocked(bytes[] memory _pubkeys, bytes[] memory _sigs) external;
+    function batchRedeemMasterNode(bytes[] memory _pubkeys, bytes[] memory _sigs, string[] memory _enodes) external;
 
     function applyRedeemSpecial(bytes memory _pubkey, bytes memory _sig) external;
     function vote4Special(string memory _safe3Addr, uint _voteResult) external;

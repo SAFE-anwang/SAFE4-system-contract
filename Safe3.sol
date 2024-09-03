@@ -87,107 +87,69 @@ contract Safe3 is ISafe3, System {
         datas.push(LockedData(txid, 0, uint96(msg.value), 4500000, 5551200, remainLockHeight, lockDay, _isMN, 0, address(0)));
     }
 
-    function redeemAvailable(bytes memory _pubkey, bytes memory _sig) public override noReentrant {
-        require((_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) || (_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03)), "invalid pubkey");
-
-        bytes memory tempPubkey;
-        if(_pubkey.length == 65) {
-            tempPubkey = getPubkey4(_pubkey);
-        } else {
-            tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
+    function batchRedeemAvailable(bytes[] memory _pubkeys, bytes[] memory _sigs) public override noReentrant {
+        require(_pubkeys.length == _sigs.length, "invalid parameter count");
+        for(uint k; k < _pubkeys.length; k++) {
+            require(checkPubkey(_pubkeys[k]), "invalid pubkey");
+            require(checkSig(_pubkeys[k], _sigs[k]), "invalid signautre");
+            bytes memory keyID = getKeyIDFromPubkey(_pubkeys[k]);
+            if(availables[keyID].amount == 0 || availables[keyID].redeemHeight != 0) {
+                continue;
+            }
+            string memory safe3Addr = getSafe3Addr(_pubkeys[k]);
+            address safe4Addr = getSafe4Addr(_pubkeys[k]);
+            payable(safe4Addr).transfer(availables[keyID].amount);
+            availables[keyID].safe4Addr = safe4Addr;
+            availables[keyID].redeemHeight = uint24(block.number);
+            emit RedeemAvailable(safe3Addr, availables[keyID].amount, safe4Addr);
         }
-        // require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(uint160(msg.sender)), "pubkey is incompatible with caller");
-
-        bytes memory keyID = getKeyIDFromPubkey(_pubkey);
-        require(availables[keyID].amount > 0, "non-existent available amount");
-        require(availables[keyID].redeemHeight == 0, "has redeemed");
-
-        string memory safe3Addr = getSafe3Addr(_pubkey);
-        bytes32 h = sha256(abi.encodePacked(safe3Addr));
-        bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
-        require(verifySig(tempPubkey, msgHash, _sig), "invalid signature");
-
-        address safe4Addr = getSafe4Addr(tempPubkey);
-        payable(safe4Addr).transfer(availables[keyID].amount);
-        availables[keyID].safe4Addr = safe4Addr;
-        availables[keyID].redeemHeight = uint24(block.number);
-        emit RedeemAvailable(safe3Addr, availables[keyID].amount, safe4Addr);
     }
 
-    function redeemLocked(bytes memory _pubkey, bytes memory _sig) public override {
-        require((_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) || (_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03)), "invalid pubkey");
-
-        bytes memory tempPubkey;
-        if(_pubkey.length == 65) {
-            tempPubkey = getPubkey4(_pubkey);
-        } else {
-            tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
-        }
-        // require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) != uint(uint160(msg.sender)), "pubkey is incompatible with caller");
-
-        bytes memory keyID = getKeyIDFromPubkey(_pubkey);
-        require(locks[keyID].length > 0, "non-existent locked amount");
-
-        string memory safe3Addr = getSafe3Addr(_pubkey);
-        bytes32 h = sha256(abi.encodePacked(safe3Addr));
-        bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
-        require(verifySig(tempPubkey, msgHash, _sig), "invalid signature");
-
-        address safe4Addr = getSafe4Addr(tempPubkey);
-        for(uint16 i; i < locks[keyID].length; i++) {
-            LockedData storage data = locks[keyID][i];
-            if(data.amount > 0 && data.redeemHeight == 0 && !data.isMN) {
-                uint lockID = getAccountManager().fromSafe3{value: data.amount}(safe4Addr, data.lockDay, data.remainLockHeight);
-                data.safe4Addr = safe4Addr;
-                data.redeemHeight = uint24(block.number);
-                emit RedeemLocked(safe3Addr, data.amount, safe4Addr, lockID);
+    function batchRedeemLocked(bytes[] memory _pubkeys, bytes[] memory _sigs) public override {
+        require(_pubkeys.length == _sigs.length, "invalid parameter count");
+        for(uint k; k < _pubkeys.length; k++) {
+            require(checkPubkey(_pubkeys[k]), "invalid pubkey");
+            require(checkSig(_pubkeys[k], _sigs[k]), "invalid signautre");
+            bytes memory keyID = getKeyIDFromPubkey(_pubkeys[k]);
+            string memory safe3Addr = getSafe3Addr(_pubkeys[k]);
+            address safe4Addr = getSafe4Addr(_pubkeys[k]);
+            for(uint16 i; i < locks[keyID].length; i++) {
+                LockedData storage data = locks[keyID][i];
+                if(data.amount > 0 && data.redeemHeight == 0 && !data.isMN) {
+                    uint lockID = getAccountManager().fromSafe3{value: data.amount}(safe4Addr, data.lockDay, data.remainLockHeight);
+                    data.safe4Addr = safe4Addr;
+                    data.redeemHeight = uint24(block.number);
+                    emit RedeemLocked(safe3Addr, data.amount, safe4Addr, lockID);
+                }
             }
         }
     }
 
-    function redeemMasterNode(bytes memory _pubkey, bytes memory _sig, string memory _enode) public override {
-        require((_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) || (_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03)), "invalid pubkey");
-
-        bytes memory tempPubkey;
-        if(_pubkey.length == 65) {
-            tempPubkey = getPubkey4(_pubkey);
-        } else {
-            tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
-        }
-        // require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) != uint(uint160(msg.sender)), "pubkey is incompatible with caller");
-
-        bytes memory keyID = getKeyIDFromPubkey(_pubkey);
-        require(locks[keyID].length > 0, "non-existent masternode");
-
-        string memory safe3Addr = getSafe3Addr(_pubkey);
-        bytes32 h = sha256(abi.encodePacked(safe3Addr));
-        bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
-        require(verifySig(tempPubkey, msgHash, _sig), "invalid signature");
-
-        address safe4Addr = getSafe4Addr(tempPubkey);
-        for(uint16 i; i < locks[keyID].length; i++) {
-            LockedData storage data = locks[keyID][i];
-            if(data.amount > 0 && data.redeemHeight == 0 && data.isMN) {
-                uint lockID = getAccountManager().fromSafe3{value: data.amount}(safe4Addr, data.lockDay, data.remainLockHeight);
-                getMasterNodeLogic().fromSafe3(safe4Addr, data.amount, data.lockDay, lockID, _enode);
-                data.safe4Addr = safe4Addr;
-                data.redeemHeight = uint24(block.number);
-                emit RedeemMasterNode(safe3Addr, safe4Addr, lockID);
-                break;
+    function batchRedeemMasterNode(bytes[] memory _pubkeys, bytes[] memory _sigs, string[] memory _enodes) public override {
+        require(_pubkeys.length == _sigs.length || _pubkeys.length == _enodes.length, "invalid parameter count");
+        for(uint k; k < _pubkeys.length; k++) {
+            require(checkPubkey(_pubkeys[k]), "invalid pubkey");
+            require(checkSig(_pubkeys[k], _sigs[k]), "invalid signautre");
+            bytes memory keyID = getKeyIDFromPubkey(_pubkeys[k]);
+            string memory safe3Addr = getSafe3Addr(_pubkeys[k]);
+            address safe4Addr = getSafe4Addr(_pubkeys[k]);
+            for(uint16 i; i < locks[keyID].length; i++) {
+                LockedData storage data = locks[keyID][i];
+                if(data.amount > 0 && data.redeemHeight == 0 && data.isMN) {
+                    uint lockID = getAccountManager().fromSafe3{value: data.amount}(safe4Addr, data.lockDay, data.remainLockHeight);
+                    getMasterNodeLogic().fromSafe3(safe4Addr, data.amount, data.lockDay, lockID, _enodes[k]);
+                    data.safe4Addr = safe4Addr;
+                    data.redeemHeight = uint24(block.number);
+                    emit RedeemMasterNode(safe3Addr, safe4Addr, lockID);
+                    break;
+                }
             }
         }
     }
 
     function applyRedeemSpecial(bytes memory _pubkey, bytes memory _sig) public override {
-        require((_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) || (_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03)), "invalid pubkey");
-
-        bytes memory tempPubkey;
-        if(_pubkey.length == 65) {
-            tempPubkey = getPubkey4(_pubkey);
-        } else {
-            tempPubkey = getPubkey4(Secp256k1.getDecompressed(_pubkey));
-        }
-        // require((uint(keccak256(tempPubkey)) & 0x00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) == uint(uint160(msg.sender)), "pubkey is incompatiable with caller");
+        require(checkPubkey(_pubkey), "invalid pubkey");
+        require(checkSig(_pubkey, _sig), "invalid signautre");
 
         bytes memory keyID = getKeyIDFromPubkey(_pubkey);
         require(specials[keyID].amount > 0, "non-existent available amount");
@@ -195,14 +157,8 @@ contract Safe3 is ISafe3, System {
         require(specials[keyID].applyHeight == 0, "has applied");
 
         string memory safe3Addr = getSafe3Addr(_pubkey);
-
-        bytes32 h = sha256(abi.encodePacked(safe3Addr));
-        bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
-        require(verifySig(tempPubkey, msgHash, _sig), "invalid signature");
-
-        specials[keyID].safe4Addr = getSafe4Addr(tempPubkey);
+        specials[keyID].safe4Addr = getSafe4Addr(_pubkey);
         specials[keyID].applyHeight = uint24(block.number);
-
         emit ApplyRedeemSpecial(safe3Addr, specials[keyID].amount, specials[keyID].safe4Addr);
     }
 
@@ -444,7 +400,30 @@ contract Safe3 is ISafe3, System {
         return address(uint160(uint256(keccak256(getPubkey4(_pubkey)))));
     }
 
-    function verifySig(bytes memory _pubkey, bytes32 _msgHash, bytes memory _sig) internal pure returns (bool) {
+    function checkPubkey(bytes memory _pubkey) internal pure returns (bool) {
+        return (_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) ||
+               (_pubkey.length == 33 && (_pubkey[0] == 0x02 || _pubkey[0] == 0x03));
+    }
+
+    function getPubkey4(bytes memory _pubkey) internal pure returns (bytes memory) {
+        bytes memory pubkey = _pubkey;
+        if(_pubkey.length != 65) {
+            pubkey = Secp256k1.getDecompressed(_pubkey);
+        }
+        if(pubkey.length == 65) {
+            bytes memory temp = new bytes(64);
+            for(uint i; i < 64; i++) {
+                temp[i] = pubkey[i + 1];
+            }
+            return temp;
+        }
+        revert("get decompressed pubkey failed");
+    }
+
+    function checkSig(bytes memory _pubkey, bytes memory _sig) internal pure returns (bool) {
+        string memory safe3Addr = getSafe3Addr(_pubkey);
+        bytes32 h = sha256(abi.encodePacked(safe3Addr));
+        bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
         bytes32 r;
         bytes32 s;
         uint8 v;
@@ -453,17 +432,6 @@ contract Safe3 is ISafe3, System {
             s := mload(add(_sig ,64))
             v := byte(0,mload(add(_sig ,96)))
         }
-        return getSafe4Addr(getPubkey4(_pubkey)) == ecrecover(_msgHash, v, r, s);
-    }
-
-    function getPubkey4(bytes memory _pubkey) internal pure returns (bytes memory) {
-        if(_pubkey.length == 65 && (_pubkey[0] == 0x04 || _pubkey[0] == 0x06 || _pubkey[0] == 0x07)) {
-            bytes memory temp = new bytes(64);
-            for(uint i; i < 64; i++) {
-                temp[i] = _pubkey[i + 1];
-            }
-            return temp;
-        }
-        return _pubkey;
+        return getSafe4Addr(_pubkey) == ecrecover(msgHash, v, r, s);
     }
 }
