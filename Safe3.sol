@@ -66,28 +66,11 @@ contract Safe3 is ISafe3, System {
         lock = false;
     }
 
-    function redeemAvailable(bytes memory _pubkey, bytes memory _sig) public override noReentrant {
-        require(checkPubkey(_pubkey), "invalid pubkey");
-        require(checkSig(_pubkey, _sig), "invalid signautre");
-
-        bytes memory keyID = getKeyIDFromPubkey(_pubkey);
-        require(availables[keyID].amount > 0, "non-existent available amount");
-        require(availables[keyID].redeemHeight == 0, "has redeemed");
-
-        string memory safe3Addr = getSafe3Addr(_pubkey);
-        address safe4Addr = getSafe4Addr(_pubkey);
-        payable(safe4Addr).transfer(availables[keyID].amount);
-        availables[keyID].safe4Addr = safe4Addr;
-        availables[keyID].redeemHeight = uint24(block.number);
-        emit RedeemAvailable(safe3Addr, availables[keyID].amount, safe4Addr);
-    }
-
     function batchRedeemAvailable(bytes[] memory _pubkeys, bytes[] memory _sigs) public override noReentrant {
         require(_pubkeys.length == _sigs.length, "invalid parameter count");
         for(uint k; k < _pubkeys.length; k++) {
-            if(!checkPubkey(_pubkeys[k]) || !checkSig(_pubkeys[k], _sigs[k])) {
-                continue;
-            }
+            require(checkPubkey(_pubkeys[k]), "invalid pubkey");
+            require(checkSig(_pubkeys[k], _sigs[k]), "invalid signautre");
             bytes memory keyID = getKeyIDFromPubkey(_pubkeys[k]);
             if(availables[keyID].amount == 0 || availables[keyID].redeemHeight != 0) {
                 continue;
@@ -101,30 +84,11 @@ contract Safe3 is ISafe3, System {
         }
     }
 
-    function redeemLocked(bytes memory _pubkey, bytes memory _sig) public override {
-        require(checkPubkey(_pubkey), "invalid pubkey");
-        require(checkSig(_pubkey, _sig), "invalid signature");
-
-        bytes memory keyID = getKeyIDFromPubkey(_pubkey);
-        string memory safe3Addr = getSafe3Addr(_pubkey);
-        address safe4Addr = getSafe4Addr(_pubkey);
-        for(uint16 i; i < locks[keyID].length; i++) {
-            LockedData storage data = locks[keyID][i];
-            if(data.amount > 0 && data.redeemHeight == 0 && !data.isMN) {
-                uint lockID = getAccountManager().fromSafe3{value: data.amount}(safe4Addr, data.lockDay, data.remainLockHeight);
-                data.safe4Addr = safe4Addr;
-                data.redeemHeight = uint24(block.number);
-                emit RedeemLocked(safe3Addr, data.amount, safe4Addr, lockID);
-            }
-        }
-    }
-
     function batchRedeemLocked(bytes[] memory _pubkeys, bytes[] memory _sigs) public override {
         require(_pubkeys.length == _sigs.length, "invalid parameter count");
         for(uint k; k < _pubkeys.length; k++) {
-            if(!checkPubkey(_pubkeys[k]) || !checkSig(_pubkeys[k], _sigs[k])) {
-                continue;
-            }
+            require(checkPubkey(_pubkeys[k]), "invalid pubkey");
+            require(checkSig(_pubkeys[k], _sigs[k]), "invalid signautre");
             bytes memory keyID = getKeyIDFromPubkey(_pubkeys[k]);
             string memory safe3Addr = getSafe3Addr(_pubkeys[k]);
             address safe4Addr = getSafe4Addr(_pubkeys[k]);
@@ -140,32 +104,11 @@ contract Safe3 is ISafe3, System {
         }
     }
 
-    function redeemMasterNode(bytes memory _pubkey, bytes memory _sig, string memory _enode) public override {
-        require(checkPubkey(_pubkey), "invalid pubkey");
-        require(checkSig(_pubkey, _sig), "invalid signature");
-
-        bytes memory keyID = getKeyIDFromPubkey(_pubkey);
-        string memory safe3Addr = getSafe3Addr(_pubkey);
-        address safe4Addr = getSafe4Addr(_pubkey);
-        for(uint16 i; i < locks[keyID].length; i++) {
-            LockedData storage data = locks[keyID][i];
-            if(data.amount > 0 && data.redeemHeight == 0 && data.isMN) {
-                uint lockID = getAccountManager().fromSafe3{value: data.amount}(safe4Addr, data.lockDay, data.remainLockHeight);
-                getMasterNodeLogic().fromSafe3(safe4Addr, data.amount, data.lockDay, lockID, _enode);
-                data.safe4Addr = safe4Addr;
-                data.redeemHeight = uint24(block.number);
-                emit RedeemMasterNode(safe3Addr, safe4Addr, lockID);
-                break;
-            }
-        }
-    }
-
     function batchRedeemMasterNode(bytes[] memory _pubkeys, bytes[] memory _sigs, string[] memory _enodes) public override {
         require(_pubkeys.length == _sigs.length || _pubkeys.length == _enodes.length, "invalid parameter count");
         for(uint k; k < _pubkeys.length; k++) {
-            if(!checkPubkey(_pubkeys[k]) || !checkSig(_pubkeys[k], _sigs[k])) {
-                continue;
-            }
+            require(checkPubkey(_pubkeys[k]), "invalid pubkey");
+            require(checkSig(_pubkeys[k], _sigs[k]), "invalid signautre");
             bytes memory keyID = getKeyIDFromPubkey(_pubkeys[k]);
             string memory safe3Addr = getSafe3Addr(_pubkeys[k]);
             address safe4Addr = getSafe4Addr(_pubkeys[k]);
