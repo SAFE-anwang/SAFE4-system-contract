@@ -28,7 +28,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
             require(_creatorIncentive > 0 && _creatorIncentive <= Constant.MAX_MN_CREATOR_INCENTIVE && _creatorIncentive + _partnerIncentive == Constant.MAX_INCENTIVE, "invalid incentive");
         }
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
-        getMasterNodeStorage().create(_addr, lockID, msg.value, _enode, _description, IMasterNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
+        getMasterNodeStorage().create(_addr, msg.sender, lockID, msg.value, _enode, _description, IMasterNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
         getAccountManager().setRecordFreezeInfo(lockID, _addr, _lockDay); // creator's lock id can't register other masternode again
         emit MNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
@@ -146,10 +146,10 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
     function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID, string memory _enode) public override onlySafe3Contract {
         require(!existNodeAddress(_addr), "existent address");
         require(_amount >= getPropertyValue("masternode_min_amount") * Constant.COIN, "less than min lock amount");
-        getMasterNodeStorage().create(_addr, _lockID, _amount, _enode, "MasterNode from Safe3", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0));
+        getMasterNodeStorage().create(_addr, _addr, _lockID, _amount, _enode, "MasterNode from Safe3", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0));
         getMasterNodeStorage().updateState(_addr, Constant.NODE_STATE_START);
         getAccountManager().setRecordFreezeInfo(_lockID, _addr, _lockDay);
-        emit MNRegister(_addr, tx.origin, _amount, _lockDay, _lockID);
+        emit MNRegister(_addr, _addr, _amount, _lockDay, _lockID);
     }
 
     function changeAddress(address _addr, address _newAddr) public override {
