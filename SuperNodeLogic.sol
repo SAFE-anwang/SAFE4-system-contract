@@ -213,12 +213,12 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(_newAddr != address(0), "invalid new address");
         require(!existNodeAddress(_newAddr), "existent new address");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
-        ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_addr);
+        require(!getSuperNodeStorage().existFounder(_addr, _newAddr), "new supernode address can't be founder");
+        getSuperNodeStorage().updateAddress(_addr, _newAddr);
+        ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_newAddr);
         for(uint i; i < info.founders.length; i++) {
-            require(_newAddr != info.founders[i].addr, "new supernode address can't be founder");
             getAccountManager().updateRecordFreezeAddr(info.founders[i].lockID, _newAddr);
         }
-        getSuperNodeStorage().updateAddress(_addr, _newAddr);
 
         // update voters' frozen addr
         uint idNum = getSNVote().getIDNum(_addr);
