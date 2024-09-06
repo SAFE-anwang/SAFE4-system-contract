@@ -143,13 +143,13 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         }
     }
 
-    function fromSafe3(address _addr, uint _amount, uint _lockDay, uint _lockID, string memory _enode) public override onlySafe3Contract {
+    function fromSafe3(address _addr, address _creator, uint _amount, uint _lockDay, uint _lockID, string memory _enode) public override onlySafe3Contract {
         require(!existNodeAddress(_addr), "existent address");
         require(_amount >= getPropertyValue("masternode_min_amount") * Constant.COIN, "less than min lock amount");
-        getMasterNodeStorage().create(_addr, _addr, _lockID, _amount, _enode, "MasterNode from Safe3", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0));
+        getMasterNodeStorage().create(_addr, _creator, _lockID, _amount, _enode, "MasterNode from Safe3", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0));
         getMasterNodeStorage().updateState(_addr, Constant.NODE_STATE_START);
         getAccountManager().setRecordFreezeInfo(_lockID, _addr, _lockDay);
-        emit MNRegister(_addr, _addr, _amount, _lockDay, _lockID);
+        emit MNRegister(_addr, _creator, _amount, _lockDay, _lockID);
     }
 
     function changeAddress(address _addr, address _newAddr) public override {
