@@ -307,6 +307,15 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         return false;
     }
 
+    function existFounder(address _addr, address _founder) public view override returns (bool) {
+        for(uint i; i < addr2info[_addr].founders.length; i++) {
+            if(addr2info[_addr].founders[i].addr == _founder) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function isValid(address _addr) public view override returns (bool) {
         SuperNodeInfo memory info = addr2info[_addr];
         if(info.id == 0) {
