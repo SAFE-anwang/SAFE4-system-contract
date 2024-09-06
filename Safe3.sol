@@ -163,30 +163,34 @@ contract Safe3 is ISafe3, System {
         emit ApplyRedeemSpecial(safe3Addr, specials[keyID].amount, specials[keyID].safe4Addr);
     }
 
-    function vote4Special(string memory _safe3Addr, uint _voteResult) public override onlySN noReentrant {
+    function vote4Special(string memory _safe3Addr, uint _voteResult) public override noReentrant { // only for creator of formal supernodes
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
         require(specials[keyID].amount != 0, "non-existent special safe3 address");
         require(specials[keyID].applyHeight > 0, "need apply first");
         require(specials[keyID].redeemHeight == 0, "has redeemed");
         require(_voteResult == Constant.VOTE_AGREE || _voteResult == Constant.VOTE_REJECT || _voteResult == Constant.VOTE_ABSTAIN, "invalue vote result, must be agree(1), reject(2), abstain(3)");
-
+        address[] memory sns = getSuperNodeStorage().getTops4Creator(msg.sender);
+        require(sns.length > 0, "caller isn't creator of formal supernodes");
         SpecialData storage data = specials[keyID];
-        uint i;
-        for(; i < data.voters.length; i++) {
-            if(data.voters[i] == msg.sender) {
-                break;
+        for(uint k; k < sns.length; k++) {
+            uint i;
+            for(; i < data.voters.length; i++) {
+                if(data.voters[i] == sns[k]) {
+                    break;
+                }
             }
-        }
-        if(i != data.voters.length) {
-            data.voteResults[i] = _voteResult;
-        } else {
-            data.voters.push(msg.sender);
-            data.voteResults.push(_voteResult);
+            if(i != data.voters.length) {
+                data.voteResults[i] = _voteResult;
+            } else {
+                data.voters.push(sns[k]);
+                data.voteResults.push(_voteResult);
+            }
+            emit RedeemSpecialVote(_safe3Addr, sns[k], _voteResult);
         }
         uint agreeCount;
         uint rejectCount;
         uint snCount = getSNNum();
-        for(i = 0; i < data.voters.length; i++) {
+        for(uint i = 0; i < data.voters.length; i++) {
             if(data.voteResults[i] == Constant.VOTE_AGREE) {
                 agreeCount++;
             } else { // reject or abstain
@@ -203,7 +207,6 @@ contract Safe3 is ISafe3, System {
                 return;
             }
         }
-        emit RedeemSpecialVote(_safe3Addr, msg.sender, _voteResult);
     }
 
     function getAllAvailableNum() public view override returns (uint) {

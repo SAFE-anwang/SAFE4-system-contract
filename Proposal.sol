@@ -52,36 +52,22 @@ contract Proposal is IProposal, System {
         return pp.id;
     }
 
-    function vote(uint _id, uint _voteResult) public override onlySN {
+    function vote(uint _id, uint _voteResult) public override { // only for creator of formal supernodes
         require(exist(_id), "non-existent proprosal");
         require(proposals[_id].state == 0, "proposal has been confirmed");
         require(_voteResult == Constant.VOTE_AGREE || _voteResult == Constant.VOTE_REJECT || _voteResult == Constant.VOTE_ABSTAIN, "invalue vote result, must be agree(1), reject(2), abstain(3)");
         require(block.timestamp < proposals[_id].startPayTime, "proposal is out of day");
-        VoteInfo[] storage votes = voteInfos[_id];
-        uint i;
-        bool flag;
-        for(; i < votes.length; i++) {
-            if(votes[i].voter == msg.sender) {
-                flag = true;
-                break;
-            }
-        }
-        if(flag) {
-            votes[i].voteResult = _voteResult;
-        } else {
-            votes.push(VoteInfo(msg.sender, _voteResult));
-        }
-        emit ProposalVote(_id, msg.sender, _voteResult);
-
-        if (proposals[_id].state != 0) {
-            return;
+        address[] memory sns = getSuperNodeStorage().getTops4Creator(msg.sender);
+        require(sns.length > 0, "caller isn't creator of formal supernodes");
+        for(uint i; i < sns.length; i++) {
+            updateVoteInfo(_id, sns[i], _voteResult);
         }
 
         uint agreeCount;
         uint rejectCount;
         uint snCount = getSNNum();
-        for(i = 0; i < votes.length; i++) {
-             if(votes[i].voteResult == Constant.VOTE_AGREE) {
+        for(uint i = 0; i < voteInfos[_id].length; i++) {
+             if(voteInfos[_id][i].voteResult == Constant.VOTE_AGREE) {
                 agreeCount++;
             } else { // reject or abstain
                 rejectCount++;
@@ -237,5 +223,21 @@ contract Proposal is IProposal, System {
             usedAmount += pp.payAmount / pp.payTimes;
         }
         getAccountManager().depositWithSecond{value: pp.payAmount - usedAmount}(pp.creator, pp.endPayTime - block.timestamp);
+    }
+
+    function updateVoteInfo(uint _id, address _voter, uint _voteResult) internal {
+        VoteInfo[] storage votes = voteInfos[_id];
+        uint i;
+        for(; i < votes.length; i++) {
+            if(votes[i].voter == _voter) {
+                break;
+            }
+        }
+        if(i != votes.length) {
+            votes[i].voteResult = _voteResult;
+        } else {
+            votes.push(VoteInfo(_voter, _voteResult));
+        }
+        emit ProposalVote(_id, _voter, _voteResult);
     }
 }

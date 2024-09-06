@@ -28,42 +28,34 @@ contract Property is IProperty, System {
         emit PropertyAdd(_name, _value);
     }
 
-    function applyUpdate(string memory _name, uint _value, string memory _reason) public override onlySN {
+    function applyUpdate(string memory _name, uint _value, string memory _reason) public override { // only for creator of formal supernodes
         require(exist(_name), "non-existent property");
         require(!existUnconfirmed(_name), "existent unconfirmed property");
         require(bytes(_reason).length >= Constant.MIN_PROPERTY_REASON_LEN && bytes(_reason).length <= Constant.MAX_PROPERTY_REASON_LEN, "invalid reason");
+        require(getSuperNodeStorage().getTops4Creator(msg.sender).length > 0, "caller isn't creator of formal supernodes");
         UnconfirmedPropertyInfo storage info = unconfirmedProperties[_name];
         info.name = _name;
         info.value = _value;
         info.applicant = msg.sender;
-        info.voters.push(msg.sender);
-        info.voteResults.push(1);
         info.reason = _reason;
         info.applyHeight = block.number;
         unconfirmedNames.push(_name);
         emit PropertyUpdateApply(_name, _value, properties[_name].value);
     }
 
-    function vote4Update(string memory _name, uint _voteResult) public override onlySN {
+    function vote4Update(string memory _name, uint _voteResult) public override { // only for creator of formal supernodes
         require(existUnconfirmed(_name), "non-existent unconfirmed property");
         require(_voteResult == Constant.VOTE_AGREE || _voteResult == Constant.VOTE_REJECT || _voteResult == Constant.VOTE_ABSTAIN, "invalue vote result, must be agree(1), reject(2), abstain(3)");
-        UnconfirmedPropertyInfo storage info = unconfirmedProperties[_name];
-        uint i;
-        for(; i < info.voters.length; i++) {
-            if(info.voters[i] == msg.sender) {
-                break;
-            }
+        address[] memory sns = getSuperNodeStorage().getTops4Creator(msg.sender);
+        require(sns.length > 0, "caller isn't creator of formal supernodes");
+        for(uint i; i < sns.length; i++) {
+            updateVoteInfo(_name, sns[i], _voteResult);
         }
-        if(i != info.voters.length) {
-            info.voteResults[i] = _voteResult;
-        } else {
-            info.voters.push(msg.sender);
-            info.voteResults.push(_voteResult);
-        }
+        UnconfirmedPropertyInfo memory info = unconfirmedProperties[_name];
         uint agreeCount;
         uint rejectCount;
         uint snCount = getSNNum();
-        for(i = 0; i < info.voters.length; i++) {
+        for(uint i = 0; i < info.voters.length; i++) {
             if(info.voteResults[i] == Constant.VOTE_AGREE) {
                 agreeCount++;
             } else { // reject or abstain
@@ -82,7 +74,6 @@ contract Property is IProperty, System {
                 return;
             }
         }
-        emit PropertyUpdateVote(_name, info.value, msg.sender, _voteResult);
     }
 
     function getInfo(string memory _name) public view override returns (PropertyInfo memory) {
@@ -150,5 +141,22 @@ contract Property is IProperty, System {
                 break;
             }
         }
+    }
+
+    function updateVoteInfo(string memory _name, address _voter, uint _voteResult) internal {
+        UnconfirmedPropertyInfo storage info = unconfirmedProperties[_name];
+        uint i;
+        for(; i < info.voters.length; i++) {
+            if(info.voters[i] == _voter) {
+                break;
+            }
+        }
+        if(i != info.voters.length) {
+            info.voteResults[i] = _voteResult;
+        } else {
+            info.voters.push(_voter);
+            info.voteResults.push(_voteResult);
+        }
+        emit PropertyUpdateVote(_name, info.value, _voter, _voteResult);
     }
 }
