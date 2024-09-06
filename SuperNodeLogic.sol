@@ -12,6 +12,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function register(bool _isUnion, address _addr, uint _lockDay, string memory _name, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable override {
         require(_addr != address(0), "invalid address");
+        require(_addr != msg.sender, "supernode can't be caller");
         require(!existNodeAddress(_addr), "existent address");
         if(!_isUnion) {
             require(msg.value >= getPropertyValue("supernode_min_amount") * Constant.COIN, "less than min lock amount");
@@ -36,6 +37,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function appendRegister(address _addr, uint _lockDay) public payable override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
+        require(_addr != msg.sender, "supernode can't be caller");
         require(msg.value >= getPropertyValue("supernode_append_min_amount") * Constant.COIN, "less than min append lock amount");
         require(_lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
@@ -46,6 +48,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function turnRegister(address _addr, uint _lockID) public override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
+        require(_addr != msg.sender, "supernode can't be caller");
         IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_lockID);
         require(record.addr == msg.sender, "you aren't record owner");
         require(block.number < record.unlockHeight, "record isn't locked");
@@ -210,11 +213,12 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(_newAddr != address(0), "invalid new address");
         require(!existNodeAddress(_newAddr), "existent new address");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
-        getSuperNodeStorage().updateAddress(_addr, _newAddr);
-        ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_newAddr);
+        ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_addr);
         for(uint i; i < info.founders.length; i++) {
+            require(_newAddr != info.founders[i].addr, "new supernode address can't be founder");
             getAccountManager().updateRecordFreezeAddr(info.founders[i].lockID, _newAddr);
         }
+        getSuperNodeStorage().updateAddress(_addr, _newAddr);
 
         // update voters' frozen addr
         uint idNum = getSNVote().getIDNum(_addr);
