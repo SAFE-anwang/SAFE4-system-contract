@@ -9,7 +9,7 @@ contract MasterNodeState is INodeState, System {
     mapping(uint => address[]) id2addrs;
     mapping(uint => uint[]) id2states;
 
-    function upload(uint[] memory _ids, uint[] memory _states) public override onlySN {
+    function upload(uint[] memory _ids, uint[] memory _states) public override onlyFormalSN {
         require(_ids.length == _states.length, "id list isn't matched with state list");
         uint snNum = getSNNum();
         for(uint i; i < _ids.length; i++) {

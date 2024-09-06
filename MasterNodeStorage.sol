@@ -11,16 +11,16 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     mapping(uint => address) id2addr;
     mapping(string => address) enode2addr;
 
-    function create(address _addr, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory plan) public override onlyMasterNodeLogic {
+    function create(address _addr, address _creator, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory plan) public override onlyMasterNodeLogic {
         MasterNodeInfo storage info = addr2info[_addr];
         info.id = ++no;
         info.addr = _addr;
-        info.creator = tx.origin;
+        info.creator = _creator;
         info.enode = _enode;
         info.description = _description;
         info.isOfficial = false;
         info.state = Constant.NODE_STATE_INIT;
-        info.founders.push(MemberInfo(_lockID, tx.origin, _amount, block.number));
+        info.founders.push(MemberInfo(_lockID, _creator, _amount, block.number));
         info.incentivePlan = plan;
         info.lastRewardHeight = 0;
         info.createHeight = block.number;

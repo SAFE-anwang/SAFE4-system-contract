@@ -243,6 +243,28 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         return ret;
     }
 
+    function getTops4Creator(address _creator) public view override returns (address[] memory ret) {
+        address[] memory tops = getTops();
+        uint num;
+        for(uint i; i < tops.length; i++) {
+            SuperNodeInfo memory info = addr2info[tops[i]];
+            if(info.creator == _creator) {
+                num++;
+            }
+        }
+        if(num == 0) {
+            return ret;
+        }
+        ret = new address[](num);
+        uint k;
+        for(uint i; i < tops.length; i++) {
+            SuperNodeInfo memory info = addr2info[tops[i]];
+            if(info.creator == _creator) {
+                ret[k++] = tops[i];
+            }
+        }
+    }
+
     function getOfficials() public view override returns (address[] memory) {
         uint num;
         for(uint i; i < ids.length; i++) {
@@ -306,9 +328,6 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     }
 
     function isFormal(address _addr) public view override returns (bool) {
-        if(!isValid(_addr)) {
-            return false;
-        }
         address[] memory tops = getTops();
         for(uint i; i < tops.length; i++) {
             if(_addr == tops[i]) {

@@ -27,7 +27,7 @@ contract System is Initializable, OwnableUpgradeable {
         return abi.encodeWithSignature("initialize()");
     }
 
-    modifier onlySN {
+    modifier onlyFormalSN {
         require(isFormalSN(msg.sender), "No formal supernode");
         _;
     }
