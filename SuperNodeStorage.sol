@@ -307,10 +307,13 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         return false;
     }
 
-    function existFounder(address _addr, address _founder) public view override returns (bool) {
-        for(uint i; i < addr2info[_addr].founders.length; i++) {
-            if(addr2info[_addr].founders[i].addr == _founder) {
-                return true;
+    function existFounder(address _founder) public view override returns (bool) {
+        for(uint i; i < ids.length; i++) {
+            SuperNodeInfo memory info = addr2info[id2addr[ids[i]]];
+            for(uint k; k < info.founders.length; k++) {
+                if(info.founders[k].addr == _founder) {
+                    return true;
+                }
             }
         }
         return false;
@@ -344,6 +347,18 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
             }
         }
         return false;
+    }
+
+    function existNodeAddress(address _addr) public view override returns (bool) {
+        return exist(_addr) || getMasterNodeStorage().exist(_addr);
+    }
+
+    function existNodeEnode(string memory _enode) public view override returns (bool) {
+        return existEnode(_enode) || getMasterNodeStorage().existEnode(_enode);
+    }
+
+    function existNodeFounder(address _founder) public view override returns (bool) {
+        return existFounder(_founder) || getMasterNodeStorage().existFounder(_founder);
     }
 
     function sortByVoteNum(address[] memory _arr, uint _left, uint _right) internal view {

@@ -147,12 +147,4 @@ contract System is Initializable, OwnableUpgradeable {
     function getSNNum() internal view returns (uint) {
         return getSuperNodeStorage().getTops().length;
     }
-
-    function existNodeAddress(address _addr) internal view returns (bool) {
-        return getMasterNodeStorage().exist(_addr) || getSuperNodeStorage().exist(_addr);
-    }
-
-    function existNodeEnode(string memory _enode) internal view returns (bool) {
-        return getMasterNodeStorage().existEnode(_enode) || getSuperNodeStorage().existEnode(_enode);
-    }
 }
