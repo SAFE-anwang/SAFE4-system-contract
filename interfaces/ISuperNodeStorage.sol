@@ -62,7 +62,12 @@ interface ISuperNodeStorage {
     function existName(string memory _name) external view returns (bool);
     function existEnode(string memory _enode) external view returns (bool);
     function existLockID(address _addr, uint _lockID) external view returns (bool);
-    function existFounder(address _addr, address _founder) external view returns (bool);
+    function existFounder(address _founder) external view returns (bool);
+
     function isValid(address _addr) external view returns (bool);
     function isFormal(address _addr) external view returns (bool);
+
+    function existNodeAddress(address _addr) external view returns (bool);
+    function existNodeEnode(string memory _enode) external view returns (bool);
+    function existNodeFounder(address _founder) external view returns (bool);
 }
