@@ -12,8 +12,10 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function register(bool _isUnion, address _addr, uint _lockDay, string memory _name, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable override {
         require(_addr != address(0), "invalid address");
-        require(_addr != msg.sender, "supernode can't be caller");
-        require(!existNodeAddress(_addr), "existent address");
+        require(_addr != msg.sender, "address can't be caller");
+        require(!getSuperNodeStorage().existNodeAddress(_addr), "existent address");
+        require(!getSuperNodeStorage().existNodeFounder(_addr), "address can't be founder of supernode and masternode");
+        require(!getSuperNodeStorage().existNodeAddress(msg.sender), "caller can't be supernode and masternode");
         if(!_isUnion) {
             require(msg.value >= getPropertyValue("supernode_min_amount") * Constant.COIN, "less than min lock amount");
         } else {
@@ -23,7 +25,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(bytes(_name).length >= Constant.MIN_SN_NAME_LEN && bytes(_name).length <= Constant.MAX_SN_NAME_LEN, "invalid name");
         require(!getSuperNodeStorage().existName(_name), "existent name");
         require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(_enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
-        require(!existNodeEnode(_enode), "existent enode");
+        require(!getSuperNodeStorage().existNodeEnode(_enode), "existent enode");
         require(bytes(_description).length >= Constant.MIN_NODE_DESCRIPTION_LEN && bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         require(_creatorIncentive + _partnerIncentive + _voterIncentive == Constant.MAX_INCENTIVE, "invalid incentive");
         require(_creatorIncentive >= Constant.MIN_SN_CREATOR_INCENTIVE && _creatorIncentive <= Constant.MAX_SN_CREATOR_INCENTIVE, "creator incentive exceed 10%");
@@ -37,7 +39,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function appendRegister(address _addr, uint _lockDay) public payable override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
-        require(_addr != msg.sender, "supernode can't be caller");
+        require(!getSuperNodeStorage().existNodeAddress(msg.sender), "caller can't be supernode and masternode");
         require(msg.value >= getPropertyValue("supernode_append_min_amount") * Constant.COIN, "less than min append lock amount");
         require(_lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
@@ -48,7 +50,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function turnRegister(address _addr, uint _lockID) public override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
-        require(_addr != msg.sender, "supernode can't be caller");
+        require(!getSuperNodeStorage().existNodeAddress(msg.sender), "caller can't be supernode and masternode");
         IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_lockID);
         require(record.addr == msg.sender, "you aren't record owner");
         require(block.number < record.unlockHeight, "record isn't locked");
@@ -211,9 +213,10 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
     function changeAddress(address _addr, address _newAddr) public override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
         require(_newAddr != address(0), "invalid new address");
-        require(!existNodeAddress(_newAddr), "existent new address");
+        require(_newAddr != msg.sender, "new address can't be caller");
+        require(!getSuperNodeStorage().existNodeAddress(_newAddr), "existent new address");
+        require(!getSuperNodeStorage().existNodeFounder(_newAddr), "new address can't be founder of supernode and masternode");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
-        require(!getSuperNodeStorage().existFounder(_addr, _newAddr), "new supernode address can't be founder");
         getSuperNodeStorage().updateAddress(_addr, _newAddr);
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_newAddr);
         for(uint i; i < info.founders.length; i++) {
@@ -247,7 +250,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
     function changeEnode(address _addr, string memory _enode) public override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
         require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(_enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
-        require(!existNodeEnode(_enode), "existent enode");
+        require(!getSuperNodeStorage().existNodeEnode(_enode), "existent enode");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
         getSuperNodeStorage().updateEnode(_addr, _enode);
     }
