@@ -75,108 +75,10 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_addr);
         uint creatorReward = msg.value * info.incentivePlan.creator / Constant.MAX_INCENTIVE;
         uint partnerReward = msg.value * info.incentivePlan.partner / Constant.MAX_INCENTIVE;
-        uint voterReward = msg.value - creatorReward - partnerReward;
-        uint founderReward;
-
-        uint founderNum = info.founders.length;
-        address[] memory tempAddrs = new address[](founderNum);
-        uint[] memory tempAmounts = new uint[](founderNum);
-        uint[] memory tempRewardTypes = new uint[](founderNum);
-        uint count;
-        // reward to creator
-        if(creatorReward != 0) {
-            tempAddrs[count] = info.creator;
-            tempAmounts[count] = creatorReward;
-            tempRewardTypes[count] = Constant.REWARD_CREATOR;
-            count++;
-            founderReward += creatorReward;
-        }
-
-        uint minAmount = getPropertyValue("supernode_min_amount") * Constant.COIN;
-        // reward to partner
-        if(partnerReward != 0) {
-            uint total;
-            for(uint i; i < info.founders.length; i++) {
-                ISuperNodeStorage.MemberInfo memory partner = info.founders[i];
-                if(total + partner.amount <= minAmount) {
-                    uint tempAmount = partnerReward * partner.amount / minAmount;
-                    if(tempAmount != 0) {
-                        int pos = ArrayUtil.find(tempAddrs, partner.addr);
-                        if(pos == -1) {
-                            tempAddrs[count] = partner.addr;
-                            tempAmounts[count] = tempAmount;
-                            tempRewardTypes[count] = Constant.REWARD_PARTNER;
-                            count++;
-                        } else {
-                            tempAmounts[uint(pos)] += tempAmount;
-                        }
-                    }
-                    total += partner.amount;
-                    if(total == minAmount) {
-                        break;
-                    }
-                } else {
-                    uint tempAmount = partnerReward * (minAmount - total) / minAmount;
-                    if(tempAmount != 0) {
-                        int pos = ArrayUtil.find(tempAddrs, partner.addr);
-                        if(pos == -1) {
-                            tempAddrs[count] = partner.addr;
-                            tempAmounts[count] = tempAmount;
-                            tempRewardTypes[count] = Constant.REWARD_PARTNER;
-                            count++;
-                        } else {
-                            tempAmounts[uint(pos)] += tempAmount;
-                        }
-                    }
-                    break;
-                }
-            }
-            founderReward += partnerReward;
-        }
-
-        // reward to voter
-        ISNVote snvote = getSNVote();
-        if(voterReward != 0) {
-            address tempAddr = _addr;
-            uint tempReward = voterReward;
-            uint totalVoteNum = getSNVote().getTotalVoteNum(tempAddr);
-            uint voterNum = getSNVote().getVoterNum(tempAddr);
-            if(voterNum > 0) {
-                uint batchNum = voterNum / 100;
-                if(voterNum % 100 != 0) {
-                    batchNum++;
-                }
-                for(uint i; i < batchNum; i++) {
-                    address[] memory voterAddrs;
-                    uint[] memory voteNums;
-                    (voterAddrs, voteNums) = snvote.getVoters(tempAddr, 100*i, 100);
-                    address[] memory tempAddrs2 = new address[](voterAddrs.length);
-                    uint[] memory tempAmounts2 = new uint[](voterAddrs.length);
-                    uint[] memory tempRewardTypes2 = new uint[](voterAddrs.length);
-                    uint tempVoterReward;
-                    uint index;
-                    for(uint k; k < voterAddrs.length; k++) {
-                        uint tempAmount = tempReward * voteNums[k] / totalVoteNum;
-                        if(tempAmount != 0) {
-                            tempAddrs2[index] = voterAddrs[k];
-                            tempAmounts2[index] = tempAmount;
-                            tempRewardTypes2[index++] = Constant.REWARD_VOTER;
-                            tempVoterReward += tempAmount;
-                        }
-                    }
-                    if(tempVoterReward != 0) {
-                        getAccountManager().reward{value: tempVoterReward}(tempAddrs2, tempAmounts2);
-                        emit SystemReward(tempAddr, Constant.REWARD_SN, tempAddrs2, tempRewardTypes2, tempAmounts2);
-                    }
-                }
-            } else {
-                // no voters, reward to creator
-                tempAmounts[0] += voterReward;
-                founderReward += voterReward;
-            }
-        }
-        getAccountManager().reward{value: founderReward}(tempAddrs, tempAmounts);
-        emit SystemReward(_addr, Constant.REWARD_SN, tempAddrs, tempRewardTypes, tempAmounts);
+        uint voterReward = msg.value * info.incentivePlan.voter / Constant.MAX_INCENTIVE;
+        rewardCreator(info, creatorReward);
+        rewardFounders(info, partnerReward);
+        rewardVoters(info, voterReward);
         getSuperNodeStorage().updateLastRewardHeight(_addr, block.number);
     }
 
@@ -275,5 +177,103 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         uint oldState = info.state;
         getSuperNodeStorage().updateState(info.addr, _state);
         emit SNStateUpdate(info.addr, _state, oldState);
+    }
+
+    function rewardCreator(ISuperNodeStorage.SuperNodeInfo memory _info, uint _amount) internal {
+        if(_amount == 0) {
+            return;
+        }
+        address[] memory rewardAddrs = new address[](1);
+        uint[] memory rewardAmounts = new uint[](1);
+        uint[] memory rewardTypes = new uint[](1);
+        rewardAddrs[0] = _info.creator;
+        rewardAmounts[0] = _amount;
+        rewardTypes[0] = Constant.REWARD_CREATOR;
+        getAccountManager().reward{value: _amount}(rewardAddrs, rewardAmounts);
+        emit SystemReward(_info.addr, Constant.REWARD_SN, rewardAddrs, rewardTypes, rewardAmounts);
+    }
+
+    function rewardFounders(ISuperNodeStorage.SuperNodeInfo memory _info, uint _amount) internal {
+        if(_amount == 0) {
+            return;
+        }
+
+        uint num;
+        uint totalAmount;
+        uint minAmount = getPropertyValue("supernode_min_amount") * Constant.COIN;
+        for(; num < _info.founders.length; num++) {
+            if(totalAmount >= minAmount) {
+                break;
+            }
+            totalAmount += _info.founders[num].amount;
+        }
+
+        address[] memory rewardAddrs = new address[](num);
+        uint[] memory rewardAmounts = new uint[](num);
+        uint[] memory rewardTypes = new uint[](num);
+
+        totalAmount = 0;
+        for(uint i; i < num; i++) {
+            rewardAddrs[i] = _info.founders[i].addr;
+            if(totalAmount + _info.founders[i].amount <= minAmount) {
+                rewardAmounts[i]= _amount * _info.founders[i].amount / minAmount;
+            } else {
+                rewardAmounts[i]= _amount * (minAmount - totalAmount) / minAmount;
+            }
+            rewardTypes[i] = Constant.REWARD_PARTNER;
+            totalAmount += _info.founders[i].amount;
+        }
+
+        getAccountManager().reward{value: _amount}(rewardAddrs, rewardAmounts);
+        emit SystemReward(_info.addr, Constant.REWARD_SN, rewardAddrs, rewardTypes, rewardAmounts);
+    }
+
+    function rewardVoters(ISuperNodeStorage.SuperNodeInfo memory _info, uint _amount) internal {
+        if(_amount == 0) {
+            return;
+        }
+
+        address[] memory rewardAddrs;
+        uint[] memory rewardAmounts;
+        uint[] memory rewardTypes;
+        uint voterNum = getSNVote().getVoterNum(_info.addr);
+        if(voterNum == 0) { // reward to creator when voterNum = 0
+            rewardAddrs = new address[](1);
+            rewardAmounts = new uint[](1);
+            rewardTypes = new uint[](1);
+            rewardAddrs[0] = _info.creator;
+            rewardAmounts[0] = _amount;
+            rewardTypes[0] = Constant.REWARD_VOTER;
+            getAccountManager().reward{value: _amount}(rewardAddrs, rewardAmounts);
+            emit SystemReward(_info.addr, Constant.REWARD_SN, rewardAddrs, rewardTypes, rewardAmounts);
+            return;
+        }
+
+        uint totalVoteNum = getSNVote().getTotalVoteNum(_info.addr);
+        uint batchNum = voterNum / 100;
+        if(voterNum % 100 != 0) {
+            batchNum++;
+        }
+        for(uint i; i < batchNum; i++) {
+            address[] memory voterAddrs;
+            uint[] memory voteNums;
+            (voterAddrs, voteNums) = getSNVote().getVoters(_info.addr, 100*i, 100);
+
+            rewardAddrs = new address[](voterAddrs.length);
+            rewardAmounts = new uint[](voterAddrs.length);
+            rewardTypes = new uint[](voterAddrs.length);
+
+            uint totalAmount;
+            for(uint k; k < voterAddrs.length; k++) {
+                rewardAddrs[k] = voterAddrs[k];
+                rewardAmounts[k] = _amount * voteNums[k] / totalVoteNum;
+                rewardTypes[k] = Constant.REWARD_VOTER;
+                totalAmount += rewardAmounts[k];
+            }
+            if(totalAmount != 0) {
+                getAccountManager().reward{value: totalAmount}(rewardAddrs, rewardAmounts);
+                emit SystemReward(_info.addr, Constant.REWARD_SN, rewardAddrs, rewardTypes, rewardAmounts);
+            }
+        }
     }
 }

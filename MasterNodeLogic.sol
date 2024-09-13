@@ -73,62 +73,8 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfo(_addr);
         uint creatorReward = msg.value * info.incentivePlan.creator / Constant.MAX_INCENTIVE;
         uint partnerReward = msg.value* info.incentivePlan.partner / Constant.MAX_INCENTIVE;
-
-        address[] memory tempAddrs = new address[](info.founders.length);
-        uint[] memory tempAmounts = new uint[](info.founders.length);
-        uint[] memory tempRewardTypes = new uint[](info.founders.length);
-        uint count;
-        // reward to creator
-        if(creatorReward != 0) {
-            tempAddrs[count] = info.creator;
-            tempAmounts[count] = creatorReward;
-            tempRewardTypes[count] = Constant.REWARD_CREATOR;
-            count++;
-        }
-
-        uint minAmount = getPropertyValue("masternode_min_amount") * Constant.COIN;
-        // reward to partner
-        if(partnerReward != 0) {
-            uint total;
-            for(uint i; i < info.founders.length; i++) {
-                IMasterNodeStorage.MemberInfo memory partner = info.founders[i];
-                if(total + partner.amount <= minAmount) {
-                    uint tempAmount = partnerReward * partner.amount / minAmount;
-                    if(tempAmount != 0) {
-                        int pos = ArrayUtil.find(tempAddrs, partner.addr);
-                        if(pos == -1) {
-                            tempAddrs[count] = partner.addr;
-                            tempAmounts[count] = tempAmount;
-                            tempRewardTypes[count] = Constant.REWARD_PARTNER;
-                            count++;
-                        } else {
-                            tempAmounts[uint(pos)] += tempAmount;
-                        }
-                    }
-                    total += partner.amount;
-                    if(total == minAmount) {
-                        break;
-                    }
-                } else {
-                    uint tempAmount = partnerReward * (minAmount - total) / minAmount;
-                    if(tempAmount != 0) {
-                        int pos = ArrayUtil.find(tempAddrs, partner.addr);
-                        if(pos == -1) {
-                            tempAddrs[count] = partner.addr;
-                            tempAmounts[count] = tempAmount;
-                            tempRewardTypes[count] = Constant.REWARD_PARTNER;
-                            count++;
-                        } else {
-                            tempAmounts[uint(pos)] += tempAmount;
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-        // reward to address
-        getAccountManager().reward{value: msg.value}(tempAddrs, tempAmounts);
-        emit SystemReward(_addr, Constant.REWARD_MN, tempAddrs, tempRewardTypes, tempAmounts);
+        rewardCreator(info, creatorReward);
+        rewardFounders(info, partnerReward);
         getMasterNodeStorage().updateLastRewardHeight(_addr, block.number);
     }
 
@@ -199,5 +145,54 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         uint oldState = info.state;
         getMasterNodeStorage().updateState(info.addr, _state);
         emit MNStateUpdate(info.addr, _state, oldState);
+    }
+
+    function rewardCreator(IMasterNodeStorage.MasterNodeInfo memory _info, uint _amount) internal {
+        if(_amount == 0) {
+            return;
+        }
+        address[] memory rewardAddrs = new address[](1);
+        uint[] memory rewardAmounts = new uint[](1);
+        uint[] memory rewardTypes = new uint[](1);
+        rewardAddrs[0] = _info.creator;
+        rewardAmounts[0] = _amount;
+        rewardTypes[0] = Constant.REWARD_CREATOR;
+        getAccountManager().reward{value: _amount}(rewardAddrs, rewardAmounts);
+        emit SystemReward(_info.addr, Constant.REWARD_MN, rewardAddrs, rewardTypes, rewardAmounts);
+    }
+
+    function rewardFounders(IMasterNodeStorage.MasterNodeInfo memory _info, uint _amount) internal {
+        if(_amount == 0) {
+            return;
+        }
+
+        uint num;
+        uint totalAmount;
+        uint minAmount = getPropertyValue("masternode_min_amount") * Constant.COIN;
+        for(; num < _info.founders.length; num++) {
+            if(totalAmount >= minAmount) {
+                break;
+            }
+            totalAmount += _info.founders[num].amount;
+        }
+
+        address[] memory rewardAddrs = new address[](num);
+        uint[] memory rewardAmounts = new uint[](num);
+        uint[] memory rewardTypes = new uint[](num);
+
+        totalAmount = 0;
+        for(uint i; i < num; i++) {
+            rewardAddrs[i] = _info.founders[i].addr;
+            if(totalAmount + _info.founders[i].amount <= minAmount) {
+                rewardAmounts[i]= _amount * _info.founders[i].amount / minAmount;
+            } else {
+                rewardAmounts[i]= _amount * (minAmount - totalAmount) / minAmount;
+            }
+            rewardTypes[i] = Constant.REWARD_PARTNER;
+            totalAmount += _info.founders[i].amount;
+        }
+
+        getAccountManager().reward{value: _amount}(rewardAddrs, rewardAmounts);
+        emit SystemReward(_info.addr, Constant.REWARD_MN, rewardAddrs, rewardTypes, rewardAmounts);
     }
 }
