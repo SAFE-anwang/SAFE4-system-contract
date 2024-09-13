@@ -7,7 +7,7 @@ contract AccountManager is IAccountManager, System {
     mapping(address => uint) balances; // for available, id = 0
     uint record_no; // record no.
     mapping(address => AccountRecord[]) addr2records; // for locked or available(unlocked)
-    mapping(uint => uint) id2index; 
+    mapping(uint => uint) id2index;
     mapping(uint => address) id2addr;
     mapping(uint => RecordUseInfo) id2useinfo;
 
@@ -237,6 +237,9 @@ contract AccountManager is IAccountManager, System {
         require(msg.value > 0, "invalid amount");
         require(_addrs.length == _amounts.length, "invalid addrs and amounts");
         for(uint i; i < _addrs.length; i++) {
+            if(_addrs[i] == address(0) || _amounts[i] == 0) {
+                continue;
+            }
             addRecord(_addrs[i], _amounts[i], 0);
         }
     }
