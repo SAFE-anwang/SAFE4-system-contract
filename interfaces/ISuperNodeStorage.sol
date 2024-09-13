@@ -51,6 +51,8 @@ interface ISuperNodeStorage {
 
     function getAddrNum4Creator(address _creator) external view returns (uint);
     function getAddrs4Creator(address _creator, uint _start, uint _count) external view returns (address[] memory);
+    function getAddrNum4Partner(address _partner) external view returns (uint);
+    function getAddrs4Partner(address _partner, uint _start, uint _count) external view returns (address[] memory);
 
     function getTops() external view returns (address[] memory);
     function getTops4Creator(address _creator) external view returns (address[] memory);

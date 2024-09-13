@@ -214,6 +214,55 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         return ret;
     }
 
+    function getAddrNum4Partner(address _partner) public view override returns (uint) {
+        uint num;
+        for(uint i; i < ids.length; i++) {
+            MasterNodeInfo memory info = addr2info[id2addr[ids[i]]];
+            if(info.creator == _partner) {
+                continue;
+            }
+            for(uint k; k < info.founders.length; k++) {
+                if(info.founders[k].addr == _partner) {
+                    num++;
+                    break;
+                }
+            }
+        }
+        return num;
+    }
+
+    function getAddrs4Partner(address _partner, uint _start, uint _count) public view override returns (address[] memory) {
+        uint addrNum = getAddrNum4Partner(_partner);
+        require(_start < addrNum, "invalid _start, must be in [0, getAddrNum4Partner())");
+        require(_count > 0 && _count <= 100, "max return 100 supernodes");
+
+        address[] memory temp = new address[](addrNum);
+        uint index;
+        for(uint i; i < ids.length; i++) {
+            MasterNodeInfo memory info = addr2info[id2addr[ids[i]]];
+            if(info.creator == _partner) {
+                continue;
+            }
+            for(uint k; k < info.founders.length; k++) {
+                if(info.founders[k].addr == _partner) {
+                    temp[index++] = info.addr;
+                    break;
+                }
+            }
+        }
+
+        uint num = _count;
+        if(_start + _count >= addrNum) {
+            num = addrNum - _start;
+        }
+        index = 0;
+        address[] memory ret = new address[](num);
+        for(uint i; i < num; i++) {
+            ret[index++] = temp[_start + i];
+        }
+        return ret;
+    }
+
     function getOfficials() public view override returns (address[] memory) {
         uint num;
         for(uint i; i < ids.length; i++) {
