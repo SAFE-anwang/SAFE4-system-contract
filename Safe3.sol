@@ -10,28 +10,24 @@ contract Safe3 is ISafe3, System {
     using StringUtil for string;
 
     struct AvailableData {
-        uint96 amount;
-        uint24 redeemHeight;
+        uint64 amount;
+        uint32 redeemHeight;
         address safe4Addr;
     }
 
     struct LockedData {
-        bytes32 txid;
-        uint16 n; // txout-pos
-        uint96 amount;
-        uint24 lockHeight;
-        uint24 unlockHeight;
-        uint24 remainLockHeight;
+        uint64 amount;
+        uint32 remainLockHeight;
         uint16 lockDay;
         bool isMN;
-        uint24 redeemHeight;
+        uint32 redeemHeight;
         address safe4Addr;
     }
 
     struct SpecialData {
-        uint96 amount;
-        uint24 applyHeight;
-        uint24 redeemHeight;
+        uint64 amount;
+        uint32 applyHeight;
+        uint32 redeemHeight;
         address safe4Addr;
         address[] voters;
         uint[] voteResults;
@@ -79,7 +75,7 @@ contract Safe3 is ISafe3, System {
             string memory safe3Addr = getSafe3Addr(_pubkeys[k]);
             payable(_targetAddr).transfer(availables[keyID].amount);
             availables[keyID].safe4Addr = _targetAddr;
-            availables[keyID].redeemHeight = uint24(block.number);
+            availables[keyID].redeemHeight = uint32(block.number);
             emit RedeemAvailable(safe3Addr, availables[keyID].amount, _targetAddr);
         }
     }
@@ -92,12 +88,12 @@ contract Safe3 is ISafe3, System {
             require(checkSig(_pubkeys[k], _sigs[k], _targetAddr), "invalid signautre");
             bytes memory keyID = getKeyIDFromPubkey(_pubkeys[k]);
             string memory safe3Addr = getSafe3Addr(_pubkeys[k]);
-            for(uint16 i; i < locks[keyID].length; i++) {
+            for(uint i; i < locks[keyID].length; i++) {
                 LockedData storage data = locks[keyID][i];
                 if(data.amount > 0 && data.redeemHeight == 0 && !data.isMN) {
                     uint lockID = getAccountManager().fromSafe3{value: data.amount}(_targetAddr, data.lockDay, data.remainLockHeight);
                     data.safe4Addr = _targetAddr;
-                    data.redeemHeight = uint24(block.number);
+                    data.redeemHeight = uint32(block.number);
                     emit RedeemLocked(safe3Addr, data.amount, _targetAddr, lockID);
                 }
             }
@@ -113,13 +109,13 @@ contract Safe3 is ISafe3, System {
             bytes memory keyID = getKeyIDFromPubkey(_pubkeys[k]);
             string memory safe3Addr = getSafe3Addr(_pubkeys[k]);
             address mnAddr = getSafe4Addr(_pubkeys[k]);
-            for(uint16 i; i < locks[keyID].length; i++) {
+            for(uint i; i < locks[keyID].length; i++) {
                 LockedData storage data = locks[keyID][i];
                 if(data.amount > 0 && data.redeemHeight == 0 && data.isMN) {
                     uint lockID = getAccountManager().fromSafe3{value: data.amount}(_targetAddr, data.lockDay, data.remainLockHeight);
                     getMasterNodeLogic().fromSafe3(mnAddr, _targetAddr, data.amount, data.lockDay, lockID, _enodes[k]);
                     data.safe4Addr = _targetAddr;
-                    data.redeemHeight = uint24(block.number);
+                    data.redeemHeight = uint32(block.number);
                     emit RedeemMasterNode(safe3Addr, _targetAddr, lockID, mnAddr);
                     break;
                 }
@@ -138,7 +134,7 @@ contract Safe3 is ISafe3, System {
 
         string memory safe3Addr = getSafe3Addr(_pubkey);
         specials[keyID].safe4Addr = getSafe4Addr(_pubkey);
-        specials[keyID].applyHeight = uint24(block.number);
+        specials[keyID].applyHeight = uint32(block.number);
         emit ApplyRedeemSpecial(safe3Addr, specials[keyID].amount, specials[keyID].safe4Addr);
     }
 
@@ -177,7 +173,7 @@ contract Safe3 is ISafe3, System {
             }
             if(agreeCount > snCount * 2 / 3) {
                 payable(data.safe4Addr).transfer(data.amount);
-                data.redeemHeight = uint24(block.number);
+                data.redeemHeight = uint32(block.number);
                 emit RedeemSpecialAgree(_safe3Addr);
                 return;
             }
@@ -205,14 +201,14 @@ contract Safe3 is ISafe3, System {
         bytes memory keyID;
         for(uint i; i < num; i++) {
             keyID = keyIDs[i + _start];
-            ret[i] = AvailableSafe3Info(string(Base58.encode(keyID)), availables[keyID].amount, availables[keyID].safe4Addr, availables[keyID].redeemHeight);
+            ret[i] = AvailableSafe3Info(string(Base58.encode(keyID)), uint(availables[keyID].amount) * 10000000000, availables[keyID].safe4Addr, availables[keyID].redeemHeight);
         }
         return ret;
     }
 
     function getAvailableInfo(string memory _safe3Addr) public view override returns (AvailableSafe3Info memory) {
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
-        return AvailableSafe3Info(_safe3Addr, availables[keyID].amount, availables[keyID].safe4Addr, availables[keyID].redeemHeight);
+        return AvailableSafe3Info(_safe3Addr, uint(availables[keyID].amount) * 10000000000, availables[keyID].safe4Addr, availables[keyID].redeemHeight);
     }
 
     function getAllLockedNum() public view override returns (uint) {
@@ -258,7 +254,7 @@ contract Safe3 is ISafe3, System {
         LockedData memory data;
         for(uint i; i < num; i++) {
             data = locks[keyID][i + _start];
-            ret[i] = LockedSafe3Info(_safe3Addr, data.amount, string(abi.encodePacked(StringUtil.toHex(data.txid), "-", StringUtil.toString(data.n))), data.lockHeight, data.unlockHeight, data.remainLockHeight, data.lockDay, data.isMN, data.safe4Addr, data.redeemHeight);
+            ret[i] = LockedSafe3Info(_safe3Addr, uint(data.amount) * 10000000000, data.remainLockHeight, data.lockDay, data.isMN, data.safe4Addr, data.redeemHeight);
         }
         return ret;
     }
@@ -282,7 +278,7 @@ contract Safe3 is ISafe3, System {
             keyID = specialKeyIDs[i + _start];
             SpecialData memory data = specials[keyID];
             ret[i].safe3Addr = string(Base58.encode(keyID));
-            ret[i].amount = data.amount;
+            ret[i].amount = uint(data.amount) * 10000000000;
             ret[i].applyHeight = data.applyHeight;
             ret[i].voters = new address[](data.voters.length);
             for(uint k; k < data.voters.length; k++) {
@@ -303,7 +299,7 @@ contract Safe3 is ISafe3, System {
         SpecialData memory data = specials[keyID];
         SpecialSafe3Info memory ret;
         ret.safe3Addr = _safe3Addr;
-        ret.amount = data.amount;
+        ret.amount = uint(data.amount) * 10000000000;
         ret.applyHeight = data.applyHeight;
         ret.voters = new address[](data.voters.length);
         for(uint i; i < data.voters.length; i++) {
@@ -328,7 +324,7 @@ contract Safe3 is ISafe3, System {
         if(locks[keyID].length == 0) {
             return false;
         }
-        for(uint16 i; i < locks[keyID].length; i++) {
+        for(uint i; i < locks[keyID].length; i++) {
             LockedData memory data = locks[keyID][i];
             if(data.amount > 0 && data.redeemHeight == 0 && !data.isMN) {
                 return true;
@@ -342,7 +338,7 @@ contract Safe3 is ISafe3, System {
         if(locks[keyID].length == 0) {
             return false;
         }
-        for(uint16 i; i < locks[keyID].length; i++) {
+        for(uint i; i < locks[keyID].length; i++) {
             LockedData memory data = locks[keyID][i];
             if(data.amount > 0 && data.redeemHeight == 0 && data.isMN) {
                 return true;
