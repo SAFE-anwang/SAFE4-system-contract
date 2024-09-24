@@ -186,12 +186,12 @@ contract Proposal is IProposal, System {
         return ret;
     }
 
-    function getMineNum() public view override returns (uint) {
-        return addr2ids[msg.sender].length;
+    function getMineNum(address _creator) public view override returns (uint) {
+        return addr2ids[_creator].length;
     }
 
-    function getMines(uint _start, uint _count) public view override returns (uint[] memory) {
-        uint[] memory mineIDs = addr2ids[msg.sender];
+    function getMines(address _creator, uint _start, uint _count) public view override returns (uint[] memory) {
+        uint[] memory mineIDs = addr2ids[_creator];
         require(_start < mineIDs.length, "invalid _start, must be in [0, getMineNum())");
         require(_count > 0 && _count <= 100, "max return 100 proposals");
 
