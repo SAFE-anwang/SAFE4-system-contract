@@ -40,8 +40,8 @@ interface IProposal {
     function getNum() external view returns (uint);
     function getAll(uint _start, uint _count) external view returns (uint[] memory);
 
-    function getMineNum() external view returns (uint);
-    function getMines(uint _start, uint _count) external view returns (uint[] memory);
+    function getMineNum(address _creator) external view returns (uint);
+    function getMines(address _creator, uint _start, uint _count) external view returns (uint[] memory);
 
     function exist(uint _id) external view returns (bool);
 }
