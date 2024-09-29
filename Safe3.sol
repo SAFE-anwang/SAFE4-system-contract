@@ -126,10 +126,10 @@ contract Safe3 is ISafe3, System {
                 continue;
             }
             string memory safe3Addr = getSafe3Addr(_pubkeys[k]);
-            payable(_targetAddr).transfer(availables[keyID].amount);
+            payable(_targetAddr).transfer(availables[keyID].amount * 10000000000);
             availables[keyID].safe4Addr = _targetAddr;
             availables[keyID].redeemHeight = uint32(block.number);
-            emit RedeemAvailable(safe3Addr, availables[keyID].amount, _targetAddr);
+            emit RedeemAvailable(safe3Addr, availables[keyID].amount * 10000000000, _targetAddr);
         }
     }
 
@@ -144,10 +144,10 @@ contract Safe3 is ISafe3, System {
             for(uint i; i < locks[keyID].length; i++) {
                 LockedData storage data = locks[keyID][i];
                 if(data.amount > 0 && data.redeemHeight == 0 && !data.isMN) {
-                    uint lockID = getAccountManager().fromSafe3{value: data.amount}(_targetAddr, data.lockDay, data.remainLockHeight);
+                    uint lockID = getAccountManager().fromSafe3{value: data.amount * 10000000000}(_targetAddr, data.lockDay, data.remainLockHeight);
                     data.safe4Addr = _targetAddr;
                     data.redeemHeight = uint32(block.number);
-                    emit RedeemLocked(safe3Addr, data.amount, _targetAddr, lockID);
+                    emit RedeemLocked(safe3Addr, data.amount * 10000000000, _targetAddr, lockID);
                 }
             }
         }
@@ -165,8 +165,8 @@ contract Safe3 is ISafe3, System {
             for(uint i; i < locks[keyID].length; i++) {
                 LockedData storage data = locks[keyID][i];
                 if(data.amount > 0 && data.redeemHeight == 0 && data.isMN) {
-                    uint lockID = getAccountManager().fromSafe3{value: data.amount}(_targetAddr, data.lockDay, data.remainLockHeight);
-                    getMasterNodeLogic().fromSafe3(mnAddr, _targetAddr, data.amount, data.lockDay, lockID, _enodes[k]);
+                    uint lockID = getAccountManager().fromSafe3{value: data.amount * 10000000000}(_targetAddr, data.lockDay, data.remainLockHeight);
+                    getMasterNodeLogic().fromSafe3(mnAddr, _targetAddr, data.amount * 10000000000, data.lockDay, lockID, _enodes[k]);
                     data.safe4Addr = _targetAddr;
                     data.redeemHeight = uint32(block.number);
                     emit RedeemMasterNode(safe3Addr, _targetAddr, lockID, mnAddr);
@@ -188,7 +188,7 @@ contract Safe3 is ISafe3, System {
         string memory safe3Addr = getSafe3Addr(_pubkey);
         specials[keyID].safe4Addr = getSafe4Addr(_pubkey);
         specials[keyID].applyHeight = uint32(block.number);
-        emit ApplyRedeemSpecial(safe3Addr, specials[keyID].amount, specials[keyID].safe4Addr);
+        emit ApplyRedeemSpecial(safe3Addr, specials[keyID].amount * 10000000000, specials[keyID].safe4Addr);
     }
 
     function vote4Special(string memory _safe3Addr, uint _voteResult) public override noReentrant { // only for creator of formal supernodes
@@ -225,7 +225,7 @@ contract Safe3 is ISafe3, System {
                 rejectCount++;
             }
             if(agreeCount > snCount * 2 / 3) {
-                payable(data.safe4Addr).transfer(data.amount);
+                payable(data.safe4Addr).transfer(data.amount * 10000000000);
                 data.redeemHeight = uint32(block.number);
                 emit RedeemSpecialAgree(_safe3Addr);
                 return;
