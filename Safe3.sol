@@ -67,7 +67,7 @@ contract Safe3 is ISafe3, System {
         if(availables[keyID].amount == 0) {
             keyIDs.push(keyID);
         }
-        availables[keyID] = AvailableData(uint64(_amount), 0, address(0));
+        availables[keyID] = AvailableData(uint64(_amount / 10000000000), 0, address(0));
     }
 
     function addLocked(string memory _safe3Addr, uint _amount) public {
@@ -77,7 +77,7 @@ contract Safe3 is ISafe3, System {
         if(datas.length == 0) {
             lockedKeyIDs.push(keyID);
         }
-        datas.push(LockedData(uint64(_amount), 551200, 180, false, 0, address(0)));
+        datas.push(LockedData(uint64(_amount / 10000000000), 551200, 180, false, 0, address(0)));
     }
 
     function addMasterNode(string memory _safe3Addr) public {
