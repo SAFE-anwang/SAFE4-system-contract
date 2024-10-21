@@ -344,10 +344,11 @@ contract AccountManager is IAccountManager, System {
         if(block.number >= record.unlockHeight) {
             record.lockDay = _day;
             record.startHeight = block.number;
+            record.unlockHeight = block.number + _day * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
         } else {
             record.lockDay += _day;
+            record.unlockHeight += _day * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
         }
-        record.unlockHeight = record.startHeight + record.lockDay * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
         emit SafeAddLockDay(_id, oldLockDay, record.lockDay);
     }
 
