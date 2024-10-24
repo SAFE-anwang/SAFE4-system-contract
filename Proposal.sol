@@ -67,21 +67,23 @@ contract Proposal is IProposal, System {
 
         uint agreeCount;
         uint rejectCount;
-        uint snCount = getSNNum();
+        //uint snCount = getSNNum();
         for(uint i = 0; i < voteInfos[_id].length; i++) {
              if(voteInfos[_id][i].voteResult == Constant.VOTE_AGREE) {
                 agreeCount++;
             } else { // reject or abstain
                 rejectCount++;
             }
-            if(agreeCount > snCount * 2 / 3) {
+            //if(agreeCount > snCount * 1 / 2) {
+            if(agreeCount > 24) {
                 handle(_id);
                 proposals[_id].state = Constant.VOTE_AGREE;
                 proposals[_id].updateHeight = block.number;
                 emit ProposalState(_id, Constant.VOTE_AGREE);
                 return;
             }
-            if(rejectCount >= snCount * 1 / 3) {
+            //if(rejectCount > snCount * 1 / 2) {
+            if(rejectCount > 24) {
                 proposals[_id].state = Constant.VOTE_REJECT;
                 proposals[_id].updateHeight = block.number;
                 emit ProposalState(_id, Constant.VOTE_REJECT);
