@@ -58,6 +58,7 @@ contract Proposal is IProposal, System {
         require(proposals[_id].state == 0, "proposal has been confirmed");
         require(_voteResult == Constant.VOTE_AGREE || _voteResult == Constant.VOTE_REJECT || _voteResult == Constant.VOTE_ABSTAIN, "invalue vote result, must be agree(1), reject(2), abstain(3)");
         require(block.timestamp < proposals[_id].startPayTime, "proposal is out of day");
+        require(proposals[_id].payAmount <= getBalance(), "insufficient balance, wait sufficient balance");
         address[] memory sns = getSuperNodeStorage().getTops4Creator(msg.sender);
         require(sns.length > 0, "caller isn't creator of formal supernodes");
         for(uint i; i < sns.length; i++) {
