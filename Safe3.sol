@@ -217,20 +217,22 @@ contract Safe3 is ISafe3, System {
         }
         uint agreeCount;
         uint rejectCount;
-        uint snCount = getSNNum();
+        //uint snCount = getSNNum();
         for(uint i = 0; i < data.voters.length; i++) {
             if(data.voteResults[i] == Constant.VOTE_AGREE) {
                 agreeCount++;
             } else { // reject or abstain
                 rejectCount++;
             }
-            if(agreeCount > snCount * 2 / 3) {
+            //if(agreeCount > snCount * 2 / 3) {
+            if(agreeCount > 32) {
                 payable(data.safe4Addr).transfer(uint(data.amount) * 10000000000);
                 data.redeemHeight = uint32(block.number);
                 emit RedeemSpecialAgree(_safe3Addr);
                 return;
             }
-            if(rejectCount >= snCount / 3) {
+            //if(rejectCount > snCount / 3) {
+            if(rejectCount > 16) {
                 emit RedeemSpecialReject(_safe3Addr);
                 return;
             }

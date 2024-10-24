@@ -22,6 +22,7 @@ contract Proposal is IProposal, System {
     }
 
     function create(string memory _title, uint _payAmount, uint _payTimes, uint _startPayTime, uint _endPayTime, string memory _description) public payable override returns (uint) {
+        require(block.number > 86400, "proposal is unopened");
         require(bytes(_title).length >= Constant.MIN_PP_TITLE_LEN && bytes(_title).length <= Constant.MAX_PP_TITLE_LEN, "invalid title");
         require(_payAmount > 0 && _payAmount <= getBalance(), "invalid pay amount");
         require(_payTimes > 0 && _payTimes <= Constant.MAX_PP_PAY_TIMES, "invalid pay times");
@@ -57,6 +58,7 @@ contract Proposal is IProposal, System {
         require(proposals[_id].state == 0, "proposal has been confirmed");
         require(_voteResult == Constant.VOTE_AGREE || _voteResult == Constant.VOTE_REJECT || _voteResult == Constant.VOTE_ABSTAIN, "invalue vote result, must be agree(1), reject(2), abstain(3)");
         require(block.timestamp < proposals[_id].startPayTime, "proposal is out of day");
+        require(proposals[_id].payAmount <= getBalance(), "insufficient balance, wait sufficient balance");
         address[] memory sns = getSuperNodeStorage().getTops4Creator(msg.sender);
         require(sns.length > 0, "caller isn't creator of formal supernodes");
         for(uint i; i < sns.length; i++) {
@@ -65,21 +67,23 @@ contract Proposal is IProposal, System {
 
         uint agreeCount;
         uint rejectCount;
-        uint snCount = getSNNum();
+        //uint snCount = getSNNum();
         for(uint i = 0; i < voteInfos[_id].length; i++) {
              if(voteInfos[_id][i].voteResult == Constant.VOTE_AGREE) {
                 agreeCount++;
             } else { // reject or abstain
                 rejectCount++;
             }
-            if(agreeCount > snCount * 2 / 3) {
+            //if(agreeCount > snCount * 1 / 2) {
+            if(agreeCount > 24) {
                 handle(_id);
                 proposals[_id].state = Constant.VOTE_AGREE;
                 proposals[_id].updateHeight = block.number;
                 emit ProposalState(_id, Constant.VOTE_AGREE);
                 return;
             }
-            if(rejectCount >= snCount * 1 / 3) {
+            //if(rejectCount > snCount * 1 / 2) {
+            if(rejectCount > 24) {
                 proposals[_id].state = Constant.VOTE_REJECT;
                 proposals[_id].updateHeight = block.number;
                 emit ProposalState(_id, Constant.VOTE_REJECT);

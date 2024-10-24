@@ -54,21 +54,23 @@ contract Property is IProperty, System {
         UnconfirmedPropertyInfo memory info = unconfirmedProperties[_name];
         uint agreeCount;
         uint rejectCount;
-        uint snCount = getSNNum();
+        //uint snCount = getSNNum();
         for(uint i = 0; i < info.voters.length; i++) {
             if(info.voteResults[i] == Constant.VOTE_AGREE) {
                 agreeCount++;
             } else { // reject or abstain
                 rejectCount++;
             }
-            if(agreeCount > snCount * 2 / 3) {
+            //if(agreeCount > snCount * 2 / 3) {
+            if(agreeCount > 32) {
                 properties[_name].value = info.value;
                 properties[_name].updateHeight = block.number;
                 removeUnconfirmedName(_name);
                 emit PropertyUpdateAgree(_name, info.value);
                 return;
             }
-            if(rejectCount >= snCount / 3) {
+            //if(rejectCount > snCount / 3) {
+            if(rejectCount > 16) {
                 removeUnconfirmedName(_name);
                 emit PropertyUpdateReject(_name, info.value);
                 return;
