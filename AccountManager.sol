@@ -335,10 +335,17 @@ contract AccountManager is IAccountManager, System {
     }
 
     function addLockDay(uint _id, uint _day) public override {
-        if(_id == 0 || _day == 0) {
+        if(_id == 0) {
             return;
         }
-        require(id2addr[_id] == msg.sender, "invalid record id");
+        require(id2addr[_id] == msg.sender, "record isn't your");
+        if(id2useinfo[_id].frozenAddr != address(0)) { // used for mn/sn
+            require(_day >= 360, "invalid day, must be 360 at least");
+        } else {
+            if(_day == 0) {
+                return;
+            }
+        }
         AccountRecord storage record = addr2records[id2addr[_id]][id2index[_id]];
         uint oldLockDay = record.lockDay;
         if(block.number >= record.unlockHeight) {
