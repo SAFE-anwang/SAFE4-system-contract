@@ -29,6 +29,7 @@ contract Property is IProperty, System {
     }
 
     function applyUpdate(string memory _name, uint _value, string memory _reason) public override { // only for creator of formal supernodes
+        require(block.number > 86400, "property-update is unopened");
         require(exist(_name), "non-existent property");
         require(!existUnconfirmed(_name), "existent unconfirmed property");
         require(bytes(_reason).length >= Constant.MIN_PROPERTY_REASON_LEN && bytes(_reason).length <= Constant.MAX_PROPERTY_REASON_LEN, "invalid reason");
