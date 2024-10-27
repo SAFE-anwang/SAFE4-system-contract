@@ -177,6 +177,7 @@ contract Safe3 is ISafe3, System {
     }
 
     function applyRedeemSpecial(bytes memory _pubkey, bytes memory _sig) public override {
+        require(block.number > 86400, "redeem-special is unopened");
         require(checkPubkey(_pubkey), "invalid pubkey");
         require(checkSig(_pubkey, _sig), "invalid signautre");
 

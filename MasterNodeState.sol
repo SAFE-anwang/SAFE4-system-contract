@@ -38,7 +38,11 @@ contract MasterNodeState is INodeState, System {
             }
         }
         if(exist) {
-            id2states[_id][i] = _state;
+            if(getMasterNodeStorage().getInfoByID(_id).state == _state) {
+                remove(_id);
+            } else {
+                id2states[_id][i] = _state;
+            }
         } else {
             id2addrs[_id].push(msg.sender);
             id2states[_id].push(_state);
@@ -56,6 +60,20 @@ contract MasterNodeState is INodeState, System {
                     delete id2states[_id];
                     return;
                 }
+            }
+        }
+    }
+
+    function remove(uint _id) internal {
+        address[] storage addrs = id2addrs[_id];
+        uint[] storage states = id2states[_id];
+        for(uint i; i < addrs.length; i++) {
+            if(addrs[i] == msg.sender) {
+                addrs[i] = addrs[addrs.length - 1];
+                addrs.pop();
+                states[i] = states[states.length - 1];
+                states.pop();
+                break;
             }
         }
     }
