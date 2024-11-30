@@ -72,7 +72,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(msg.value > 0, "invalid reward");
         IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfo(_addr);
         uint creatorReward = msg.value * info.incentivePlan.creator / Constant.MAX_INCENTIVE;
-        uint partnerReward = msg.value* info.incentivePlan.partner / Constant.MAX_INCENTIVE;
+        uint partnerReward = msg.value - creatorReward;
         rewardCreator(info, creatorReward);
         rewardFounders(info, partnerReward);
         getMasterNodeStorage().updateLastRewardHeight(_addr, block.number);
