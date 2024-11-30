@@ -122,39 +122,35 @@ contract AccountManager is IAccountManager, System {
     }
 
     // withdraw by specify amount
-    function withdrawByID(uint[] memory _ids) public override returns (uint) {
+    function withdrawByID(uint[] memory _ids) public override noReentrant returns (uint) {
         require(_ids.length > 0, "invalid record ids");
         uint amount;
-        uint temp = balances[msg.sender];
         for(uint i; i < _ids.length; i++) {
             if(_ids[i] == 0) {
-                amount += temp;
+                if(balances[msg.sender] == 0) {
+                    continue;
+                }
+                payable(msg.sender).transfer(balances[msg.sender]);
+                amount += balances[msg.sender];
+                balances[msg.sender] = 0;
             } else {
                 AccountRecord memory record = getRecordByID(_ids[i]);
+                if(record.amount == 0) {
+                    continue;
+                }
                 RecordUseInfo memory useinfo = id2useinfo[_ids[i]];
-                if(record.addr == msg.sender && block.number >= record.unlockHeight && block.number >= useinfo.unfreezeHeight && block.number >= useinfo.releaseHeight) {
-                    amount += record.amount;
+                if(record.addr != msg.sender || block.number < record.unlockHeight || block.number < useinfo.unfreezeHeight || block.number < useinfo.releaseHeight) {
+                    continue;
                 }
-            }
-        }
-        if(amount != 0) {
-            payable(msg.sender).transfer(amount);
-            for(uint i; i < _ids.length; i++) {
-                if(_ids[i] != 0) {
-                    AccountRecord memory record = getRecordByID(_ids[i]);
-                    RecordUseInfo memory useinfo = id2useinfo[_ids[i]];
-                    if(record.addr == msg.sender && block.number >= record.unlockHeight && block.number >= useinfo.unfreezeHeight && block.number >= useinfo.releaseHeight) {
-                        getSNVote().removeVoteOrApproval2(msg.sender, _ids[i]);
-                        if(getMasterNodeStorage().exist(useinfo.frozenAddr)) {
-                            getMasterNodeLogic().removeMember(useinfo.frozenAddr, _ids[i]);
-                        } else if(getSuperNodeStorage().exist(useinfo.frozenAddr)) {
-                            getSuperNodeLogic().removeMember(useinfo.frozenAddr, _ids[i]);
-                        }
-                        delRecord(_ids[i]);
-                    }
-                } else {
-                    balances[msg.sender] -= temp;
+                payable(msg.sender).transfer(record.amount);
+                amount += record.amount;
+                getSNVote().removeVoteOrApproval2(msg.sender, _ids[i]);
+                if(getMasterNodeStorage().exist(useinfo.frozenAddr)) {
+                    getMasterNodeLogic().removeMember(useinfo.frozenAddr, _ids[i]);
+                } else if(getSuperNodeStorage().exist(useinfo.frozenAddr)) {
+                    getSuperNodeLogic().removeMember(useinfo.frozenAddr, _ids[i]);
                 }
+                delRecord(_ids[i]);
             }
         }
         emit SafeWithdraw(msg.sender, amount, _ids);
