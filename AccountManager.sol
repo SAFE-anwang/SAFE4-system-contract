@@ -232,6 +232,11 @@ contract AccountManager is IAccountManager, System {
     function reward(address[] memory _addrs, uint[] memory _amounts) public payable override onlyMnOrSnContract {
         require(msg.value > 0, "invalid amount");
         require(_addrs.length == _amounts.length, "invalid addrs and amounts");
+        uint totalAmount;
+        for(uint i; i < _amounts.length; i++) {
+            totalAmount += _amounts[i];
+        }
+        require(msg.value >= totalAmount, "msg.value is less than amounts");
         for(uint i; i < _addrs.length; i++) {
             if(_addrs[i] == address(0) || _amounts[i] == 0) {
                 continue;
