@@ -97,6 +97,10 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
     function fromSafe3(address _addr, address _creator, uint _amount, uint _lockDay, uint _lockID, string memory _enode) public override onlySafe3Contract {
         require(!getMasterNodeStorage().existNodeAddress(_addr), "existent address");
         require(_amount >= getPropertyValue("masternode_min_amount") * Constant.COIN, "less than min lock amount");
+        IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_lockID);
+        require(record.addr == _creator, "lockID is conflicted with creator");
+        require(record.amount == _amount, "lockID is conflicted with amount");
+        require(record.lockDay == _lockDay, "lockID is conflicted with lockDay");
         getMasterNodeStorage().create(_addr, _creator, _lockID, _amount, _enode, "MasterNode from Safe3", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0));
         getMasterNodeStorage().updateState(_addr, Constant.NODE_STATE_START);
         getAccountManager().setRecordFreezeInfo(_lockID, _addr, _lockDay);
