@@ -75,7 +75,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_addr);
         uint creatorReward = msg.value * info.incentivePlan.creator / Constant.MAX_INCENTIVE;
         uint partnerReward = msg.value * info.incentivePlan.partner / Constant.MAX_INCENTIVE;
-        uint voterReward = msg.value * info.incentivePlan.voter / Constant.MAX_INCENTIVE;
+        uint voterReward = msg.value - creatorReward - partnerReward;
         rewardCreator(info, creatorReward);
         rewardFounders(info, partnerReward);
         rewardVoters(info, voterReward);

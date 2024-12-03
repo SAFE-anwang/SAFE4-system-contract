@@ -323,7 +323,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
             return false;
         }
         uint lockAmount = info.founders[0].amount;
-        for(uint i; i < info.founders.length; i++) {
+        for(uint i = 1; i < info.founders.length; i++) {
             if(block.number < getAccountManager().getRecordByID(info.founders[i].lockID).unlockHeight) {
                 lockAmount += info.founders[i].amount;
             }
