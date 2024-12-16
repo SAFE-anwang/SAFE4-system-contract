@@ -101,7 +101,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     // withdraw all
-    function withdraw() public override noReentrant returns (uint) {
+    function withdraw() public override returns (uint) {
         uint amount;
         uint num;
         (amount, num) = getAvailableAmount(msg.sender);
