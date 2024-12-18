@@ -11,10 +11,11 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     mapping(uint => address) id2addr;
     mapping(string => address) enode2addr;
 
-    function create(address _addr, address _creator, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory plan) public override onlyMasterNodeLogic {
+    function create(address _addr, bool _isUnion, address _creator, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory plan) public override onlyMasterNodeLogic {
         MasterNodeInfo storage info = addr2info[_addr];
         info.id = ++no;
         info.addr = _addr;
+        info.isUnion = _isUnion;
         info.creator = _creator;
         info.enode = _enode;
         info.description = _description;
@@ -332,6 +333,10 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
             return false;
         }
         return true;
+    }
+
+    function isUnion(address _addr) public view override returns (bool) {
+        return addr2info[_addr].isUnion;
     }
 
     function existNodeAddress(address _addr) public view override returns (bool) {

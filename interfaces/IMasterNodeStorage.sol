@@ -18,6 +18,7 @@ interface IMasterNodeStorage {
     struct MasterNodeInfo {
         uint id; // masternode id
         address addr; // masternode address
+        bool isUnion; // union or not
         address creator; // createor address
         string enode; // masternode enode, contain node id & node ip & node port
         string description; // masternode description
@@ -30,7 +31,7 @@ interface IMasterNodeStorage {
         uint updateHeight; // masternode update height
     }
 
-    function create(address _addr, address _creator, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan) external;
+    function create(address _addr, bool _isUnion, address _creator, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan) external;
     function append(address _addr, uint _lockID, uint _amount) external;
     function updateAddress(address _addr, address _newAddr) external;
     function updateEnode(address _addr, string memory _enode) external;
@@ -62,6 +63,7 @@ interface IMasterNodeStorage {
     function existFounder(address _founder) external view returns (bool);
 
     function isValid(address _addr) external view returns (bool);
+    function isUnion(address _addr) external view returns (bool);
 
     function existNodeAddress(address _addr) external view returns (bool);
     function existNodeEnode(string memory _enode) external view returns (bool);

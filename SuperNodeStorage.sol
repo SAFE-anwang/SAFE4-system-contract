@@ -12,11 +12,12 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     mapping(string => address) name2addr;
     mapping(string => address) enode2addr;
 
-    function create(address _addr, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan) public override onlySuperNodeLogic {
+    function create(address _addr, bool _isUnion, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan) public override onlySuperNodeLogic {
         SuperNodeInfo storage info = addr2info[_addr];
         info.id = ++no;
         info.name = _name;
         info.addr = _addr;
+        info.isUnion = _isUnion;
         info.creator = tx.origin;
         info.enode = _enode;
         info.description = _description;
@@ -396,6 +397,10 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
             }
         }
         return false;
+    }
+
+    function isUnion(address _addr) public view override returns (bool) {
+        return addr2info[_addr].isUnion;
     }
 
     function existNodeAddress(address _addr) public view override returns (bool) {

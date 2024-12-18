@@ -32,7 +32,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(_partnerIncentive >= Constant.MIN_SN_PARTNER_INCENTIVE && _partnerIncentive <= Constant.MAX_SN_PARTNER_INCENTIVE, "partner incentive is 40% - 50%");
         require(_voterIncentive >= Constant.MIN_SN_VOTER_INCENTIVE && _voterIncentive <= Constant.MAX_SN_VOTER_INCENTIVE, "creator incentive is 40% - 50%");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
-        getSuperNodeStorage().create(_addr, lockID, msg.value, _name, _enode, _description, ISuperNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive));
+        getSuperNodeStorage().create(_addr, _isUnion, lockID, msg.value, _name, _enode, _description, ISuperNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive));
         getAccountManager().setRecordFreezeInfo(lockID, _addr, _lockDay); // creator's lock id can't register other supernode again
         emit SNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
@@ -40,6 +40,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
     function appendRegister(address _addr, uint _lockDay) public payable override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
         require(!getSuperNodeStorage().existNodeAddress(msg.sender), "caller can't be supernode and masternode");
+        require(getSuperNodeStorage().isUnion(_addr), "can't append-register independent supernode");
         require(msg.value >= getPropertyValue("supernode_append_min_amount") * Constant.COIN, "less than min append lock amount");
         require(_lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
@@ -51,6 +52,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
     function turnRegister(address _addr, uint _lockID) public override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
         require(!getSuperNodeStorage().existNodeAddress(msg.sender), "caller can't be supernode and masternode");
+        require(getSuperNodeStorage().isUnion(_addr), "can't turn-register independent supernode");
         IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_lockID);
         require(record.addr == msg.sender, "you aren't record owner");
         require(block.number < record.unlockHeight, "record isn't locked");

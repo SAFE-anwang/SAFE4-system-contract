@@ -31,7 +31,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
             require(_creatorIncentive > 0 && _creatorIncentive <= Constant.MAX_MN_CREATOR_INCENTIVE && _creatorIncentive + _partnerIncentive == Constant.MAX_INCENTIVE, "invalid incentive");
         }
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
-        getMasterNodeStorage().create(_addr, msg.sender, lockID, msg.value, _enode, _description, IMasterNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
+        getMasterNodeStorage().create(_addr, _isUnion, msg.sender, lockID, msg.value, _enode, _description, IMasterNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
         getAccountManager().setRecordFreezeInfo(lockID, _addr, _lockDay); // creator's lock id can't register other masternode again
         emit MNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
@@ -39,6 +39,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
     function appendRegister(address _addr, uint _lockDay) public payable override {
         require(getMasterNodeStorage().exist(_addr), "non-existent masternode");
         require(!getMasterNodeStorage().existNodeAddress(msg.sender), "caller can't be supernode and masternode");
+        require(getMasterNodeStorage().isUnion(_addr), "can't append-register independent masternode");
         require(msg.value >= getPropertyValue("masternode_append_min_amount") * Constant.COIN, "less than min append lock amount");
         require(_lockDay >= getPropertyValue("masternode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
@@ -50,6 +51,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
     function turnRegister(address _addr, uint _lockID) public override {
         require(getMasterNodeStorage().exist(_addr), "non-existent masternode");
         require(!getMasterNodeStorage().existNodeAddress(msg.sender), "caller can't be supernode and masternode");
+        require(getMasterNodeStorage().isUnion(_addr), "can't turn-register independent masternode");
         IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_lockID);
         require(record.addr == msg.sender, "you aren't record owner");
         require(block.number < record.unlockHeight, "record isn't locked");
@@ -101,7 +103,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(record.addr == _creator, "lockID is conflicted with creator");
         require(record.amount == _amount, "lockID is conflicted with amount");
         require(record.lockDay == _lockDay, "lockID is conflicted with lockDay");
-        getMasterNodeStorage().create(_addr, _creator, _lockID, _amount, _enode, "MasterNode from Safe3", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0));
+        getMasterNodeStorage().create(_addr, false, _creator, _lockID, _amount, _enode, "MasterNode from Safe3", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0));
         getMasterNodeStorage().updateState(_addr, Constant.NODE_STATE_START);
         getAccountManager().setRecordFreezeInfo(_lockID, _addr, _lockDay);
         emit MNRegister(_addr, _creator, _amount, _lockDay, _lockID);

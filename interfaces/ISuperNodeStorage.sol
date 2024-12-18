@@ -19,6 +19,7 @@ interface ISuperNodeStorage {
         uint id; // supernode id
         string name; // supernode name
         address addr; // supernode address
+        bool isUnion; // union or not
         address creator; // creator address
         string enode; // supernode enode, contain node id & node ip & node port
         string description; // supernode description
@@ -31,7 +32,7 @@ interface ISuperNodeStorage {
         uint updateHeight; // supernode update height
     }
 
-    function create(address _addr, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan) external;
+    function create(address _addr, bool _isUnion, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan) external;
     function append(address _addr, uint _lockID, uint _amount) external;
     function updateAddress(address _addr, address _newAddr) external;
     function updateName(address _addr, string memory _name) external;
@@ -68,6 +69,7 @@ interface ISuperNodeStorage {
 
     function isValid(address _addr) external view returns (bool);
     function isFormal(address _addr) external view returns (bool);
+    function isUnion(address _addr) external view returns (bool);
 
     function existNodeAddress(address _addr) external view returns (bool);
     function existNodeEnode(string memory _enode) external view returns (bool);
