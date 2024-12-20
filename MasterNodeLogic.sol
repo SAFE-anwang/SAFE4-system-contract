@@ -89,6 +89,8 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
                     for(uint k = 1; k < info.founders.length; k++) {
                         getAccountManager().setRecordFreezeInfo(info.founders[k].lockID, address(0), 0);
                     }
+                    // clear snvote
+                    getSNVote().clearVoteOrApproval(_addr);
                 }
                 getMasterNodeStorage().removeMember(_addr, i);
                 return;

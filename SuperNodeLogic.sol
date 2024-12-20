@@ -60,7 +60,9 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(record.lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight && block.number >= useinfo.releaseHeight, "record is freezen");
-        getSNVote().removeVoteOrApproval2(msg.sender, _lockID);
+        if(useinfo.votedAddr != address(0)) {
+            getSNVote().removeVoteOrApproval2(msg.sender, _lockID);
+        }
         if(isSN(useinfo.frozenAddr)) {
             getSuperNodeLogic().removeMember(useinfo.frozenAddr, _lockID);
         } else if(isMN(useinfo.frozenAddr)) {
@@ -88,25 +90,13 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_addr);
         for(uint i; i < info.founders.length; i++) {
             if(info.founders[i].lockID == _lockID) {
-                if(i == 0) {
+                if(i == 0) { // lockID comes from creator
                     // unfreeze partner
                     for(uint k = 1; k < info.founders.length; k++) {
                         getAccountManager().setRecordFreezeInfo(info.founders[k].lockID, address(0), 0);
                     }
-                    // release voter
-                    uint idNum = getSNVote().getIDNum(_addr);
-                    if(idNum > 0) {
-                        uint batchNum = idNum / 100;
-                        if(idNum % 100 != 0) {
-                            batchNum++;
-                        }
-                        for(uint k; k < batchNum; k++) {
-                            uint[] memory votedIDs = getSNVote().getIDs(_addr, k * 100, 100);
-                            for(uint m; m < votedIDs.length; m++) {
-                                getAccountManager().setRecordVoteInfo(votedIDs[m], address(0), 0);
-                            }
-                        }
-                    }
+                    // clear snvote
+                    getSNVote().clearVoteOrApproval(_addr);
                 }
                 getSuperNodeStorage().removeMember(_addr, i);
                 return;

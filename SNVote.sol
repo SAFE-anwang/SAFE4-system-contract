@@ -71,11 +71,52 @@ contract SNVote is ISNVote, System {
         }
     }
 
-    function removeVoteOrApproval2(address _voterAddr, uint _recordID) public override onlyAmOrSnContract {
+    function removeVoteOrApproval2(address _voterAddr, uint _recordID) public override onlyAmContract {
         if(_recordID == 0) {
             return;
         }
         remove(_voterAddr, _recordID);
+    }
+
+    function clearVoteOrApproval(address _dstAddr) public override onlyMnOrSnContract {
+        uint[] memory ids = dst2ids[_dstAddr];
+        for(uint i; i < ids.length; i++) {
+            VoteRecord memory voteRecord = id2record[ids[i]];
+            // update voter
+            remove4Voter(voteRecord.voterAddr, _dstAddr, ids[i], voteRecord.amount, voteRecord.num);
+
+            // update dst
+            remove4Dst(_dstAddr, voteRecord.voterAddr, ids[i], voteRecord.amount, voteRecord.num);
+
+            // remove vote record
+            delete id2record[ids[i]];
+
+            // unfreeze record
+            if(isSN(_dstAddr)) { // vote
+                if(allAmount > voteRecord.amount) {
+                    allAmount -= voteRecord.amount;
+                } else {
+                    allAmount = 0;
+                }
+                if(allVoteNum > voteRecord.num) {
+                    allVoteNum -= voteRecord.num;
+                } else {
+                    allVoteNum = 0;
+                }
+                getAccountManager().setRecordVoteInfo(ids[i], address(0), 0);
+            } else { // proxy
+                if(allProxiedAmount > voteRecord.amount) {
+                    allProxiedAmount -= voteRecord.amount;
+                } else {
+                    allProxiedAmount = 0;
+                }
+                if(allProxiedVoteNum > voteRecord.num) {
+                    allProxiedVoteNum -= voteRecord.num;
+                } else {
+                    allProxiedVoteNum = 0;
+                }
+            }
+        }
     }
 
     function proxyVote(address _snAddr) public override {
@@ -493,8 +534,16 @@ contract SNVote is ISNVote, System {
             delete voter2details[_voterAddr][_dstAddr];
         } else {
             // remove amount & votenum
-            detail.totalAmount -= _amount;
-            detail.totalNum -= _num;
+            if(detail.totalAmount > _amount) {
+                detail.totalAmount -= _amount;
+            } else {
+                detail.totalAmount = 0;
+            }
+            if(detail.totalNum > _num) {
+                detail.totalNum -= _num;
+            } else {
+                detail.totalNum = 0;
+            }
         }
 
         // update total amount
@@ -561,8 +610,16 @@ contract SNVote is ISNVote, System {
             delete dst2details[_dstAddr][_voterAddr];
         } else {
             // remove amount & votenum
-            detail.totalAmount -= _amount;
-            detail.totalNum -= _num;
+            if(detail.totalAmount > _amount) {
+                detail.totalAmount -= _amount;
+            } else {
+                detail.totalAmount = 0;
+            }
+            if(detail.totalNum > _num) {
+                detail.totalNum -= _num;
+            } else {
+                detail.totalNum = 0;
+            }
         }
 
         // update total amount
@@ -629,13 +686,29 @@ contract SNVote is ISNVote, System {
 
         // unfreeze record
         if(isSN(dstAddr)) { // vote
-            allAmount -= amount;
-            allVoteNum -= num;
+            if(allAmount > amount) {
+                allAmount -= amount;
+            } else {
+                allAmount = 0;
+            }
+            if(allVoteNum > num) {
+                allVoteNum -= num;
+            } else {
+                allVoteNum = 0;
+            }
             getAccountManager().setRecordVoteInfo(_recordID, address(0), 0);
             emit SNVOTE_REMOVE_VOTE(_voterAddr, dstAddr, _recordID, num);
         } else { // proxy
-            allProxiedAmount -= amount;
-            allProxiedVoteNum -= num;
+            if(allProxiedAmount > amount) {
+                allProxiedAmount -= amount;
+            } else {
+                allProxiedAmount = 0;
+            }
+            if(allProxiedVoteNum > num) {
+                allProxiedVoteNum -= num;
+            } else {
+                allProxiedVoteNum = 0;
+            }
             emit SNVOTE_REMOVE_APPROVAL(_voterAddr, dstAddr, _recordID, num);
         }
     }

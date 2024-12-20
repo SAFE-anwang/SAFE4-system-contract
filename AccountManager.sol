@@ -144,7 +144,9 @@ contract AccountManager is IAccountManager, System {
                 }
                 payable(msg.sender).transfer(record.amount);
                 amount += record.amount;
-                getSNVote().removeVoteOrApproval2(msg.sender, _ids[i]);
+                if(useinfo.votedAddr != address(0)) {
+                    getSNVote().removeVoteOrApproval2(msg.sender, _ids[i]);
+                }
                 if(getMasterNodeStorage().exist(useinfo.frozenAddr)) {
                     getMasterNodeLogic().removeMember(useinfo.frozenAddr, _ids[i]);
                 } else if(getSuperNodeStorage().exist(useinfo.frozenAddr)) {
@@ -196,7 +198,9 @@ contract AccountManager is IAccountManager, System {
             if(usedAmount + temp_records[i].amount <= _amount) {
                 if(temp_records[i].id != 0) {
                     RecordUseInfo memory useinfo = id2useinfo[temp_records[i].id];
-                    getSNVote().removeVoteOrApproval2(msg.sender, temp_records[i].id);
+                    if(useinfo.votedAddr != address(0)) {
+                        getSNVote().removeVoteOrApproval2(msg.sender, temp_records[i].id);
+                    }
                     if(getMasterNodeStorage().exist(useinfo.frozenAddr)) {
                         getMasterNodeLogic().removeMember(useinfo.frozenAddr, temp_records[i].id);
                     } else if(getSuperNodeStorage().exist(useinfo.frozenAddr)) {
@@ -213,7 +217,9 @@ contract AccountManager is IAccountManager, System {
             } else {
                 if(temp_records[i].id != 0) {
                     RecordUseInfo memory useinfo = id2useinfo[temp_records[i].id];
-                    getSNVote().removeVoteOrApproval2(msg.sender, temp_records[i].id);
+                    if(useinfo.votedAddr != address(0)) {
+                        getSNVote().removeVoteOrApproval2(msg.sender, temp_records[i].id);
+                    }
                     if(getMasterNodeStorage().exist(useinfo.frozenAddr)) {
                         getMasterNodeLogic().removeMember(useinfo.frozenAddr, temp_records[i].id);
                     } else if(getSuperNodeStorage().exist(useinfo.frozenAddr)) {
