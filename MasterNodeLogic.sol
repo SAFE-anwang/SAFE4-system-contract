@@ -123,6 +123,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         for(uint i; i < info.founders.length; i++) {
             getAccountManager().updateRecordFreezeAddr(info.founders[i].lockID, _newAddr);
         }
+        getSNVote().updateDstAddr(_addr, _newAddr);
     }
 
     function changeEnode(address _addr, string memory _enode) public override {

@@ -133,6 +133,50 @@ contract SNVote is ISNVote, System {
         }
     }
 
+    function updateDstAddr(address _oldAddr, address _newAddr) public {
+        address[] memory voters = dst2voters[_oldAddr];
+        uint[] memory ids = dst2ids[_oldAddr];
+
+        // for id2record
+        for(uint i; i < ids.length; i++) {
+            id2record[ids[i]].dstAddr = _newAddr;
+        }
+
+        // for voters
+        // copy voter2details
+        for(uint i; i < voters.length; i++) {
+            address voter = voters[i];
+            voter2details[voter][_newAddr] = voter2details[voter][_oldAddr];
+            delete voter2details[voter][_oldAddr];
+            for(uint j; j < voter2dsts[voter].length; j++) {
+                if(voter2dsts[voter][j] == _oldAddr) {
+                    voter2dsts[voter][j] = _newAddr;
+                }
+            }
+        }
+
+        // for dst
+        // copy dst2details
+        for(uint i; i < voters.length; i++) {
+            address voter = voters[i];
+            dst2details[_newAddr][voter] = dst2details[_oldAddr][voter];
+            dst2details[_newAddr][voter].addr = _newAddr;
+            delete dst2details[_oldAddr][voter];
+        }
+        // copy dst2amount
+        dst2amount[_newAddr] = dst2amount[_oldAddr];
+        delete dst2amount[_oldAddr];
+        // copy dst2num
+        dst2num[_newAddr] = dst2num[_oldAddr];
+        delete dst2num[_oldAddr];
+        // copy dst2voters
+        dst2voters[_newAddr] = dst2voters[_oldAddr];
+        delete dst2voters[_oldAddr];
+        // copy dst2ids
+        dst2ids[_newAddr] = dst2ids[_oldAddr];
+        delete dst2ids[_oldAddr];
+    }
+
     function getAmount4Voter(address _voterAddr) public view override returns (uint) {
         return voter2amount[_voterAddr];
     }

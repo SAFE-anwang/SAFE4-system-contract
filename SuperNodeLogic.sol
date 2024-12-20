@@ -131,6 +131,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
                 }
             }
         }
+        getSNVote().updateDstAddr(_addr, _newAddr);
     }
 
     function changeName(address _addr, string memory _name) public override {
