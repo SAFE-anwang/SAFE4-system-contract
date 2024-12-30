@@ -31,14 +31,14 @@ contract AccountManager is IAccountManager, System {
 
     // deposit
     function deposit(address _to, uint _lockDay) public payable override returns (uint) {
-        require(msg.value > 0, "invalid amount");
+        require(msg.value >= getPropertyValue("deposit_min_amount"), "invalid amount");
         uint id = addRecord(_to, msg.value, _lockDay);
         emit SafeDeposit(_to, msg.value, _lockDay, id);
         return id;
     }
 
     function depositWithSecond(address _to, uint _lockSecond) public payable override onlyProposalContract returns (uint) {
-        require(msg.value > 0, "invalid amount");
+        require(msg.value >= getPropertyValue("deposit_min_amount"), "invalid amount");
         if(_lockSecond == 0) {
             balances[_to] += msg.value;
             return 0;
@@ -60,7 +60,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     function depositReturnNewID(address _to) public payable override returns (uint) {
-        require(msg.value > 0, "invalid amount");
+        require(msg.value >= getPropertyValue("deposit_min_amount"), "invalid amount");
         uint id = ++record_no;
         AccountRecord[] storage records = addr2records[_to];
         records.push(AccountRecord(id, _to, msg.value, 0, 0, 0));
@@ -74,7 +74,7 @@ contract AccountManager is IAccountManager, System {
         require(msg.value > 0, "invalid value");
         require(_to != address(0), "invalid target address");
         require(_times > 0, "invalid times");
-        require(msg.value / _times > 0, "invalid batch value");
+        require(msg.value / _times >= getPropertyValue("deposit_min_amount"), "amount/times is less than 1SAFE");
         uint[] memory ids = new uint[](_times);
         uint batchValue = msg.value / _times;
         uint i;
@@ -89,7 +89,7 @@ contract AccountManager is IAccountManager, System {
         require(msg.value > 0, "invalid value");
         require(_addrs.length == _times, "address count is different with times");
         require(_times > 0, "invalid times");
-        require(msg.value / _times > 0, "invalid batch value");
+        require(msg.value / _times >= getPropertyValue("deposit_min_amount"), "amount/times is less than 1SAFE");
         uint[] memory ids = new uint[](_times);
         uint batchValue = msg.value / _times;
         uint i;
@@ -254,7 +254,9 @@ contract AccountManager is IAccountManager, System {
     // move balance of id0 to new id
     function moveID0(address _addr) public override onlySNVoteContract returns (uint) {
         uint amount = balances[_addr];
-        require(amount > 0, "balance of id(0) is zero");
+        if(amount < getPropertyValue("deposit_min_amount")) {
+            return 0;
+        }
         uint id = ++record_no;
         AccountRecord[] storage records = addr2records[_addr];
         records.push(AccountRecord(id, _addr, amount, 0, 0, 0));

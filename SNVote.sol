@@ -44,9 +44,14 @@ contract SNVote is ISNVote, System {
             if(_recordIDs[i] == 0) {
                 // generate new record id
                 id = getAccountManager().moveID0(msg.sender);
+                if(id == 0) {
+                    continue;
+                }
+                add(msg.sender, _dstAddr, id);
+            } else {
+                remove(msg.sender, id);
+                add(msg.sender, _dstAddr, id);
             }
-            remove(msg.sender, id);
-            add(msg.sender, _dstAddr, id);
         }
     }
 
