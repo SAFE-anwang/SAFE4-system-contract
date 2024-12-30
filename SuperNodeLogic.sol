@@ -3,6 +3,7 @@ pragma solidity >=0.8.6 <=0.8.19;
 
 import "./System.sol";
 import "./utils/ArrayUtil.sol";
+import "./utils/RewardUtil.sol";
 
 contract SuperNodeLogic is ISuperNodeLogic, System {
     event SNRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _reocrdID);
@@ -75,7 +76,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function reward(address _addr) public payable override onlySystemRewardContract {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
-        require(msg.value > 0, "invalid reward");
+        require(msg.value >= RewardUtil.getSNReward(block.number), "invalid reward");
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_addr);
         uint creatorReward = msg.value * info.incentivePlan.creator / Constant.MAX_INCENTIVE;
         uint partnerReward = msg.value * info.incentivePlan.partner / Constant.MAX_INCENTIVE;
