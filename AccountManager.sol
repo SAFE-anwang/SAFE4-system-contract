@@ -161,7 +161,7 @@ contract AccountManager is IAccountManager, System {
 
     function transfer(address _to, uint _amount, uint _lockDay) public override returns (uint) {
         require(_to != address(0), "transfer to the zero address");
-        require(_amount > 0, "invalid amount");
+        require(_amount >= getPropertyValue("deposit_min_amount"), "invalid amount");
 
         uint amount;
         uint num;
