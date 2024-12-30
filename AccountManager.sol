@@ -89,6 +89,9 @@ contract AccountManager is IAccountManager, System {
         require(msg.value > 0, "invalid value");
         require(_addrs.length == _times, "address count is different with times");
         require(_times > 0, "invalid times");
+        for(uint k; k < _addrs.length; k++) {
+            require(_addrs[k] != address(0), "contain zero address");
+        }
         require(msg.value / _times >= getPropertyValue("deposit_min_amount"), "amount/times is less than 1SAFE");
         uint[] memory ids = new uint[](_times);
         uint batchValue = msg.value / _times;
