@@ -96,6 +96,7 @@ contract Property is IProperty, System {
     }
 
     function getAll(uint _start, uint _count) public view override returns (string[] memory) {
+        require(confirmedNames.length > 0, "insufficient quantity");
         require(_start < confirmedNames.length, "invalid _start, must be in [0, getNum())");
         require(_count > 0 && _count <= 100, "max return 100 properties");
         uint num = _count;
@@ -114,6 +115,7 @@ contract Property is IProperty, System {
     }
 
     function getAllUnconfirmed(uint _start, uint _count) public view override returns (string[] memory) {
+        require(unconfirmedNames.length > 0, "insufficient quantity");
         require(_start < unconfirmedNames.length, "invalid _start, must be in [0, getUnconfirmedNum())");
         require(_count > 0 && _count <= 100, "max return 100 properties");
         uint num = _count;

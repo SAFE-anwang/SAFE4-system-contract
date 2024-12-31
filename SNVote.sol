@@ -204,6 +204,7 @@ contract SNVote is ISNVote, System {
 
     function getSNs4Voter(address _voterAddr, uint _start, uint _count) public view override returns (address[] memory, uint[] memory) {
         uint snNum = getSNNum4Voter(_voterAddr);
+        require(snNum > 0, "insufficient quantity");
         require(_start < snNum, "invalid _start, must be in [0, getSNNum4Voter())");
         require(_count > 0 && _count <= 100, "max return 100 SNs");
 
@@ -244,6 +245,7 @@ contract SNVote is ISNVote, System {
 
     function getProxies4Voter(address _voterAddr, uint _start, uint _count) public view override returns (address[] memory, uint[] memory) {
         uint proxyNum = getProxyNum4Voter(_voterAddr);
+        require(proxyNum > 0, "insufficient quantity");
         require(_start < proxyNum, "invalid _start, must be in [0, getProxyNum4Voter())");
         require(_count > 0 && _count <= 100, "max return 100 proxies");
 
@@ -284,6 +286,7 @@ contract SNVote is ISNVote, System {
 
     function getVotedIDs4Voter(address _voterAddr, uint _start, uint _count) public view override returns (uint[] memory) {
         uint idNum = getVotedIDNum4Voter(_voterAddr);
+        require(idNum > 0, "insufficient quantity");
         require(_start < idNum, "invalid _start, must be in [0, getVotedIDNum4Voter())");
         require(_count > 0 && _count <= 100, "max return 100 ids");
 
@@ -320,6 +323,7 @@ contract SNVote is ISNVote, System {
 
     function getProxiedIDs4Voter(address _voterAddr, uint _start, uint _count) public view override returns (uint[] memory) {
         uint idNum = getProxiedIDNum4Voter(_voterAddr);
+        require(idNum > 0, "insufficient quantity");
         require(_start < idNum, "invalid _start, must be in [0, getProxiedIDNum4Voter())");
         require(_count > 0 && _count <= 100, "max return 100 ids");
 
@@ -356,6 +360,7 @@ contract SNVote is ISNVote, System {
     }
 
     function getVoters(address _addr, uint _start, uint _count) public view override returns (address[] memory, uint[] memory) {
+        require(dst2voters[_addr].length > 0, "insufficient quantity");
         require(_start < dst2voters[_addr].length, "invalid _start, must be in [0, getVoterNum())");
         require(_count > 0 && _count <= 100, "max return 100 voters");
 
@@ -383,6 +388,7 @@ contract SNVote is ISNVote, System {
     }
 
     function getIDs(address _addr, uint _start, uint _count) public view override returns (uint[] memory) {
+        require(dst2ids[_addr].length > 0, "insufficient quantity");
         require(_start < dst2ids[_addr].length, "invalid _start, must be in [0, getIDNum())");
         require(_count > 0 && _count <= 100, "max return 100 ids");
 

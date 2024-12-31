@@ -192,6 +192,7 @@ contract Safe3 is ISafe3, System {
     }
 
     function getAvailableInfos(uint _start, uint _count) public view override returns (AvailableSafe3Info[] memory) {
+        require(keyIDs.length > 0, "insufficient quantity");
         require(_start < keyIDs.length, "invalid _start, must be in [0, getAllAvailableNum())");
         require(_count > 0 && _count <= 10, "max return 10 available infos");
 
@@ -223,6 +224,7 @@ contract Safe3 is ISafe3, System {
     }
 
     function getLockedAddrs(uint _start, uint _count) external view override returns (string[] memory) {
+        require(lockedKeyIDs.length > 0, "insufficient quantity");
         require(_start < lockedKeyIDs.length, "invalid _start, must be in [0, getLockedAddrNum())");
         require(_count > 0 && _count <= 10, "max return 10 locked addrs");
 
@@ -244,7 +246,7 @@ contract Safe3 is ISafe3, System {
 
     function getLockedInfo(string memory _safe3Addr, uint _start, uint _count) public view override returns (LockedSafe3Info[] memory) {
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
-        require(locks[keyID].length > 0, "non-existent locked amount");
+        require(locks[keyID].length > 0, "insufficient quantity");
         require(_start < locks[keyID].length, "invalid _start, must be in [0, getLockedNum(addr))");
         require(_count > 0 && _count <= 10, "max return 10 locked infos");
 
@@ -267,6 +269,7 @@ contract Safe3 is ISafe3, System {
     }
 
     function getSpecialInfos(uint _start, uint _count) public view override returns (SpecialSafe3Info[] memory) {
+        require(specialKeyIDs.length > 0, "insufficient quantity");
         require(_start < specialKeyIDs.length, "invalid _start, must be in [0, getAllSpecialNum())");
         require(_count > 0 && _count <= 10, "max return 10 special infos");
 

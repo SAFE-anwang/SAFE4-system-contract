@@ -392,7 +392,7 @@ contract AccountManager is IAccountManager, System {
         uint totalAmount;
         uint totalNum;
         (totalAmount, totalNum) = getTotalAmount(_addr);
-
+        require(totalNum > 0, "insufficient quantity");
         require(_start < totalNum, "invalid _start, must be in [0, totalNum)");
         require(_count > 0 && _count <= 100, "max return 100 ids");
 
@@ -440,7 +440,7 @@ contract AccountManager is IAccountManager, System {
         uint availableAmount;
         uint availableNum;
         (availableAmount, availableNum) = getAvailableAmount(_addr);
-
+        require(availableNum > 0, "insufficient quantity");
         require(_start < availableNum, "invalid _start, must be in [0, availableNum)");
         require(_count > 0 && _count <= 100, "max return 100 ids");
 
@@ -485,7 +485,7 @@ contract AccountManager is IAccountManager, System {
         uint lockedAmount;
         uint lockedNum;
         (lockedAmount, lockedNum) = getLockedAmount(_addr);
-
+        require(lockedNum > 0, "insufficient quantity");
         require(_start < lockedNum, "invalid _start, must be in [0, lockedNum)");
         require(_count > 0 && _count <= 100, "max return 100 ids");
 
@@ -527,7 +527,7 @@ contract AccountManager is IAccountManager, System {
         uint usedAmount;
         uint usedNum;
         (usedAmount, usedNum) = getUsedAmount(_addr);
-
+        require(usedNum > 0, "insufficient quantity");
         require(_start < usedNum, "invalid _start, must be in [0, usedNum)");
         require(_count > 0 && _count <= 100, "max return 100 ids");
 

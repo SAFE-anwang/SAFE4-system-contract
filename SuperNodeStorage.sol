@@ -141,6 +141,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     }
 
     function getAll(uint _start, uint _count) public view override returns (address[] memory) {
+        require(ids.length > 0, "insufficient quantity");
         require(_start < ids.length, "invalid _start, exceed supernode number");
         require(_count > 0 && _count <= 100, "return 1-100 supernodes");
 
@@ -173,6 +174,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
 
     function getAddrs4Creator(address _creator, uint _start, uint _count) public view override returns (address[] memory) {
         uint addrNum = getAddrNum4Creator(_creator);
+        require(addrNum > 0, "insufficient quantity");
         require(_start < addrNum, "invalid _start, must be in [0, getAddrNum4Creator())");
         require(_count > 0 && _count <= 100, "max return 100 supernodes");
 
@@ -215,6 +217,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
 
     function getAddrs4Partner(address _partner, uint _start, uint _count) public view override returns (address[] memory) {
         uint addrNum = getAddrNum4Partner(_partner);
+        require(addrNum > 0, "insufficient quantity");
         require(_start < addrNum, "invalid _start, must be in [0, getAddrNum4Partner())");
         require(_count > 0 && _count <= 100, "max return 100 supernodes");
 

@@ -157,6 +157,7 @@ contract Proposal is IProposal, System {
     }
 
     function getVoteInfo(uint _id, uint _start, uint _count) public view override returns (VoteInfo[] memory) {
+        require(voteInfos[_id].length > 0, "insufficient quantity");
         require(_start < voteInfos[_id].length, "invalid _start, must be in [0, getVoterNum())");
         require(_count > 0 && _count <= 100, "max return 100 voteInfos");
 
@@ -176,6 +177,7 @@ contract Proposal is IProposal, System {
     }
 
     function getAll(uint _start, uint _count) public view override returns (uint[] memory) {
+        require(ids.length > 0, "insufficient quantity");
         require(_start < ids.length, "invalid _start, must be in [0, getNum())");
         require(_count > 0 && _count <= 100, "max return 100 proposals");
 
@@ -196,6 +198,7 @@ contract Proposal is IProposal, System {
 
     function getMines(address _creator, uint _start, uint _count) public view override returns (uint[] memory) {
         uint[] memory mineIDs = addr2ids[_creator];
+        require(mineIDs.length > 0, "insufficient quantity");
         require(_start < mineIDs.length, "invalid _start, must be in [0, getMineNum())");
         require(_count > 0 && _count <= 100, "max return 100 proposals");
 
