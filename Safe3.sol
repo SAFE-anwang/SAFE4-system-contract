@@ -101,7 +101,7 @@ contract Safe3 is ISafe3, System {
     }
 
     function batchRedeemMasterNode(bytes[] memory _pubkeys, bytes[] memory _sigs, string[] memory _enodes, address _targetAddr) public override {
-        require(_pubkeys.length == _sigs.length || _pubkeys.length == _enodes.length, "invalid parameter count");
+        require(_pubkeys.length == _sigs.length && _pubkeys.length == _enodes.length, "invalid parameter count");
         require(_targetAddr != address(0), "invalid target address");
         for(uint k; k < _pubkeys.length; k++) {
             require(checkPubkey(_pubkeys[k]), "invalid pubkey");
