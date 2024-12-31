@@ -45,6 +45,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         addr2info[_newAddr].updateHeight = 0;
         delete addr2info[_addr];
         id2addr[addr2info[_newAddr].id] = _newAddr;
+        name2addr[addr2info[_newAddr].name] = _newAddr;
         enode2addr[addr2info[_newAddr].enode] = _newAddr;
     }
 
@@ -114,7 +115,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         ids.pop();
         // remove id2addr
         delete id2addr[info.id];
-        // remove enode2addr
+        // remove name2addr
         delete name2addr[info.name];
         // remove enode2addr
         delete enode2addr[info.enode];
