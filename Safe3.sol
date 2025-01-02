@@ -5,6 +5,7 @@ import "./System.sol";
 import "./utils/Base58.sol";
 import "./utils/StringUtil.sol";
 import "./utils/Secp256k1.sol";
+import "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
 
 contract Safe3 is ISafe3, System {
     using StringUtil for string;
@@ -406,23 +407,10 @@ contract Safe3 is ISafe3, System {
         revert("get decompressed pubkey failed");
     }
 
-    function checkSig(bytes memory _pubkey, bytes memory _sig, address _targetAddr) internal pure returns (bool) {
+    function checkSig(bytes memory _pubkey, bytes memory _sig, address _targetAddr) public pure returns (bool) {
         string memory safe3Addr = getSafe3Addr(_pubkey);
-        bytes32 h;
-        if(_targetAddr == address(0)) {
-            h = sha256(abi.encodePacked(safe3Addr));
-        } else {
-            h = sha256(abi.encodePacked(safe3Addr, _targetAddr));
-        }
+        bytes32 h = sha256(abi.encodePacked(safe3Addr, _targetAddr));
         bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-        assembly{
-            r := mload(add(_sig ,32))
-            s := mload(add(_sig ,64))
-            v := byte(0,mload(add(_sig ,96)))
-        }
-        return getSafe4Addr(_pubkey) == ecrecover(msgHash, v, r, s);
+        return getSafe4Addr(_pubkey) == ECDSA.recover(msgHash, _sig);
     }
 }
