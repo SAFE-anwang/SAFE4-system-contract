@@ -408,7 +408,7 @@ contract Safe3 is ISafe3, System {
         revert("get decompressed pubkey failed");
     }
 
-    function checkSig(bytes memory _pubkey, bytes memory _sig, address _targetAddr) public pure returns (bool) {
+    function checkSig(bytes memory _pubkey, bytes memory _sig, address _targetAddr) internal pure returns (bool) {
         string memory safe3Addr = getSafe3Addr(_pubkey);
         bytes32 h = sha256(abi.encodePacked(safe3Addr, _targetAddr));
         bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
