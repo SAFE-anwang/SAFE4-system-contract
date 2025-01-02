@@ -123,10 +123,11 @@ contract Safe3 is ISafe3, System {
         }
     }
 
-    function applyRedeemSpecial(bytes memory _pubkey, bytes memory _sig) public override {
+    function applyRedeemSpecial(bytes memory _pubkey, bytes memory _sig, address _targetAddr) public override {
         require(block.number > 86400, "redeem-special is unopened");
+        require(_targetAddr != address(0), "invalid target address");
         require(checkPubkey(_pubkey), "invalid pubkey");
-        require(checkSig(_pubkey, _sig), "invalid signautre");
+        require(checkSig(_pubkey, _sig, _targetAddr), "invalid signautre");
 
         bytes memory keyID = getKeyIDFromPubkey(_pubkey);
         require(specials[keyID].amount > 0, "non-existent available amount");
@@ -134,7 +135,7 @@ contract Safe3 is ISafe3, System {
         require(specials[keyID].applyHeight == 0, "has applied");
 
         string memory safe3Addr = getSafe3Addr(_pubkey);
-        specials[keyID].safe4Addr = getSafe4Addr(_pubkey);
+        specials[keyID].safe4Addr = _targetAddr;
         specials[keyID].applyHeight = uint32(block.number);
         emit ApplyRedeemSpecial(safe3Addr, uint(specials[keyID].amount) * 10000000000, specials[keyID].safe4Addr);
     }
@@ -405,11 +406,7 @@ contract Safe3 is ISafe3, System {
         revert("get decompressed pubkey failed");
     }
 
-    function checkSig(bytes memory _pubkey, bytes memory _sig) internal pure returns (bool) {
-        return checkSig(_pubkey, _sig, address(0));
-    }
-
-    function checkSig(bytes memory _pubkey, bytes memory _sig, address _targetAddr) public pure returns (bool) {
+    function checkSig(bytes memory _pubkey, bytes memory _sig, address _targetAddr) internal pure returns (bool) {
         string memory safe3Addr = getSafe3Addr(_pubkey);
         bytes32 h;
         if(_targetAddr == address(0)) {

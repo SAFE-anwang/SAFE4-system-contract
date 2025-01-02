@@ -33,7 +33,7 @@ interface ISafe3 {
     function batchRedeemLocked(bytes[] memory _pubkeys, bytes[] memory _sigs, address _targetAddr) external;
     function batchRedeemMasterNode(bytes[] memory _pubkeys, bytes[] memory _sigs, string[] memory _enodes, address _targetAddr) external;
 
-    function applyRedeemSpecial(bytes memory _pubkey, bytes memory _sig) external;
+    function applyRedeemSpecial(bytes memory _pubkey, bytes memory _sig, address _targetAddr) external;
     function vote4Special(string memory _safe3Addr, uint _voteResult) external;
 
     function getAllAvailableNum() external view returns (uint);
