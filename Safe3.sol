@@ -107,6 +107,7 @@ contract Safe3 is ISafe3, System {
         for(uint k; k < _pubkeys.length; k++) {
             require(checkPubkey(_pubkeys[k]), "invalid pubkey");
             require(checkSig(_pubkeys[k], _sigs[k], _targetAddr), "invalid signautre");
+            require(bytes(_enodes[k]).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
             bytes memory keyID = getKeyIDFromPubkey(_pubkeys[k]);
             string memory safe3Addr = getSafe3Addr(_pubkeys[k]);
             address mnAddr = getSafe4Addr(_pubkeys[k]);
