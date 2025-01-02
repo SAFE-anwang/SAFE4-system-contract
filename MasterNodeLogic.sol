@@ -72,7 +72,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
 
     function reward(address _addr) public payable override onlySystemRewardContract {
         require(getMasterNodeStorage().exist(_addr), "non-existent masternode");
-        require(msg.value >= RewardUtil.getMNReward(block.number), "invalid reward");
+        require(msg.value >= RewardUtil.getMNReward(block.number, getPropertyValue("block_space")), "invalid reward");
         IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfo(_addr);
         uint creatorReward = msg.value * info.incentivePlan.creator / Constant.MAX_INCENTIVE;
         uint partnerReward = msg.value - creatorReward;

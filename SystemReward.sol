@@ -9,10 +9,11 @@ contract SystemReward is ISystemReward, System {
         require(isFormalSN(_snAddr), "invalid supernode");
         require(isValidMN(_mnAddr), "invalid masternode");
         require(_ppAddr == Constant.PROPOSAL_ADDR, "invalid proposal contract");
-        require(_snAmount >= RewardUtil.getSNReward(block.number), "invalid supernode reward");
-        require(_mnAmount >= RewardUtil.getMNReward(block.number), "invalid masternode reward");
-        require(_ppAmount >= RewardUtil.getPPReward(block.number), "invalid proposal reward");
-        require(msg.value >= RewardUtil.getAllReward(block.number), "invalid amount for all reward");
+        uint blockSpace = getPropertyValue("block_space");
+        require(_snAmount >= RewardUtil.getSNReward(block.number, blockSpace), "invalid supernode reward");
+        require(_mnAmount >= RewardUtil.getMNReward(block.number, blockSpace), "invalid masternode reward");
+        require(_ppAmount >= RewardUtil.getPPReward(block.number, blockSpace), "invalid proposal reward");
+        require(msg.value >= RewardUtil.getAllReward(block.number, blockSpace), "invalid amount for all reward");
         require(_snAmount + _mnAmount + _ppAmount == msg.value, "invalid amount");
         getSuperNodeLogic().reward{value: _snAmount}(_snAddr);
         getMasterNodeLogic().reward{value: _mnAmount}(_mnAddr);

@@ -7,25 +7,29 @@ library RewardUtil {
     uint internal constant ONLY_MN_REWARD = 2;
     uint internal constant ONLY_PP_REWARD = 3;
 
-    function getAllReward(uint _height) public pure returns (uint) {
-        return getReward(_height, ALL_REWARD);
+    uint internal constant SECONDS_IN_YEAR = 365 * 3600;
+    uint internal constant AMOUNT_START = 1e18;
+
+    function getAllReward(uint _height, uint _blockSpace) public pure returns (uint) {
+        return getReward(_height, _blockSpace, ALL_REWARD);
     }
 
-    function getSNReward(uint _height) public pure returns (uint) {
-        return getReward(_height, ONLY_SN_REWARD);
+    function getSNReward(uint _height, uint _blockSpace) public pure returns (uint) {
+        return getReward(_height, _blockSpace, ONLY_SN_REWARD);
     }
 
-    function getMNReward(uint _height) public pure returns (uint) {
-        return getReward(_height, ONLY_MN_REWARD);
+    function getMNReward(uint _height, uint _blockSpace) public pure returns (uint) {
+        return getReward(_height, _blockSpace, ONLY_MN_REWARD);
     }
 
-    function getPPReward(uint _height) public pure returns (uint) {
-        return getReward(_height, ONLY_PP_REWARD);
+    function getPPReward(uint _height, uint _blockSpace) public pure returns (uint) {
+        return getReward(_height, _blockSpace, ONLY_PP_REWARD);
     }
 
-    function getReward(uint _height, uint _flag) internal pure returns (uint) {
-        uint amount = 1e18;
-        for(uint i = 200; i <= _height; i += 1051200) {
+    function getReward(uint _height, uint _blockSpace, uint _flag) internal pure returns (uint) {
+        uint amount = AMOUNT_START;
+        uint halfInterval = SECONDS_IN_YEAR / _blockSpace;
+        for(uint i = 200; i <= _height; i += halfInterval) {
             amount -= amount / 14;
         }
 

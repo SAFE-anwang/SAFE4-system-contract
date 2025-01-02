@@ -76,7 +76,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function reward(address _addr) public payable override onlySystemRewardContract {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
-        require(msg.value >= RewardUtil.getSNReward(block.number), "invalid reward");
+        require(msg.value >= RewardUtil.getSNReward(block.number, getPropertyValue("block_space")), "invalid reward");
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_addr);
         uint creatorReward = msg.value * info.incentivePlan.creator / Constant.MAX_INCENTIVE;
         uint partnerReward = msg.value * info.incentivePlan.partner / Constant.MAX_INCENTIVE;
