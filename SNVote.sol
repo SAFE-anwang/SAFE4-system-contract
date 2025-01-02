@@ -138,7 +138,7 @@ contract SNVote is ISNVote, System {
         }
     }
 
-    function updateDstAddr(address _oldAddr, address _newAddr) public {
+    function updateDstAddr(address _oldAddr, address _newAddr) public onlyMnOrSnContract {
         address[] memory voters = dst2voters[_oldAddr];
         uint[] memory ids = dst2ids[_oldAddr];
 
