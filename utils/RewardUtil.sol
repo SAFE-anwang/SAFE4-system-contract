@@ -10,19 +10,19 @@ library RewardUtil {
     uint internal constant SECONDS_IN_YEAR = 365 * 3600;
     uint internal constant AMOUNT_START = 1e18;
 
-    function getAllReward(uint _height, uint _blockSpace) public pure returns (uint) {
+    function getAllReward(uint _height, uint _blockSpace) internal pure returns (uint) {
         return getReward(_height, _blockSpace, ALL_REWARD);
     }
 
-    function getSNReward(uint _height, uint _blockSpace) public pure returns (uint) {
+    function getSNReward(uint _height, uint _blockSpace) internal pure returns (uint) {
         return getReward(_height, _blockSpace, ONLY_SN_REWARD);
     }
 
-    function getMNReward(uint _height, uint _blockSpace) public pure returns (uint) {
+    function getMNReward(uint _height, uint _blockSpace) internal pure returns (uint) {
         return getReward(_height, _blockSpace, ONLY_MN_REWARD);
     }
 
-    function getPPReward(uint _height, uint _blockSpace) public pure returns (uint) {
+    function getPPReward(uint _height, uint _blockSpace) internal pure returns (uint) {
         return getReward(_height, _blockSpace, ONLY_PP_REWARD);
     }
 
