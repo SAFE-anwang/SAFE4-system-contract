@@ -18,7 +18,6 @@ interface IMasterNodeStorage {
     struct MasterNodeInfo {
         uint id; // masternode id
         address addr; // masternode address
-        bool isUnion; // union or not
         address creator; // createor address
         string enode; // masternode enode, contain node id & node ip & node port
         string description; // masternode description
@@ -26,6 +25,7 @@ interface IMasterNodeStorage {
         uint state; // masternode state
         MemberInfo[] founders; // masternode founders
         IncentivePlan incentivePlan; // incentive plan
+        bool isUnion; // union or not
         uint lastRewardHeight; // last reward height
         uint createHeight; // masternode create height
         uint updateHeight; // masternode update height

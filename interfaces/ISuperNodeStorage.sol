@@ -19,7 +19,6 @@ interface ISuperNodeStorage {
         uint id; // supernode id
         string name; // supernode name
         address addr; // supernode address
-        bool isUnion; // union or not
         address creator; // creator address
         string enode; // supernode enode, contain node id & node ip & node port
         string description; // supernode description
@@ -27,6 +26,7 @@ interface ISuperNodeStorage {
         uint state; // supernode state information
         MemberInfo[] founders; // supernode founders
         IncentivePlan incentivePlan; // incentive plan
+        bool isUnion; // union or not
         uint lastRewardHeight; // last reward height
         uint createHeight; // supernode create height
         uint updateHeight; // supernode update height
