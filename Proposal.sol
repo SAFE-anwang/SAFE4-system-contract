@@ -26,7 +26,7 @@ contract Proposal is IProposal, System {
         require(bytes(_title).length >= Constant.MIN_PP_TITLE_LEN && bytes(_title).length <= Constant.MAX_PP_TITLE_LEN, "invalid title");
         require(_payAmount > 0 && _payAmount <= getBalance(), "invalid pay amount");
         require(_payTimes > 0 && _payTimes <= Constant.MAX_PP_PAY_TIMES, "invalid pay times");
-        require(_payAmount / _payTimes != 0, "invalid pay amount and times");
+        require(_payAmount / _payTimes >= getPropertyValue("deposit_min_amount"), "payAmount/payTimes is less than 1SAFE");
         require(_startPayTime >= block.timestamp, "invalid start pay time");
         require(_endPayTime >= _startPayTime, "invalid end pay time");
         require(bytes(_description).length >= Constant.MIN_PP_DESCRIPTIO_LEN && bytes(_description).length <= Constant.MAX_PP_DESCRIPTIO_LEN, "invalid description");
@@ -105,7 +105,7 @@ contract Proposal is IProposal, System {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(_payAmount > 0 && _payAmount <= getBalance(), "invalid pay amount");
-        require(_payAmount / proposals[_id].payTimes != 0, "pay amount is too small");
+        require(_payAmount / proposals[_id].payTimes >= getPropertyValue("deposit_min_amount"), "new payAmout/payTimes is less than 1SAFE");
         require(voteInfos[_id].length == 0, "voted proposal can't update pay-amount");
         proposals[_id].payAmount = _payAmount;
         proposals[_id].updateHeight = block.number;
@@ -115,7 +115,7 @@ contract Proposal is IProposal, System {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(_payTimes > 0 && _payTimes <= Constant.MAX_PP_PAY_TIMES, "invalid pay times");
-        require(proposals[_id].payAmount / _payTimes != 0, "pay times is too big");
+        require(proposals[_id].payAmount / _payTimes >= getPropertyValue("depoist_min_amount"), "new payAmount/payTimes is less than 1SAFE");
         require(voteInfos[_id].length == 0, "voted proposal can't update pay-times");
         proposals[_id].payTimes = _payTimes;
         proposals[_id].updateHeight = block.number;
@@ -157,6 +157,7 @@ contract Proposal is IProposal, System {
     }
 
     function getVoteInfo(uint _id, uint _start, uint _count) public view override returns (VoteInfo[] memory) {
+        require(voteInfos[_id].length > 0, "insufficient quantity");
         require(_start < voteInfos[_id].length, "invalid _start, must be in [0, getVoterNum())");
         require(_count > 0 && _count <= 100, "max return 100 voteInfos");
 
@@ -176,6 +177,7 @@ contract Proposal is IProposal, System {
     }
 
     function getAll(uint _start, uint _count) public view override returns (uint[] memory) {
+        require(ids.length > 0, "insufficient quantity");
         require(_start < ids.length, "invalid _start, must be in [0, getNum())");
         require(_count > 0 && _count <= 100, "max return 100 proposals");
 
@@ -196,6 +198,7 @@ contract Proposal is IProposal, System {
 
     function getMines(address _creator, uint _start, uint _count) public view override returns (uint[] memory) {
         uint[] memory mineIDs = addr2ids[_creator];
+        require(mineIDs.length > 0, "insufficient quantity");
         require(_start < mineIDs.length, "invalid _start, must be in [0, getMineNum())");
         require(_count > 0 && _count <= 100, "max return 100 proposals");
 

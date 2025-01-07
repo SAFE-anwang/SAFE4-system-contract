@@ -19,9 +19,11 @@ interface ISNVote {
 
     function voteOrApproval(bool _isVote, address _dstAddr, uint[] memory _recordIDs) external;
     function voteOrApprovalWithAmount(bool _isVote, address _dstAddr) external payable;
-    function removeVoteOrApproval(uint[] memory _recordIDs) external;
-    function removeVoteOrApproval2(address _voterAddr, uint _recordID) external;
+    function removeVoteOrApproval(uint[] memory _recordIDs) external; // delete vote by recordIDs
+    function removeVoteOrApproval2(address _voterAddr, uint _recordID) external; // delete vote by voteAddr & recordID
+    function clearVoteOrApproval(address _dstAddr) external; // clear vote by dstAddr
     function proxyVote(address _snAddr) external;
+    function updateDstAddr(address _oldAddr, address _newAddr) external;
 
     // get voter's total amount
     function getAmount4Voter(address _voterAddr) external view returns (uint);

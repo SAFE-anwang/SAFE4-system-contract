@@ -12,11 +12,12 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     mapping(string => address) name2addr;
     mapping(string => address) enode2addr;
 
-    function create(address _addr, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan) public override onlySuperNodeLogic {
+    function create(address _addr, bool _isUnion, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan) public override onlySuperNodeLogic {
         SuperNodeInfo storage info = addr2info[_addr];
         info.id = ++no;
         info.name = _name;
         info.addr = _addr;
+        info.isUnion = _isUnion;
         info.creator = tx.origin;
         info.enode = _enode;
         info.description = _description;
@@ -44,6 +45,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         addr2info[_newAddr].updateHeight = 0;
         delete addr2info[_addr];
         id2addr[addr2info[_newAddr].id] = _newAddr;
+        name2addr[addr2info[_newAddr].name] = _newAddr;
         enode2addr[addr2info[_newAddr].enode] = _newAddr;
     }
 
@@ -113,7 +115,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         ids.pop();
         // remove id2addr
         delete id2addr[info.id];
-        // remove enode2addr
+        // remove name2addr
         delete name2addr[info.name];
         // remove enode2addr
         delete enode2addr[info.enode];
@@ -139,6 +141,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     }
 
     function getAll(uint _start, uint _count) public view override returns (address[] memory) {
+        require(ids.length > 0, "insufficient quantity");
         require(_start < ids.length, "invalid _start, exceed supernode number");
         require(_count > 0 && _count <= 100, "return 1-100 supernodes");
 
@@ -171,6 +174,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
 
     function getAddrs4Creator(address _creator, uint _start, uint _count) public view override returns (address[] memory) {
         uint addrNum = getAddrNum4Creator(_creator);
+        require(addrNum > 0, "insufficient quantity");
         require(_start < addrNum, "invalid _start, must be in [0, getAddrNum4Creator())");
         require(_count > 0 && _count <= 100, "max return 100 supernodes");
 
@@ -213,6 +217,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
 
     function getAddrs4Partner(address _partner, uint _start, uint _count) public view override returns (address[] memory) {
         uint addrNum = getAddrNum4Partner(_partner);
+        require(addrNum > 0, "insufficient quantity");
         require(_start < addrNum, "invalid _start, must be in [0, getAddrNum4Partner())");
         require(_count > 0 && _count <= 100, "max return 100 supernodes");
 
@@ -396,6 +401,10 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
             }
         }
         return false;
+    }
+
+    function isUnion(address _addr) public view override returns (bool) {
+        return addr2info[_addr].isUnion;
     }
 
     function existNodeAddress(address _addr) public view override returns (bool) {

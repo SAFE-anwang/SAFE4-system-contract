@@ -5,6 +5,7 @@ import "./System.sol";
 import "./utils/Base58.sol";
 import "./utils/StringUtil.sol";
 import "./utils/Secp256k1.sol";
+import "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
 
 contract Safe3 is ISafe3, System {
     using StringUtil for string;
@@ -154,11 +155,12 @@ contract Safe3 is ISafe3, System {
     }
 
     function batchRedeemMasterNode(bytes[] memory _pubkeys, bytes[] memory _sigs, string[] memory _enodes, address _targetAddr) public override {
-        require(_pubkeys.length == _sigs.length || _pubkeys.length == _enodes.length, "invalid parameter count");
+        require(_pubkeys.length == _sigs.length && _pubkeys.length == _enodes.length, "invalid parameter count");
         require(_targetAddr != address(0), "invalid target address");
         for(uint k; k < _pubkeys.length; k++) {
             require(checkPubkey(_pubkeys[k]), "invalid pubkey");
             require(checkSig(_pubkeys[k], _sigs[k], _targetAddr), "invalid signautre");
+            require(bytes(_enodes[k]).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
             bytes memory keyID = getKeyIDFromPubkey(_pubkeys[k]);
             string memory safe3Addr = getSafe3Addr(_pubkeys[k]);
             address mnAddr = getSafe4Addr(_pubkeys[k]);
@@ -176,10 +178,11 @@ contract Safe3 is ISafe3, System {
         }
     }
 
-    function applyRedeemSpecial(bytes memory _pubkey, bytes memory _sig) public override {
+    function applyRedeemSpecial(bytes memory _pubkey, bytes memory _sig, address _targetAddr) public override {
         require(block.number > 86400, "redeem-special is unopened");
+        require(_targetAddr != address(0), "invalid target address");
         require(checkPubkey(_pubkey), "invalid pubkey");
-        require(checkSig(_pubkey, _sig), "invalid signautre");
+        require(checkSig(_pubkey, _sig, _targetAddr), "invalid signautre");
 
         bytes memory keyID = getKeyIDFromPubkey(_pubkey);
         require(specials[keyID].amount > 0, "non-existent available amount");
@@ -187,7 +190,7 @@ contract Safe3 is ISafe3, System {
         require(specials[keyID].applyHeight == 0, "has applied");
 
         string memory safe3Addr = getSafe3Addr(_pubkey);
-        specials[keyID].safe4Addr = getSafe4Addr(_pubkey);
+        specials[keyID].safe4Addr = _targetAddr;
         specials[keyID].applyHeight = uint32(block.number);
         emit ApplyRedeemSpecial(safe3Addr, uint(specials[keyID].amount) * 10000000000, specials[keyID].safe4Addr);
     }
@@ -245,6 +248,7 @@ contract Safe3 is ISafe3, System {
     }
 
     function getAvailableInfos(uint _start, uint _count) public view override returns (AvailableSafe3Info[] memory) {
+        require(keyIDs.length > 0, "insufficient quantity");
         require(_start < keyIDs.length, "invalid _start, must be in [0, getAllAvailableNum())");
         require(_count > 0 && _count <= 10, "max return 10 available infos");
 
@@ -276,6 +280,7 @@ contract Safe3 is ISafe3, System {
     }
 
     function getLockedAddrs(uint _start, uint _count) external view override returns (string[] memory) {
+        require(lockedKeyIDs.length > 0, "insufficient quantity");
         require(_start < lockedKeyIDs.length, "invalid _start, must be in [0, getLockedAddrNum())");
         require(_count > 0 && _count <= 10, "max return 10 locked addrs");
 
@@ -297,7 +302,7 @@ contract Safe3 is ISafe3, System {
 
     function getLockedInfo(string memory _safe3Addr, uint _start, uint _count) public view override returns (LockedSafe3Info[] memory) {
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
-        require(locks[keyID].length > 0, "non-existent locked amount");
+        require(locks[keyID].length > 0, "insufficient quantity");
         require(_start < locks[keyID].length, "invalid _start, must be in [0, getLockedNum(addr))");
         require(_count > 0 && _count <= 10, "max return 10 locked infos");
 
@@ -320,6 +325,7 @@ contract Safe3 is ISafe3, System {
     }
 
     function getSpecialInfos(uint _start, uint _count) public view override returns (SpecialSafe3Info[] memory) {
+        require(specialKeyIDs.length > 0, "insufficient quantity");
         require(_start < specialKeyIDs.length, "invalid _start, must be in [0, getAllSpecialNum())");
         require(_count > 0 && _count <= 10, "max return 10 special infos");
 
@@ -455,27 +461,10 @@ contract Safe3 is ISafe3, System {
         revert("get decompressed pubkey failed");
     }
 
-    function checkSig(bytes memory _pubkey, bytes memory _sig) internal pure returns (bool) {
-        return checkSig(_pubkey, _sig, address(0));
-    }
-
-    function checkSig(bytes memory _pubkey, bytes memory _sig, address _targetAddr) public pure returns (bool) {
+    function checkSig(bytes memory _pubkey, bytes memory _sig, address _targetAddr) internal pure returns (bool) {
         string memory safe3Addr = getSafe3Addr(_pubkey);
-        bytes32 h;
-        if(_targetAddr == address(0)) {
-            h = sha256(abi.encodePacked(safe3Addr));
-        } else {
-            h = sha256(abi.encodePacked(safe3Addr, _targetAddr));
-        }
+        bytes32 h = sha256(abi.encodePacked(safe3Addr, _targetAddr));
         bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-        assembly{
-            r := mload(add(_sig ,32))
-            s := mload(add(_sig ,64))
-            v := byte(0,mload(add(_sig ,96)))
-        }
-        return getSafe4Addr(_pubkey) == ecrecover(msgHash, v, r, s);
+        return getSafe4Addr(_pubkey) == ECDSA.recover(msgHash, _sig);
     }
 }

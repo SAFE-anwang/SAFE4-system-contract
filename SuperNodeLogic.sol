@@ -3,6 +3,7 @@ pragma solidity >=0.8.6 <=0.8.19;
 
 import "./System.sol";
 import "./utils/ArrayUtil.sol";
+import "./utils/RewardUtil.sol";
 
 contract SuperNodeLogic is ISuperNodeLogic, System {
     event SNRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _reocrdID);
@@ -32,7 +33,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(_partnerIncentive >= Constant.MIN_SN_PARTNER_INCENTIVE && _partnerIncentive <= Constant.MAX_SN_PARTNER_INCENTIVE, "partner incentive is 40% - 50%");
         require(_voterIncentive >= Constant.MIN_SN_VOTER_INCENTIVE && _voterIncentive <= Constant.MAX_SN_VOTER_INCENTIVE, "creator incentive is 40% - 50%");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
-        getSuperNodeStorage().create(_addr, lockID, msg.value, _name, _enode, _description, ISuperNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive));
+        getSuperNodeStorage().create(_addr, _isUnion, lockID, msg.value, _name, _enode, _description, ISuperNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive));
         getAccountManager().setRecordFreezeInfo(lockID, _addr, _lockDay); // creator's lock id can't register other supernode again
         emit SNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
@@ -40,6 +41,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
     function appendRegister(address _addr, uint _lockDay) public payable override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
         require(!getSuperNodeStorage().existNodeAddress(msg.sender), "caller can't be supernode and masternode");
+        require(getSuperNodeStorage().isUnion(_addr), "can't append-register independent supernode");
         require(msg.value >= getPropertyValue("supernode_append_min_amount") * Constant.COIN, "less than min append lock amount");
         require(_lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
@@ -51,6 +53,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
     function turnRegister(address _addr, uint _lockID) public override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
         require(!getSuperNodeStorage().existNodeAddress(msg.sender), "caller can't be supernode and masternode");
+        require(getSuperNodeStorage().isUnion(_addr), "can't turn-register independent supernode");
         IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_lockID);
         require(record.addr == msg.sender, "you aren't record owner");
         require(block.number < record.unlockHeight, "record isn't locked");
@@ -58,7 +61,9 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(record.lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_lockID);
         require(block.number >= useinfo.unfreezeHeight && block.number >= useinfo.releaseHeight, "record is freezen");
-        getSNVote().removeVoteOrApproval2(msg.sender, _lockID);
+        if(useinfo.votedAddr != address(0)) {
+            getSNVote().removeVoteOrApproval2(msg.sender, _lockID);
+        }
         if(isSN(useinfo.frozenAddr)) {
             getSuperNodeLogic().removeMember(useinfo.frozenAddr, _lockID);
         } else if(isMN(useinfo.frozenAddr)) {
@@ -71,7 +76,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function reward(address _addr) public payable override onlySystemRewardContract {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
-        require(msg.value > 0, "invalid reward");
+        require(msg.value >= RewardUtil.getSNReward(block.number, getPropertyValue("block_space")), "invalid reward");
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_addr);
         uint creatorReward = msg.value * info.incentivePlan.creator / Constant.MAX_INCENTIVE;
         uint partnerReward = msg.value * info.incentivePlan.partner / Constant.MAX_INCENTIVE;
@@ -86,25 +91,13 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_addr);
         for(uint i; i < info.founders.length; i++) {
             if(info.founders[i].lockID == _lockID) {
-                if(i == 0) {
+                if(i == 0) { // lockID comes from creator
                     // unfreeze partner
                     for(uint k = 1; k < info.founders.length; k++) {
                         getAccountManager().setRecordFreezeInfo(info.founders[k].lockID, address(0), 0);
                     }
-                    // release voter
-                    uint idNum = getSNVote().getIDNum(_addr);
-                    if(idNum > 0) {
-                        uint batchNum = idNum / 100;
-                        if(idNum % 100 != 0) {
-                            batchNum++;
-                        }
-                        for(uint k; k < batchNum; k++) {
-                            uint[] memory votedIDs = getSNVote().getIDs(_addr, k * 100, 100);
-                            for(uint m; m < votedIDs.length; m++) {
-                                getAccountManager().setRecordVoteInfo(votedIDs[m], address(0), 0);
-                            }
-                        }
-                    }
+                    // clear snvote
+                    getSNVote().clearVoteOrApproval(_addr);
                 }
                 getSuperNodeStorage().removeMember(_addr, i);
                 return;
@@ -139,6 +132,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
                 }
             }
         }
+        getSNVote().updateDstAddr(_addr, _newAddr);
     }
 
     function changeName(address _addr, string memory _name) public override {

@@ -11,10 +11,11 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     mapping(uint => address) id2addr;
     mapping(string => address) enode2addr;
 
-    function create(address _addr, address _creator, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory plan) public override onlyMasterNodeLogic {
+    function create(address _addr, bool _isUnion, address _creator, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory plan) public override onlyMasterNodeLogic {
         MasterNodeInfo storage info = addr2info[_addr];
         info.id = ++no;
         info.addr = _addr;
+        info.isUnion = _isUnion;
         info.creator = _creator;
         info.enode = _enode;
         info.description = _description;
@@ -165,6 +166,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     }
 
     function getAll(uint _start, uint _count) public view override returns (address[] memory) {
+        require(ids.length > 0, "insufficient quantity");
         require(_start < ids.length, "invalid _start, must be in [0, getNum())");
         require(_count > 0 && _count <= 100, "max return 100 masternodes");
 
@@ -191,6 +193,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
 
     function getAddrs4Creator(address _creator, uint _start, uint _count) public view override returns (address[] memory) {
         uint addrNum = getAddrNum4Creator(_creator);
+        require(addrNum > 0, "insufficient quantity");
         require(_start < addrNum, "invalid _start, must be in [0, getAddrNum4Creator())");
         require(_count > 0 && _count <= 100, "max return 100 masternodes");
 
@@ -233,6 +236,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
 
     function getAddrs4Partner(address _partner, uint _start, uint _count) public view override returns (address[] memory) {
         uint addrNum = getAddrNum4Partner(_partner);
+        require(addrNum > 0, "insufficient quantity");
         require(_start < addrNum, "invalid _start, must be in [0, getAddrNum4Partner())");
         require(_count > 0 && _count <= 100, "max return 100 supernodes");
 
@@ -332,6 +336,10 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
             return false;
         }
         return true;
+    }
+
+    function isUnion(address _addr) public view override returns (bool) {
+        return addr2info[_addr].isUnion;
     }
 
     function existNodeAddress(address _addr) public view override returns (bool) {

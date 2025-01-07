@@ -25,12 +25,13 @@ interface IMasterNodeStorage {
         uint state; // masternode state
         MemberInfo[] founders; // masternode founders
         IncentivePlan incentivePlan; // incentive plan
+        bool isUnion; // union or not
         uint lastRewardHeight; // last reward height
         uint createHeight; // masternode create height
         uint updateHeight; // masternode update height
     }
 
-    function create(address _addr, address _creator, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan) external;
+    function create(address _addr, bool _isUnion, address _creator, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan) external;
     function append(address _addr, uint _lockID, uint _amount) external;
     function updateAddress(address _addr, address _newAddr) external;
     function updateEnode(address _addr, string memory _enode) external;
@@ -62,6 +63,7 @@ interface IMasterNodeStorage {
     function existFounder(address _founder) external view returns (bool);
 
     function isValid(address _addr) external view returns (bool);
+    function isUnion(address _addr) external view returns (bool);
 
     function existNodeAddress(address _addr) external view returns (bool);
     function existNodeEnode(string memory _enode) external view returns (bool);

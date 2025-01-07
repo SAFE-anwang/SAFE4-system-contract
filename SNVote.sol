@@ -44,9 +44,14 @@ contract SNVote is ISNVote, System {
             if(_recordIDs[i] == 0) {
                 // generate new record id
                 id = getAccountManager().moveID0(msg.sender);
+                if(id == 0) {
+                    continue;
+                }
+                add(msg.sender, _dstAddr, id);
+            } else {
+                remove(msg.sender, id);
+                add(msg.sender, _dstAddr, id);
             }
-            remove(msg.sender, id);
-            add(msg.sender, _dstAddr, id);
         }
     }
 
@@ -71,11 +76,52 @@ contract SNVote is ISNVote, System {
         }
     }
 
-    function removeVoteOrApproval2(address _voterAddr, uint _recordID) public override onlyAmOrSnContract {
+    function removeVoteOrApproval2(address _voterAddr, uint _recordID) public override onlyAmContract {
         if(_recordID == 0) {
             return;
         }
         remove(_voterAddr, _recordID);
+    }
+
+    function clearVoteOrApproval(address _dstAddr) public override onlyMnOrSnContract {
+        uint[] memory ids = dst2ids[_dstAddr];
+        for(uint i; i < ids.length; i++) {
+            VoteRecord memory voteRecord = id2record[ids[i]];
+            // update voter
+            remove4Voter(voteRecord.voterAddr, _dstAddr, ids[i], voteRecord.amount, voteRecord.num);
+
+            // update dst
+            remove4Dst(_dstAddr, voteRecord.voterAddr, ids[i], voteRecord.amount, voteRecord.num);
+
+            // remove vote record
+            delete id2record[ids[i]];
+
+            // unfreeze record
+            if(isSN(_dstAddr)) { // vote
+                if(allAmount > voteRecord.amount) {
+                    allAmount -= voteRecord.amount;
+                } else {
+                    allAmount = 0;
+                }
+                if(allVoteNum > voteRecord.num) {
+                    allVoteNum -= voteRecord.num;
+                } else {
+                    allVoteNum = 0;
+                }
+                getAccountManager().setRecordVoteInfo(ids[i], address(0), 0);
+            } else { // proxy
+                if(allProxiedAmount > voteRecord.amount) {
+                    allProxiedAmount -= voteRecord.amount;
+                } else {
+                    allProxiedAmount = 0;
+                }
+                if(allProxiedVoteNum > voteRecord.num) {
+                    allProxiedVoteNum -= voteRecord.num;
+                } else {
+                    allProxiedVoteNum = 0;
+                }
+            }
+        }
     }
 
     function proxyVote(address _snAddr) public override {
@@ -90,6 +136,50 @@ contract SNVote is ISNVote, System {
             remove(voterAddr, recordID); // remove vote or approval
             add(voterAddr, _snAddr, recordID); // add vote
         }
+    }
+
+    function updateDstAddr(address _oldAddr, address _newAddr) public onlyMnOrSnContract {
+        address[] memory voters = dst2voters[_oldAddr];
+        uint[] memory ids = dst2ids[_oldAddr];
+
+        // for id2record
+        for(uint i; i < ids.length; i++) {
+            id2record[ids[i]].dstAddr = _newAddr;
+        }
+
+        // for voters
+        // copy voter2details
+        for(uint i; i < voters.length; i++) {
+            address voter = voters[i];
+            voter2details[voter][_newAddr] = voter2details[voter][_oldAddr];
+            delete voter2details[voter][_oldAddr];
+            for(uint j; j < voter2dsts[voter].length; j++) {
+                if(voter2dsts[voter][j] == _oldAddr) {
+                    voter2dsts[voter][j] = _newAddr;
+                }
+            }
+        }
+
+        // for dst
+        // copy dst2details
+        for(uint i; i < voters.length; i++) {
+            address voter = voters[i];
+            dst2details[_newAddr][voter] = dst2details[_oldAddr][voter];
+            dst2details[_newAddr][voter].addr = _newAddr;
+            delete dst2details[_oldAddr][voter];
+        }
+        // copy dst2amount
+        dst2amount[_newAddr] = dst2amount[_oldAddr];
+        delete dst2amount[_oldAddr];
+        // copy dst2num
+        dst2num[_newAddr] = dst2num[_oldAddr];
+        delete dst2num[_oldAddr];
+        // copy dst2voters
+        dst2voters[_newAddr] = dst2voters[_oldAddr];
+        delete dst2voters[_oldAddr];
+        // copy dst2ids
+        dst2ids[_newAddr] = dst2ids[_oldAddr];
+        delete dst2ids[_oldAddr];
     }
 
     function getAmount4Voter(address _voterAddr) public view override returns (uint) {
@@ -114,6 +204,7 @@ contract SNVote is ISNVote, System {
 
     function getSNs4Voter(address _voterAddr, uint _start, uint _count) public view override returns (address[] memory, uint[] memory) {
         uint snNum = getSNNum4Voter(_voterAddr);
+        require(snNum > 0, "insufficient quantity");
         require(_start < snNum, "invalid _start, must be in [0, getSNNum4Voter())");
         require(_count > 0 && _count <= 100, "max return 100 SNs");
 
@@ -154,6 +245,7 @@ contract SNVote is ISNVote, System {
 
     function getProxies4Voter(address _voterAddr, uint _start, uint _count) public view override returns (address[] memory, uint[] memory) {
         uint proxyNum = getProxyNum4Voter(_voterAddr);
+        require(proxyNum > 0, "insufficient quantity");
         require(_start < proxyNum, "invalid _start, must be in [0, getProxyNum4Voter())");
         require(_count > 0 && _count <= 100, "max return 100 proxies");
 
@@ -194,6 +286,7 @@ contract SNVote is ISNVote, System {
 
     function getVotedIDs4Voter(address _voterAddr, uint _start, uint _count) public view override returns (uint[] memory) {
         uint idNum = getVotedIDNum4Voter(_voterAddr);
+        require(idNum > 0, "insufficient quantity");
         require(_start < idNum, "invalid _start, must be in [0, getVotedIDNum4Voter())");
         require(_count > 0 && _count <= 100, "max return 100 ids");
 
@@ -230,6 +323,7 @@ contract SNVote is ISNVote, System {
 
     function getProxiedIDs4Voter(address _voterAddr, uint _start, uint _count) public view override returns (uint[] memory) {
         uint idNum = getProxiedIDNum4Voter(_voterAddr);
+        require(idNum > 0, "insufficient quantity");
         require(_start < idNum, "invalid _start, must be in [0, getProxiedIDNum4Voter())");
         require(_count > 0 && _count <= 100, "max return 100 ids");
 
@@ -266,6 +360,7 @@ contract SNVote is ISNVote, System {
     }
 
     function getVoters(address _addr, uint _start, uint _count) public view override returns (address[] memory, uint[] memory) {
+        require(dst2voters[_addr].length > 0, "insufficient quantity");
         require(_start < dst2voters[_addr].length, "invalid _start, must be in [0, getVoterNum())");
         require(_count > 0 && _count <= 100, "max return 100 voters");
 
@@ -293,6 +388,7 @@ contract SNVote is ISNVote, System {
     }
 
     function getIDs(address _addr, uint _start, uint _count) public view override returns (uint[] memory) {
+        require(dst2ids[_addr].length > 0, "insufficient quantity");
         require(_start < dst2ids[_addr].length, "invalid _start, must be in [0, getIDNum())");
         require(_count > 0 && _count <= 100, "max return 100 ids");
 
@@ -493,8 +589,16 @@ contract SNVote is ISNVote, System {
             delete voter2details[_voterAddr][_dstAddr];
         } else {
             // remove amount & votenum
-            detail.totalAmount -= _amount;
-            detail.totalNum -= _num;
+            if(detail.totalAmount > _amount) {
+                detail.totalAmount -= _amount;
+            } else {
+                detail.totalAmount = 0;
+            }
+            if(detail.totalNum > _num) {
+                detail.totalNum -= _num;
+            } else {
+                detail.totalNum = 0;
+            }
         }
 
         // update total amount
@@ -561,8 +665,16 @@ contract SNVote is ISNVote, System {
             delete dst2details[_dstAddr][_voterAddr];
         } else {
             // remove amount & votenum
-            detail.totalAmount -= _amount;
-            detail.totalNum -= _num;
+            if(detail.totalAmount > _amount) {
+                detail.totalAmount -= _amount;
+            } else {
+                detail.totalAmount = 0;
+            }
+            if(detail.totalNum > _num) {
+                detail.totalNum -= _num;
+            } else {
+                detail.totalNum = 0;
+            }
         }
 
         // update total amount
@@ -629,13 +741,29 @@ contract SNVote is ISNVote, System {
 
         // unfreeze record
         if(isSN(dstAddr)) { // vote
-            allAmount -= amount;
-            allVoteNum -= num;
+            if(allAmount > amount) {
+                allAmount -= amount;
+            } else {
+                allAmount = 0;
+            }
+            if(allVoteNum > num) {
+                allVoteNum -= num;
+            } else {
+                allVoteNum = 0;
+            }
             getAccountManager().setRecordVoteInfo(_recordID, address(0), 0);
             emit SNVOTE_REMOVE_VOTE(_voterAddr, dstAddr, _recordID, num);
         } else { // proxy
-            allProxiedAmount -= amount;
-            allProxiedVoteNum -= num;
+            if(allProxiedAmount > amount) {
+                allProxiedAmount -= amount;
+            } else {
+                allProxiedAmount = 0;
+            }
+            if(allProxiedVoteNum > num) {
+                allProxiedVoteNum -= num;
+            } else {
+                allProxiedVoteNum = 0;
+            }
             emit SNVOTE_REMOVE_APPROVAL(_voterAddr, dstAddr, _recordID, num);
         }
     }
