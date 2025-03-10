@@ -21,6 +21,7 @@ import "./utils/Constant.sol";
 contract System is Initializable, OwnableUpgradeable {
     function initialize() public initializer {
         __Ownable_init();
+        transferOwnership(Constant.TIMELOCK_ADDR);
     }
 
     function GetInitializeData() public pure returns (bytes memory) {
