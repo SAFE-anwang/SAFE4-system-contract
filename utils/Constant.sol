@@ -2,15 +2,6 @@
 pragma solidity ^0.8.0;
 
 library Constant {
-    // multisig contract address
-    address internal constant MULTISIGWALLET_ADDR = 0x0000000000000000000000000000000000000990;
-
-    // locktime contract address
-    address internal constant TIMELOCK_ADDR = 0x0000000000000000000000000000000000000991;
-
-    // WSAFE contract address
-    address internal constant WSAFE_ADDR = 0x0000000000000000000000000000000000000992;
-
     // property contract address
     address internal constant PROPERTY_ADDR = 0x0000000000000000000000000000000000001000;
 
@@ -46,6 +37,18 @@ library Constant {
 
     // safe3 contract address
     address internal constant SAFE3_ADDR = 0x0000000000000000000000000000000000001090;
+
+    // multicall contract address
+    address internal constant MULTICALL_ADDR = 0x0000000000000000000000000000000000001100;
+
+    // wsafe contract address
+    address internal constant WSAFE_ADDR = 0x0000000000000000000000000000000000001101;
+
+    // multisig contract address
+    address internal constant MULTISIGWALLET_ADDR = 0x0000000000000000000000000000000000001102;
+
+    // timelock contract address
+    address internal constant TIMELOCK_ADDR = 0x0000000000000000000000000000000000001103;
 
     // constant
     uint internal constant COIN = 1000000000000000000;
