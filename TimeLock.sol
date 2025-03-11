@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.6;
 
-import "./Multisig.sol";
+import "./MultisigWallet.sol";
 import "./utils/Constant.sol";
 
 contract TimeLock {
