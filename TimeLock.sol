@@ -5,9 +5,8 @@ import "./MultisigWallet.sol";
 import "./utils/Constant.sol";
 
 contract TimeLock {
-    event Schedule(bytes32 txId, address target, uint value, bytes data, uint timestamp);
-    event Execute(bytes32 txId);
-
+    event Schedule(uint txId, address target, uint value, bytes data, uint timestamp);
+    event Execute(uint txId, address target, uint value, bytes data, uint timestamp);
     
     modifier onlyMultiSigContract {
         require(msg.sender == Constant.MULTISIGWALLET_ADDR, "No multi-sig-wallet contract");
@@ -27,8 +26,9 @@ contract TimeLock {
         bool executed;
     }
 
-    uint public minDelay;
-    mapping(bytes32 => Transaction) public transactions;
+    uint minDelay;
+    uint transactionCount;
+    mapping(uint => Transaction) transactions;
 
     constructor(uint _minDelay) {
         minDelay = _minDelay;
@@ -39,12 +39,10 @@ contract TimeLock {
         uint value,
         bytes calldata data,
         uint timestamp
-    ) external onlyMultiSigContract {
+    ) public onlyMultiSigContract {
         require(timestamp >= block.timestamp + minDelay, "Timestamp too early");
 
-        bytes32 txId = keccak256(abi.encode(target, value, data, timestamp));
-        require(transactions[txId].timestamp == 0, "Transaction already scheduled");
-
+        uint txId = transactionCount;
         transactions[txId] = Transaction({
             target: target,
             value: value,
@@ -52,20 +50,16 @@ contract TimeLock {
             timestamp: timestamp,
             executed: false
         });
+        transactionCount += 1;
 
         emit Schedule(txId, target, value, data, timestamp);
     }
 
     function execute(
-        address target,
-        uint value,
-        bytes calldata data,
-        uint timestamp
-    ) external payable onlyMultiSigOWner {
-        bytes32 txId = keccak256(abi.encode(target, value, data, timestamp));
+        uint txId
+    ) public payable onlyMultiSigOWner {
         Transaction storage transaction = transactions[txId];
-
-        require(transaction.timestamp != 0, "Transaction does not exist");
+        require(transaction.target != address(0), "non-existent transaction");
         require(block.timestamp >= transaction.timestamp, "Transaction not ready");
         require(!transaction.executed, "Transaction already executed");
 
@@ -76,11 +70,11 @@ contract TimeLock {
         );
         require(success, "Transaction failed");
 
-        emit Execute(txId);
+        emit Execute(txId, transaction.target, transaction.value, transaction.data, transaction.timestamp);
     }
 
-    function getTransaction(bytes32 txId)
-        external
+    function getTransaction(uint txId)
+        public
         view
         returns (
             address target,
