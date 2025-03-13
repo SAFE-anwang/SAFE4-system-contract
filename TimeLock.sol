@@ -5,8 +5,8 @@ import "./MultisigWallet.sol";
 import "./utils/Constant.sol";
 
 contract TimeLock {
-    event Schedule(uint txId, address target, uint value, bytes data, uint timestamp);
-    event Execute(uint txId, address target, uint value, bytes data, uint timestamp);
+    event Schedule(uint txid, address target, uint value, bytes data, uint timestamp);
+    event Execute(uint txid, address target, uint value, bytes data, uint timestamp);
     
     modifier onlyMultiSigContract {
         require(msg.sender == Constant.MULTISIGWALLET_ADDR, "No multi-sig-wallet contract");
@@ -42,8 +42,8 @@ contract TimeLock {
     ) public onlyMultiSigContract {
         require(timestamp >= block.timestamp + minDelay, "Timestamp too early");
 
-        uint txId = transactionCount;
-        transactions[txId] = Transaction({
+        uint txid = transactionCount;
+        transactions[txid] = Transaction({
             target: target,
             value: value,
             data: data,
@@ -52,13 +52,13 @@ contract TimeLock {
         });
         transactionCount += 1;
 
-        emit Schedule(txId, target, value, data, timestamp);
+        emit Schedule(txid, target, value, data, timestamp);
     }
 
     function execute(
-        uint txId
+        uint txid
     ) public payable onlyMultiSigOWner {
-        Transaction storage transaction = transactions[txId];
+        Transaction storage transaction = transactions[txid];
         require(transaction.target != address(0), "non-existent transaction");
         require(block.timestamp >= transaction.timestamp, "Transaction not ready");
         require(!transaction.executed, "Transaction already executed");
@@ -70,7 +70,7 @@ contract TimeLock {
         );
         require(success, "Transaction failed");
 
-        emit Execute(txId, transaction.target, transaction.value, transaction.data, transaction.timestamp);
+        emit Execute(txid, transaction.target, transaction.value, transaction.data, transaction.timestamp);
     }
 
     function getMinDelay()
@@ -89,7 +89,7 @@ contract TimeLock {
         return transactionCount;
     }
 
-    function getTransaction(uint txId)
+    function getTransaction(uint txid)
         public
         view
         returns (
@@ -100,7 +100,7 @@ contract TimeLock {
             bool executed
         )
     {
-        Transaction storage transaction = transactions[txId];
+        Transaction storage transaction = transactions[txid];
         return (
             transaction.target,
             transaction.value,
