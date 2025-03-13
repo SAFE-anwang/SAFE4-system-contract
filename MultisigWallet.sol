@@ -24,12 +24,13 @@ contract MultiSigWallet {
     /*
      *  Storage
      */
-    mapping (uint => Transaction) public transactions;
-    mapping (uint => mapping (address => bool)) public confirmations;
-    mapping (address => bool) public isOwner;
-    address[] public owners;
-    uint public required;
-    uint public transactionCount;
+    uint required;
+    address[] owners;
+    mapping (address => bool) isOwner;
+
+    uint transactionCount;
+    mapping (uint => Transaction) transactions;
+    mapping (uint => mapping (address => bool)) confirmations;
 
     struct Transaction {
         address destination;
@@ -42,42 +43,42 @@ contract MultiSigWallet {
      *  Modifiers
      */
     modifier onlyWallet() {
-        require(msg.sender == address(this));
+        require(msg.sender == address(this), "invalid caller");
         _;
     }
 
     modifier ownerDoesNotExist(address owner) {
-        require(!isOwner[owner]);
+        require(!isOwner[owner], "existent owner");
         _;
     }
 
     modifier ownerExists(address owner) {
-        require(isOwner[owner]);
+        require(isOwner[owner], "non-existent owner");
         _;
     }
 
     modifier transactionExists(uint transactionId) {
-        require(transactions[transactionId].destination != address(0));
+        require(transactions[transactionId].destination != address(0), "non-existent transactionId");
         _;
     }
 
     modifier confirmed(uint transactionId, address owner) {
-        require(confirmations[transactionId][owner]);
+        require(confirmations[transactionId][owner], "unconfirmed transactionId by caller");
         _;
     }
 
     modifier notConfirmed(uint transactionId, address owner) {
-        require(!confirmations[transactionId][owner]);
+        require(!confirmations[transactionId][owner], "confirmed transactionId by caller");
         _;
     }
 
     modifier notExecuted(uint transactionId) {
-        require(!transactions[transactionId].executed);
+        require(!transactions[transactionId].executed, "executed transactionId");
         _;
     }
 
     modifier notNull(address _address) {
-        require(_address != address(0));
+        require(_address != address(0), "null address");
         _;
     }
 
@@ -85,7 +86,7 @@ contract MultiSigWallet {
         require(ownerCount <= MAX_OWNER_COUNT
             && _required <= ownerCount
             && _required != 0
-            && ownerCount != 0);
+            && ownerCount != 0, "invalid required");
         _;
     }
 
@@ -161,7 +162,7 @@ contract MultiSigWallet {
         emit RequirementChange(_required);
     }
 
-    function submitTransaction(address destination, uint value, bytes memory data)
+    function submitTransaction(address destination, uint value, bytes calldata data)
         public
         returns (uint transactionId)
     {
@@ -210,56 +211,12 @@ contract MultiSigWallet {
         }
     }
 
-    function isConfirmed(uint transactionId)
+    function getRequired()
         public
         view
-        returns (bool)
+        returns (uint)
     {
-        uint count = 0;
-        for (uint i=0; i<owners.length; i++) {
-            if (confirmations[transactionId][owners[i]])
-                count += 1;
-            if (count == required)
-                return true;
-        }
-        return false;
-    }
-
-    function addTransaction(address destination, uint value, bytes memory data)
-        internal
-        notNull(destination)
-        returns (uint transactionId)
-    {
-        transactionId = transactionCount;
-        transactions[transactionId] = Transaction({
-            destination: destination,
-            value: value,
-            data: data,
-            executed: false
-        });
-        transactionCount += 1;
-        emit Submission(transactionId);
-    }
-
-    function getConfirmationCount(uint transactionId)
-        public
-        view
-        returns (uint count)
-    {
-        for (uint i=0; i<owners.length; i++)
-            if (confirmations[transactionId][owners[i]])
-                count += 1;
-    }
-
-    function getTransactionCount(bool pending, bool executed)
-        public
-        view
-        returns (uint count)
-    {
-        for (uint i=0; i<transactionCount; i++)
-            if (   pending && !transactions[i].executed
-                || executed && transactions[i].executed)
-                count += 1;
+        return required;
     }
 
     function getOwners()
@@ -278,22 +235,23 @@ contract MultiSigWallet {
         return isOwner[_addr];
     }
 
-    function getConfirmations(uint transactionId)
+    function getAllTransactionCount()
         public
         view
-        returns (address[] memory _confirmations)
+        returns (uint)
     {
-        address[] memory confirmationsTemp = new address[](owners.length);
-        uint count = 0;
-        uint i;
-        for (i=0; i<owners.length; i++)
-            if (confirmations[transactionId][owners[i]]) {
-                confirmationsTemp[count] = owners[i];
+        return transactionCount;
+    }
+
+    function getTransactionCount(bool pending, bool executed)
+        public
+        view
+        returns (uint count)
+    {
+        for (uint i=0; i<transactionCount; i++)
+            if (   pending && !transactions[i].executed
+                || executed && transactions[i].executed)
                 count += 1;
-            }
-        _confirmations = new address[](count);
-        for (i=0; i<count; i++)
-            _confirmations[i] = confirmationsTemp[i];
     }
 
     function getTransactionIds(uint from, uint to, bool pending, bool executed)
@@ -314,5 +272,72 @@ contract MultiSigWallet {
         _transactionIds = new uint[](to - from);
         for (i=from; i<to; i++)
             _transactionIds[i - from] = transactionIdsTemp[i];
+    }
+
+    function getConfirmationCount(uint transactionId)
+        public
+        view
+        returns (uint count)
+    {
+        for (uint i=0; i<owners.length; i++)
+            if (confirmations[transactionId][owners[i]])
+                count += 1;
+    }
+
+    function getConfirmations(uint transactionId)
+        public
+        view
+        returns (address[] memory _confirmations)
+    {
+        address[] memory confirmationsTemp = new address[](owners.length);
+        uint count = 0;
+        uint i;
+        for (i=0; i<owners.length; i++)
+            if (confirmations[transactionId][owners[i]]) {
+                confirmationsTemp[count] = owners[i];
+                count += 1;
+            }
+        _confirmations = new address[](count);
+        for (i=0; i<count; i++)
+            _confirmations[i] = confirmationsTemp[i];
+    }
+
+    function isExecuted(uint transactionId)
+        public
+        view
+        returns (bool)
+    {
+        return transactions[transactionId].executed;
+    }
+
+    function isConfirmed(uint transactionId)
+        public
+        view
+        returns (bool)
+    {
+        uint count = 0;
+        for (uint i=0; i<owners.length; i++) {
+            if (confirmations[transactionId][owners[i]])
+                count += 1;
+            if (count == required)
+                return true;
+        }
+        return false;
+    }
+
+    function addTransaction(address destination, uint value, bytes calldata data)
+        internal
+        notNull(destination)
+        returns (uint transactionId)
+    {
+        transactionId = transactionCount;
+        transactions[transactionId] = Transaction({
+            destination: destination,
+            value: value,
+            data: data,
+            executed: false
+        });
+        transactionCount += 1;
+        emit Submission(transactionId);
     }
 }
