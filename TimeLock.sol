@@ -73,6 +73,22 @@ contract TimeLock {
         emit Execute(txId, transaction.target, transaction.value, transaction.data, transaction.timestamp);
     }
 
+    function getMinDelay()
+        public
+        view
+        returns (uint)
+    {
+        return minDelay;
+    }
+
+    function getTransactionCount()
+        public
+        view
+        returns (uint)
+    {
+        return transactionCount;
+    }
+
     function getTransaction(uint txId)
         public
         view
