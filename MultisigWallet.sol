@@ -259,6 +259,7 @@ contract MultiSigWallet {
         view
         returns (uint[] memory _transactionIds)
     {
+        require(to > from, "invalid from and to");
         uint[] memory transactionIdsTemp = new uint[](transactionCount);
         uint count = 0;
         uint i;
@@ -269,9 +270,15 @@ contract MultiSigWallet {
                 transactionIdsTemp[count] = i;
                 count += 1;
             }
+        if (from >= count)
+            return _transactionIds;
+        uint size = to - from;
+        if (to > count) {
+            size = count - from;
+        }
         _transactionIds = new uint[](to - from);
-        for (i=from; i<to; i++)
-            _transactionIds[i - from] = transactionIdsTemp[i];
+        for (i=0; i<size; i++)
+            _transactionIds[i] = transactionIdsTemp[i + from];
     }
 
     function getConfirmationCount(uint transactionId)
