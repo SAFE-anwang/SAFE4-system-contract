@@ -281,6 +281,14 @@ contract MultiSigWallet {
             _transactionIds[i] = transactionIdsTemp[i + from];
     }
 
+    function getTransaction(uint transactionId)
+        public
+        view
+        returns (Transaction memory)
+    {
+        return transactions[transactionId];
+    }
+
     function getConfirmationCount(uint transactionId)
         public
         view
