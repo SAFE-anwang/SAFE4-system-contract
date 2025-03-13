@@ -5,7 +5,7 @@ import "./MultisigWallet.sol";
 import "./utils/Constant.sol";
 
 contract TimeLock {
-    event Schedule(bytes32 txId, address target, uint256 value, bytes data, uint256 timestamp);
+    event Schedule(bytes32 txId, address target, uint value, bytes data, uint timestamp);
     event Execute(bytes32 txId);
 
     
@@ -21,24 +21,24 @@ contract TimeLock {
 
     struct Transaction {
         address target;
-        uint256 value;
+        uint value;
         bytes data;
-        uint256 timestamp;
+        uint timestamp;
         bool executed;
     }
 
-    uint256 public minDelay;
+    uint public minDelay;
     mapping(bytes32 => Transaction) public transactions;
 
-    constructor(uint256 _minDelay) {
+    constructor(uint _minDelay) {
         minDelay = _minDelay;
     }
 
     function schedule(
         address target,
-        uint256 value,
+        uint value,
         bytes calldata data,
-        uint256 timestamp
+        uint timestamp
     ) external onlyMultiSigContract {
         require(timestamp >= block.timestamp + minDelay, "Timestamp too early");
 
@@ -58,9 +58,9 @@ contract TimeLock {
 
     function execute(
         address target,
-        uint256 value,
+        uint value,
         bytes calldata data,
-        uint256 timestamp
+        uint timestamp
     ) external payable onlyMultiSigOWner {
         bytes32 txId = keccak256(abi.encode(target, value, data, timestamp));
         Transaction storage transaction = transactions[txId];
@@ -84,9 +84,9 @@ contract TimeLock {
         view
         returns (
             address target,
-            uint256 value,
+            uint value,
             bytes memory data,
-            uint256 timestamp,
+            uint timestamp,
             bool executed
         )
     {
