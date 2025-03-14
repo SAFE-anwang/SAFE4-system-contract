@@ -92,21 +92,8 @@ contract TimeLock {
     function getTransaction(uint txid)
         public
         view
-        returns (
-            address target,
-            uint value,
-            bytes memory data,
-            uint timestamp,
-            bool executed
-        )
+        returns (Transaction memory)
     {
-        Transaction storage transaction = transactions[txid];
-        return (
-            transaction.target,
-            transaction.value,
-            transaction.data,
-            transaction.timestamp,
-            transaction.executed
-        );
+        return transactions[txid];
     }
 }
