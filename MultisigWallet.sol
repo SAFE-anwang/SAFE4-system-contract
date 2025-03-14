@@ -276,7 +276,7 @@ contract MultiSigWallet {
         if (to > count) {
             size = count - from;
         }
-        _transactionIds = new uint[](to - from);
+        _transactionIds = new uint[](size);
         for (i=0; i<size; i++)
             _transactionIds[i] = transactionIdsTemp[i + from];
     }
