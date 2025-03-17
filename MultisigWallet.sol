@@ -8,8 +8,8 @@ contract MultiSigWallet {
      */
     event Confirmation(address indexed sender, uint indexed transactionId);
     event Revocation(address indexed sender, uint indexed transactionId);
-    event Submission(uint indexed transactionId);
-    event Execution(uint indexed transactionId);
+    event Submission(address indexed sender, uint indexed transactionId);
+    event Execution(address indexed sender, uint indexed transactionId);
     event ExecutionFailure(uint indexed transactionId);
     event Deposit(address indexed sender, uint value);
     event OwnerAddition(address indexed owner);
@@ -24,6 +24,7 @@ contract MultiSigWallet {
     /*
      *  Storage
      */
+    uint minDelay;
     uint required;
     address[] owners;
     mapping (address => bool) isOwner;
@@ -33,9 +34,12 @@ contract MultiSigWallet {
     mapping (uint => mapping (address => bool)) confirmations;
 
     struct Transaction {
+        address from;
         address destination;
         uint value;
         bytes data;
+        uint timestamp;
+        address executor;
         bool executed;
     }
 
@@ -77,6 +81,21 @@ contract MultiSigWallet {
         _;
     }
 
+    modifier validTimestamp(uint transactionId) {
+        require(transactions[transactionId].timestamp >= block.timestamp + minDelay, "timestamp too early");
+        _;
+    }
+
+    modifier inConfirmDurtion(uint transactionId) {
+        require(block.timestamp < transactions[transactionId].timestamp, "transaction exceed confirm durtion");
+        _;
+    }
+
+    modifier inExecuteDurtion(uint transactionId) {
+        require(block.timestamp >= transactions[transactionId].timestamp, "transaction not ready to execute");
+        _;
+    }
+
     modifier notNull(address _address) {
         require(_address != address(0), "null address");
         _;
@@ -105,6 +124,7 @@ contract MultiSigWallet {
         }
         owners = _owners;
         required = _required;
+        minDelay = 24*2600;
     }
 
     function addOwner(address owner)
@@ -162,11 +182,11 @@ contract MultiSigWallet {
         emit RequirementChange(_required);
     }
 
-    function submitTransaction(address destination, uint value, bytes calldata data)
+    function submitTransaction(address destination, uint value, bytes calldata data, uint timestamp)
         public
         returns (uint transactionId)
     {
-        transactionId = addTransaction(destination, value, data);
+        transactionId = addTransaction(destination, value, data, timestamp);
         confirmTransaction(transactionId);
     }
 
@@ -175,10 +195,10 @@ contract MultiSigWallet {
         ownerExists(msg.sender)
         transactionExists(transactionId)
         notConfirmed(transactionId, msg.sender)
+        inConfirmDurtion(transactionId)
     {
         confirmations[transactionId][msg.sender] = true;
         emit Confirmation(msg.sender, transactionId);
-        executeTransaction(transactionId);
     }
 
     function revokeConfirmation(uint transactionId)
@@ -186,6 +206,7 @@ contract MultiSigWallet {
         ownerExists(msg.sender)
         confirmed(transactionId, msg.sender)
         notExecuted(transactionId)
+        inConfirmDurtion(transactionId)
     {
         confirmations[transactionId][msg.sender] = false;
         emit Revocation(msg.sender, transactionId);
@@ -194,15 +215,16 @@ contract MultiSigWallet {
     function executeTransaction(uint transactionId)
         public
         ownerExists(msg.sender)
-        confirmed(transactionId, msg.sender)
         notExecuted(transactionId)
+        inExecuteDurtion(transactionId)
     {
         if (isConfirmed(transactionId)) {
             Transaction storage txn = transactions[transactionId];
             (bool success, ) = txn.destination.call{value: txn.value}(txn.data);
             if (success) {
+                txn.executor = msg.sender;
                 txn.executed = true;
-                emit Execution(transactionId);
+                emit Execution(msg.sender, transactionId);
             }
             else {
                 txn.executed = false;
@@ -317,6 +339,14 @@ contract MultiSigWallet {
             _confirmations[i] = confirmationsTemp[i];
     }
 
+    function canExecute(uint transactionId)
+        public
+        view
+        returns (bool)
+    {
+        return block.timestamp >= transactions[transactionId].timestamp;
+    }
+
     function isExecuted(uint transactionId)
         public
         view
@@ -340,19 +370,23 @@ contract MultiSigWallet {
         return false;
     }
 
-    function addTransaction(address destination, uint value, bytes calldata data)
+    function addTransaction(address destination, uint value, bytes calldata data, uint timestamp)
         internal
         notNull(destination)
+        validTimestamp(timestamp)
         returns (uint transactionId)
     {
         transactionId = transactionCount;
         transactions[transactionId] = Transaction({
+            from: msg.sender,
             destination: destination,
             value: value,
             data: data,
+            timestamp: timestamp,
+            executor: address(0),
             executed: false
         });
         transactionCount += 1;
-        emit Submission(transactionId);
+        emit Submission(msg.sender, transactionId);
     }
 }

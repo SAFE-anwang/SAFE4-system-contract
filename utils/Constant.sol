@@ -47,9 +47,6 @@ library Constant {
     // multisig contract address
     address internal constant MULTISIGWALLET_ADDR = 0x0000000000000000000000000000000000001102;
 
-    // timelock contract address
-    address internal constant TIMELOCK_ADDR = 0x0000000000000000000000000000000000001103;
-
     // constant
     uint internal constant COIN = 1000000000000000000;
 
