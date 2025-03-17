@@ -6,15 +6,15 @@ contract MultiSigWallet {
     /*
      *  Events
      */
-    event Confirmation(address indexed sender, uint indexed transactionId);
-    event Revocation(address indexed sender, uint indexed transactionId);
-    event Submission(address indexed sender, uint indexed transactionId);
-    event Execution(address indexed sender, uint indexed transactionId);
-    event ExecutionFailure(uint indexed transactionId);
-    event Deposit(address indexed sender, uint value);
-    event OwnerAddition(address indexed owner);
-    event OwnerRemoval(address indexed owner);
-    event RequirementChange(uint required);
+    event Confirmation(address indexed _sender, uint indexed _txid);
+    event Revocation(address indexed _sender, uint indexed _txid);
+    event Submission(address indexed _sender, uint indexed _txid);
+    event Execution(address indexed _sender, uint indexed _txid);
+    event ExecutionFailure(uint indexed _txid);
+    event Deposit(address indexed _sender, uint _value);
+    event OwnerAddition(address indexed _owner);
+    event OwnerRemoval(address indexed _owner);
+    event RequirementChange(uint _required);
 
     /*
      *  Constants
@@ -29,13 +29,13 @@ contract MultiSigWallet {
     address[] owners;
     mapping (address => bool) isOwner;
 
-    uint transactionCount;
+    uint txCount;
     mapping (uint => Transaction) transactions;
     mapping (uint => mapping (address => bool)) confirmations;
 
     struct Transaction {
         address from;
-        address destination;
+        address to;
         uint value;
         bytes data;
         uint timestamp;
@@ -51,43 +51,43 @@ contract MultiSigWallet {
         _;
     }
 
-    modifier ownerDoesNotExist(address owner) {
-        require(!isOwner[owner], "existent owner");
+    modifier ownerNotExist(address _owner) {
+        require(!isOwner[_owner], "existent owner");
         _;
     }
 
-    modifier ownerExists(address owner) {
-        require(isOwner[owner], "non-existent owner");
+    modifier ownerExist(address _owner) {
+        require(isOwner[_owner], "non-existent owner");
         _;
     }
 
-    modifier transactionExists(uint transactionId) {
-        require(transactions[transactionId].destination != address(0), "non-existent transactionId");
+    modifier txExist(uint _txid) {
+        require(transactions[_txid].to != address(0), "non-existent txid");
         _;
     }
 
-    modifier confirmed(uint transactionId, address owner) {
-        require(confirmations[transactionId][owner], "unconfirmed transactionId by caller");
+    modifier txConfirmed(uint _txid, address _owner) {
+        require(confirmations[_txid][_owner], "unconfirmed txid by caller");
         _;
     }
 
-    modifier notConfirmed(uint transactionId, address owner) {
-        require(!confirmations[transactionId][owner], "confirmed transactionId by caller");
+    modifier txNotConfirmed(uint _txid, address _owner) {
+        require(!confirmations[_txid][_owner], "confirmed txid by caller");
         _;
     }
 
-    modifier notExecuted(uint transactionId) {
-        require(!transactions[transactionId].executed, "executed transactionId");
+    modifier txNotExecuted(uint _txid) {
+        require(!transactions[_txid].executed, "executed txid");
         _;
     }
 
-    modifier inConfirmDurtion(uint transactionId) {
-        require(block.timestamp < transactions[transactionId].timestamp, "transaction exceed confirm durtion");
+    modifier txInConfirmDurtion(uint _txid) {
+        require(block.timestamp < transactions[_txid].timestamp, "transaction exceed confirm durtion");
         _;
     }
 
-    modifier inExecuteDurtion(uint transactionId) {
-        require(block.timestamp >= transactions[transactionId].timestamp, "transaction not ready to execute");
+    modifier txInExecuteDurtion(uint _txid) {
+        require(block.timestamp >= transactions[_txid].timestamp, "transaction not ready to execute");
         _;
     }
 
@@ -96,16 +96,16 @@ contract MultiSigWallet {
         _;
     }
 
-    modifier validTimestamp(uint timestamp) {
-        require(timestamp >= block.timestamp + minDelay, "timestamp too early");
+    modifier validTimestamp(uint _timestamp) {
+        require(_timestamp >= block.timestamp + minDelay, "timestamp too early");
         _;
     }
 
-    modifier validRequirement(uint ownerCount, uint _required) {
-        require(ownerCount <= MAX_OWNER_COUNT
-            && _required <= ownerCount
+    modifier validRequirement(uint _ownerCount, uint _required) {
+        require(_ownerCount <= MAX_OWNER_COUNT
+            && _required <= _ownerCount
             && _required != 0
-            && ownerCount != 0, "invalid required");
+            && _ownerCount != 0, "invalid required");
         _;
     }
 
@@ -127,50 +127,50 @@ contract MultiSigWallet {
         minDelay = 24*2600;
     }
 
-    function addOwner(address owner)
+    function addOwner(address _owner)
         public
         onlyWallet
-        ownerDoesNotExist(owner)
-        notNull(owner)
+        ownerNotExist(_owner)
+        notNull(_owner)
         validRequirement(owners.length + 1, required)
     {
-        isOwner[owner] = true;
-        owners.push(owner);
-        emit OwnerAddition(owner);
+        isOwner[_owner] = true;
+        owners.push(_owner);
+        emit OwnerAddition(_owner);
     }
 
-    function removeOwner(address owner)
+    function removeOwner(address _owner)
         public
         onlyWallet
-        ownerExists(owner)
+        ownerExist(_owner)
     {
-        isOwner[owner] = false;
+        isOwner[_owner] = false;
         for (uint i=0; i<owners.length - 1; i++)
-            if (owners[i] == owner) {
+            if (owners[i] == _owner) {
                 owners[i] = owners[owners.length - 1];
                 break;
             }
         owners.pop();
         if (required > owners.length)
             changeRequirement(owners.length);
-        emit OwnerRemoval(owner);
+        emit OwnerRemoval(_owner);
     }
 
-    function replaceOwner(address owner, address newOwner)
+    function replaceOwner(address _owner, address _newOwner)
         public
         onlyWallet
-        ownerExists(owner)
-        ownerDoesNotExist(newOwner)
+        ownerExist(_owner)
+        ownerNotExist(_newOwner)
     {
         for (uint i=0; i<owners.length; i++)
-            if (owners[i] == owner) {
-                owners[i] = newOwner;
+            if (owners[i] == _owner) {
+                owners[i] = _newOwner;
                 break;
             }
-        isOwner[owner] = false;
-        isOwner[newOwner] = true;
-        emit OwnerRemoval(owner);
-        emit OwnerAddition(newOwner);
+        isOwner[_owner] = false;
+        isOwner[_newOwner] = true;
+        emit OwnerRemoval(_owner);
+        emit OwnerAddition(_newOwner);
     }
 
     function changeRequirement(uint _required)
@@ -182,53 +182,53 @@ contract MultiSigWallet {
         emit RequirementChange(_required);
     }
 
-    function submitTransaction(address destination, uint value, bytes calldata data, uint timestamp)
+    function submitTransaction(address _to, uint _value, bytes calldata _data, uint _timestamp)
         public
-        returns (uint transactionId)
+        returns (uint txid)
     {
-        transactionId = addTransaction(destination, value, data, timestamp);
-        confirmTransaction(transactionId);
+        txid = addTransaction(_to, _value, _data, _timestamp);
+        confirmTransaction(txid);
     }
 
-    function confirmTransaction(uint transactionId)
+    function confirmTransaction(uint _txid)
         public
-        ownerExists(msg.sender)
-        transactionExists(transactionId)
-        notConfirmed(transactionId, msg.sender)
-        inConfirmDurtion(transactionId)
+        ownerExist(msg.sender)
+        txExist(_txid)
+        txNotConfirmed(_txid, msg.sender)
+        txInConfirmDurtion(_txid)
     {
-        confirmations[transactionId][msg.sender] = true;
-        emit Confirmation(msg.sender, transactionId);
+        confirmations[_txid][msg.sender] = true;
+        emit Confirmation(msg.sender, _txid);
     }
 
-    function revokeConfirmation(uint transactionId)
+    function revokeConfirmation(uint _txid)
         public
-        ownerExists(msg.sender)
-        confirmed(transactionId, msg.sender)
-        notExecuted(transactionId)
-        inConfirmDurtion(transactionId)
+        ownerExist(msg.sender)
+        txConfirmed(_txid, msg.sender)
+        txNotExecuted(_txid)
+        txInConfirmDurtion(_txid)
     {
-        confirmations[transactionId][msg.sender] = false;
-        emit Revocation(msg.sender, transactionId);
+        confirmations[_txid][msg.sender] = false;
+        emit Revocation(msg.sender, _txid);
     }
 
-    function executeTransaction(uint transactionId)
+    function executeTransaction(uint _txid)
         public
-        ownerExists(msg.sender)
-        notExecuted(transactionId)
-        inExecuteDurtion(transactionId)
+        ownerExist(msg.sender)
+        txNotExecuted(_txid)
+        txInExecuteDurtion(_txid)
     {
-        if (isConfirmed(transactionId)) {
-            Transaction storage txn = transactions[transactionId];
-            (bool success, ) = txn.destination.call{value: txn.value}(txn.data);
+        if (isConfirmed(_txid)) {
+            Transaction storage txn = transactions[_txid];
+            (bool success, ) = txn.to.call{value: txn.value}(txn.data);
             if (success) {
                 txn.executor = msg.sender;
                 txn.executed = true;
-                emit Execution(msg.sender, transactionId);
+                emit Execution(msg.sender, _txid);
             }
             else {
                 txn.executed = false;
-                emit ExecutionFailure(transactionId);
+                emit ExecutionFailure(_txid);
             }
         }
     }
@@ -262,66 +262,66 @@ contract MultiSigWallet {
         view
         returns (uint)
     {
-        return transactionCount;
+        return txCount;
     }
 
-    function getTransactionCount(bool pending, bool executed)
+    function getTransactionCount(bool _pending, bool _executed)
         public
         view
         returns (uint count)
     {
-        for (uint i=0; i<transactionCount; i++)
-            if (   pending && !transactions[i].executed
-                || executed && transactions[i].executed)
+        for (uint i=0; i<txCount; i++)
+            if (   _pending && !transactions[i].executed
+                || _executed && transactions[i].executed)
                 count += 1;
     }
 
-    function getTransactionIds(uint from, uint to, bool pending, bool executed)
+    function getTransactionIds(uint _start, uint _end, bool _pending, bool _executed)
         public
         view
-        returns (uint[] memory _transactionIds)
+        returns (uint[] memory txids)
     {
-        require(to > from, "invalid from and to");
-        uint[] memory transactionIdsTemp = new uint[](transactionCount);
+        require(_end > _start, "invalid start and end");
+        uint[] memory temps = new uint[](txCount);
         uint count = 0;
         uint i;
-        for (i=0; i<transactionCount; i++)
-            if (   pending && !transactions[i].executed
-                || executed && transactions[i].executed)
+        for (i=0; i<txCount; i++)
+            if (   _pending && !transactions[i].executed
+                || _executed && transactions[i].executed)
             {
-                transactionIdsTemp[count] = i;
+                temps[count] = i;
                 count += 1;
             }
-        if (from >= count)
-            return _transactionIds;
-        uint size = to - from;
-        if (to > count) {
-            size = count - from;
+        if (_start >= count)
+            return txids;
+        uint size = _end - _start;
+        if (_end > count) {
+            size = count - _start;
         }
-        _transactionIds = new uint[](size);
+        txids = new uint[](size);
         for (i=0; i<size; i++)
-            _transactionIds[i] = transactionIdsTemp[i + from];
+            txids[i] = temps[i + _start];
     }
 
-    function getTransaction(uint transactionId)
+    function getTransaction(uint _txid)
         public
         view
         returns (Transaction memory)
     {
-        return transactions[transactionId];
+        return transactions[_txid];
     }
 
-    function getConfirmationCount(uint transactionId)
+    function getConfirmationCount(uint _txid)
         public
         view
         returns (uint count)
     {
         for (uint i=0; i<owners.length; i++)
-            if (confirmations[transactionId][owners[i]])
+            if (confirmations[_txid][owners[i]])
                 count += 1;
     }
 
-    function getConfirmations(uint transactionId)
+    function getConfirmations(uint _txid)
         public
         view
         returns (address[] memory _confirmations)
@@ -330,7 +330,7 @@ contract MultiSigWallet {
         uint count = 0;
         uint i;
         for (i=0; i<owners.length; i++)
-            if (confirmations[transactionId][owners[i]]) {
+            if (confirmations[_txid][owners[i]]) {
                 confirmationsTemp[count] = owners[i];
                 count += 1;
             }
@@ -339,30 +339,30 @@ contract MultiSigWallet {
             _confirmations[i] = confirmationsTemp[i];
     }
 
-    function canExecute(uint transactionId)
+    function isCanExecute(uint _txid)
         public
         view
         returns (bool)
     {
-        return block.timestamp >= transactions[transactionId].timestamp;
+        return block.timestamp >= transactions[_txid].timestamp;
     }
 
-    function isExecuted(uint transactionId)
+    function isExecuted(uint _txid)
         public
         view
         returns (bool)
     {
-        return transactions[transactionId].executed;
+        return transactions[_txid].executed;
     }
 
-    function isConfirmed(uint transactionId)
+    function isConfirmed(uint _txid)
         public
         view
         returns (bool)
     {
         uint count = 0;
         for (uint i=0; i<owners.length; i++) {
-            if (confirmations[transactionId][owners[i]])
+            if (confirmations[_txid][owners[i]])
                 count += 1;
             if (count == required)
                 return true;
@@ -370,23 +370,23 @@ contract MultiSigWallet {
         return false;
     }
 
-    function addTransaction(address destination, uint value, bytes calldata data, uint timestamp)
+    function addTransaction(address _to, uint _value, bytes calldata _data, uint _timestamp)
         internal
-        notNull(destination)
-        validTimestamp(timestamp)
-        returns (uint transactionId)
+        notNull(_to)
+        validTimestamp(_timestamp)
+        returns (uint txid)
     {
-        transactionId = transactionCount;
-        transactions[transactionId] = Transaction({
+        txid = txCount;
+        transactions[txid] = Transaction({
             from: msg.sender,
-            destination: destination,
-            value: value,
-            data: data,
-            timestamp: timestamp,
+            to: _to,
+            value: _value,
+            data: _data,
+            timestamp: _timestamp,
             executor: address(0),
             executed: false
         });
-        transactionCount += 1;
-        emit Submission(msg.sender, transactionId);
+        txCount += 1;
+        emit Submission(msg.sender, txid);
     }
 }
