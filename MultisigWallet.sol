@@ -81,11 +81,6 @@ contract MultiSigWallet {
         _;
     }
 
-    modifier validTimestamp(uint transactionId) {
-        require(transactions[transactionId].timestamp >= block.timestamp + minDelay, "timestamp too early");
-        _;
-    }
-
     modifier inConfirmDurtion(uint transactionId) {
         require(block.timestamp < transactions[transactionId].timestamp, "transaction exceed confirm durtion");
         _;
@@ -98,6 +93,11 @@ contract MultiSigWallet {
 
     modifier notNull(address _address) {
         require(_address != address(0), "null address");
+        _;
+    }
+
+    modifier validTimestamp(uint timestamp) {
+        require(timestamp >= block.timestamp + minDelay, "timestamp too early");
         _;
     }
 
