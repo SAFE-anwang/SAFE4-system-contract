@@ -124,7 +124,7 @@ contract MultiSigWallet {
         }
         owners = _owners;
         required = _required;
-        minDelay = 24*2600;
+        minDelay = 600;
     }
 
     function addOwner(address _owner)
