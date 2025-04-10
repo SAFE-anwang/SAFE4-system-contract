@@ -18,7 +18,7 @@ contract Proposal is IProposal, System {
     event ProposalState(uint _id, uint _state);
 
     function reward() public payable override {
-        mature2amount[block.number + getPropertyValue("coinbase_maturity")] = msg.value;
+        mature2amount[block.number + getPropertyValue("reward_maturity")] = msg.value;
         delete mature2amount[block.number];
     }
 
