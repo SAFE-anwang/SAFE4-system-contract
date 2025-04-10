@@ -23,6 +23,7 @@ interface IProposal {
 
     function reward() external payable;
     function getBalance() external view returns (uint);
+    function getImmatureBalance() external view returns (uint);
     function create(string memory _title, uint _payAmount, uint _payTimes, uint _startPayTime, uint _endPayTime, string memory _description) external payable returns (uint);
     function vote(uint _id, uint _voteResult) external;
     function changeTitle(uint _id, string memory _title) external;

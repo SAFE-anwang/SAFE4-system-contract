@@ -11,14 +11,28 @@ contract Proposal is IProposal, System {
     mapping(uint => address) id2addr;
     uint[] ids;
 
+    mapping(uint => uint) mature2amount; // key: mature height, value: amount
+
     event ProposalAdd(uint _id, string _title);
     event ProposalVote(uint _id, address _voter, uint _voteResult);
     event ProposalState(uint _id, uint _state);
 
-    function reward() public payable override {}
+    function reward() public payable override {
+        mature2amount[block.number + getPropertyValue("coinbase_maturity")] = msg.value;
+        delete mature2amount[block.number];
+    }
 
     function getBalance() public view override returns (uint) {
-        return address(this).balance;
+        return address(this).balance - getImmatureBalance();
+    }
+
+    function getImmatureBalance() public view override returns (uint) {
+        uint immatureAmount;
+        uint rewardMaturity = getPropertyValue("reward_maturity");
+        for(uint i = rewardMaturity; i > 0; i--) {
+            immatureAmount += mature2amount[block.number + i];
+        }
+        return immatureAmount;
     }
 
     function create(string memory _title, uint _payAmount, uint _payTimes, uint _startPayTime, uint _endPayTime, string memory _description) public payable override returns (uint) {
