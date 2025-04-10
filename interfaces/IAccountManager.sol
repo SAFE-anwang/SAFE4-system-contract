@@ -42,6 +42,8 @@ interface IAccountManager {
 
     function addLockDay(uint _id, uint _day) external;
 
+    function getImmatureAmount(address _addr) external view returns (uint);
+
     function getTotalAmount(address _addr) external view returns (uint, uint);
     function getTotalIDs(address _addr, uint _start, uint _count) external view returns (uint[] memory);
 

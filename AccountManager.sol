@@ -11,6 +11,9 @@ contract AccountManager is IAccountManager, System {
     mapping(uint => address) id2addr;
     mapping(uint => RecordUseInfo) id2useinfo;
 
+    mapping(address => mapping(uint => uint)) addr2mature; // key: addr, value: map (key: mature height, value: amount)
+    mapping(uint => address[]) mature2addrs; // key: mature height, value: addrs
+
     event SafeDeposit(address _addr, uint _amount, uint _lockDay, uint _id);
     event SafeWithdraw(address _addr, uint _amount, uint[] _ids);
     event SafeTransfer(address _from, address _to, uint _amount, uint _lockDay, uint _id);
@@ -246,12 +249,20 @@ contract AccountManager is IAccountManager, System {
             totalAmount += _amounts[i];
         }
         require(msg.value >= totalAmount, "msg.value is less than amounts");
+        uint rewardMaturity = block.number + getPropertyValue("reward_maturity");
         for(uint i; i < _addrs.length; i++) {
             if(_addrs[i] == address(0) || _amounts[i] == 0) {
                 continue;
             }
-            addRecord(_addrs[i], _amounts[i], 0);
+            addr2mature[_addrs[i]][rewardMaturity] += _amounts[i];
+            mature2addrs[rewardMaturity].push(_addrs[i]);
         }
+        address[] memory tempAddrs = mature2addrs[block.number];
+        for(uint i; i < tempAddrs.length; i++) {
+            addRecord(tempAddrs[i], addr2mature[tempAddrs[i]][block.number], 0);
+            delete addr2mature[tempAddrs[i]][block.number];
+        }
+        delete mature2addrs[block.number];
     }
 
     // move balance of id0 to new id
@@ -371,6 +382,16 @@ contract AccountManager is IAccountManager, System {
         emit SafeAddLockDay(_id, oldLockDay, record.lockDay);
     }
 
+    // get immature amount
+    function getImmatureAmount(address _addr) public view override returns (uint) {
+        uint immatureAmount;
+        uint rewardMaturity = getPropertyValue("reward_maturity");
+        for(uint i = rewardMaturity; i> 0; i--) {
+            immatureAmount += addr2mature[_addr][block.number + i];
+        }
+        return immatureAmount;
+    }
+
     // get total amount and total record number
     function getTotalAmount(address _addr) public view override returns (uint, uint) {
         uint amount;
@@ -385,6 +406,7 @@ contract AccountManager is IAccountManager, System {
             amount += records[i].amount;
         }
         num += records.length;
+        amount += getImmatureAmount(_addr);
         return (amount, num);
     }
 
