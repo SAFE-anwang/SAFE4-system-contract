@@ -2,6 +2,7 @@
 pragma solidity ^0.8.6;
 
 import "./System.sol";
+import "./utils/RewardUtil.sol";
 
 contract Proposal is IProposal, System {
     uint pp_no;
@@ -18,6 +19,7 @@ contract Proposal is IProposal, System {
     event ProposalState(uint _id, uint _state);
 
     function reward() public payable override {
+        require(msg.value >= RewardUtil.getPPReward(block.number, getPropertyValue("block_space")), "invalid reward");
         mature2amount[block.number + getPropertyValue("reward_maturity")] = msg.value;
         delete mature2amount[block.number];
     }
