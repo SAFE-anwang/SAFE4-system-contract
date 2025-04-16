@@ -34,6 +34,7 @@ contract AccountManager is IAccountManager, System {
 
     // deposit
     function deposit(address _to, uint _lockDay) public payable override returns (uint) {
+        require(_to != address(0), "invalid deposit-address");
         require(msg.value >= getPropertyValue("deposit_min_amount"), "invalid amount");
         uint id = addRecord(_to, msg.value, _lockDay);
         emit SafeDeposit(_to, msg.value, _lockDay, id);
@@ -41,6 +42,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     function depositWithSecond(address _to, uint _lockSecond) public payable override onlyProposalContract returns (uint) {
+        require(_to != address(0), "invalid deposit-address");
         require(msg.value >= getPropertyValue("deposit_min_amount"), "invalid amount");
         if(_lockSecond == 0) {
             balances[_to] += msg.value;
@@ -63,6 +65,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     function depositReturnNewID(address _to) public payable override returns (uint) {
+        require(_to != address(0), "invalid deposit-address");
         require(msg.value >= getPropertyValue("deposit_min_amount"), "invalid amount");
         uint id = ++record_no;
         AccountRecord[] storage records = addr2records[_to];
@@ -246,6 +249,7 @@ contract AccountManager is IAccountManager, System {
         require(_addrs.length == _amounts.length, "invalid addrs and amounts");
         uint totalAmount;
         for(uint i; i < _amounts.length; i++) {
+            require(_addrs[i] != address(0), "invalid reward-address");
             totalAmount += _amounts[i];
         }
         require(msg.value >= totalAmount, "msg.value is less than amounts");
