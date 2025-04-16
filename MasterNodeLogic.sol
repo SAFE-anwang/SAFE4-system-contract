@@ -185,6 +185,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
             }
             totalAmount += _info.founders[num].amount;
         }
+        require(totalAmount >= minAmount, "invalid MasterNode, total amount less than min_amount");
 
         address[] memory rewardAddrs = new address[](num);
         uint[] memory rewardAmounts = new uint[](num);
