@@ -139,7 +139,6 @@ contract AccountManager is IAccountManager, System {
                 if(balances[msg.sender] == 0) {
                     continue;
                 }
-                payable(msg.sender).transfer(balances[msg.sender]);
                 amount += balances[msg.sender];
                 balances[msg.sender] = 0;
             } else {
@@ -151,7 +150,6 @@ contract AccountManager is IAccountManager, System {
                 if(record.addr != msg.sender || block.number < record.unlockHeight || block.number < useinfo.unfreezeHeight || block.number < useinfo.releaseHeight) {
                     continue;
                 }
-                payable(msg.sender).transfer(record.amount);
                 amount += record.amount;
                 if(useinfo.votedAddr != address(0)) {
                     getSNVote().removeVoteOrApproval2(msg.sender, _ids[i]);
@@ -163,6 +161,9 @@ contract AccountManager is IAccountManager, System {
                 }
                 delRecord(_ids[i]);
             }
+        }
+        if(amount != 0) {
+            payable(msg.sender).transfer(amount);
         }
         emit SafeWithdraw(msg.sender, amount, _ids);
         return amount;
