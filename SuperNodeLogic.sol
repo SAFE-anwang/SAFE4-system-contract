@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.6 <=0.8.19;
+pragma solidity ^0.8.6;
 
 import "./System.sol";
 import "./utils/ArrayUtil.sol";
@@ -201,6 +201,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
             }
             totalAmount += _info.founders[num].amount;
         }
+        require(totalAmount >= minAmount, "invalid SuperNode, total amount less than min_amount");
 
         address[] memory rewardAddrs = new address[](num);
         uint[] memory rewardAmounts = new uint[](num);

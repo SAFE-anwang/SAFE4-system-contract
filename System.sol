@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.6 <=0.8.19;
+pragma solidity ^0.8.6;
 
 import "./interfaces/IProperty.sol";
 import "./interfaces/IAccountManager.sol";
@@ -21,6 +21,7 @@ import "./utils/Constant.sol";
 contract System is Initializable, OwnableUpgradeable {
     function initialize() public initializer {
         __Ownable_init();
+        transferOwnership(Constant.MULTISIGWALLET_ADDR);
     }
 
     function GetInitializeData() public pure returns (bytes memory) {
@@ -32,8 +33,8 @@ contract System is Initializable, OwnableUpgradeable {
         _;
     }
 
-    modifier onlyAmContract {
-        require(msg.sender == Constant.ACCOUNT_MANAGER_ADDR, "No account-manager contract");
+    modifier onlyAmOrSnContract {
+        require(msg.sender == Constant.ACCOUNT_MANAGER_ADDR || msg.sender == Constant.SUPERNODE_LOGIC_ADDR, "No account-manager and supernode-logic contract");
         _;
     }
 

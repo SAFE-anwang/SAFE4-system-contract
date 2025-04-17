@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.6 <=0.8.19;
+pragma solidity ^0.8.6;
 
 import "./System.sol";
 
 contract MasterNodeState is INodeState, System {
     mapping(uint => address[]) id2addrs;
     mapping(uint => uint[]) id2states;
+    mapping(uint => uint[]) id2heights;
 
     function upload(uint[] memory _ids, uint[] memory _states) public override onlyFormalSN {
         require(_ids.length == _states.length, "id list isn't matched with state list");
@@ -39,13 +40,21 @@ contract MasterNodeState is INodeState, System {
         }
         if(exist) {
             if(getMasterNodeStorage().getInfoByID(_id).state == _state) {
-                remove(_id);
+                remove(_id, i);
             } else {
+                if(id2states[_id][i] == _state) {
+                    revert("upload existent mn-state");
+                }
+                if(block.number <= id2heights[_id][i]) {
+                    revert("upload mn-state frequently");
+                }
                 id2states[_id][i] = _state;
+                id2heights[_id][i] = block.number;
             }
         } else {
             id2addrs[_id].push(msg.sender);
             id2states[_id].push(_state);
+            id2heights[_id].push(block.number);
         }
     }
 
@@ -64,17 +73,15 @@ contract MasterNodeState is INodeState, System {
         }
     }
 
-    function remove(uint _id) internal {
+    function remove(uint _id, uint _index) internal {
         address[] storage addrs = id2addrs[_id];
         uint[] storage states = id2states[_id];
-        for(uint i; i < addrs.length; i++) {
-            if(addrs[i] == msg.sender) {
-                addrs[i] = addrs[addrs.length - 1];
-                addrs.pop();
-                states[i] = states[states.length - 1];
-                states.pop();
-                break;
-            }
-        }
+        uint[] storage heights = id2heights[_id];
+        addrs[_index] = addrs[addrs.length - 1];
+        addrs.pop();
+        states[_index] = states[states.length - 1];
+        states.pop();
+        heights[_index] = heights[heights.length - 1];
+        heights.pop();
     }
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.6 <=0.8.19;
+pragma solidity ^0.8.6;
 
 import "./System.sol";
 
@@ -10,6 +10,9 @@ contract AccountManager is IAccountManager, System {
     mapping(uint => uint) id2index;
     mapping(uint => address) id2addr;
     mapping(uint => RecordUseInfo) id2useinfo;
+
+    mapping(address => mapping(uint => uint)) addr2mature; // key: addr, value: map (key: mature height, value: amount)
+    mapping(uint => address[]) mature2addrs; // key: mature height, value: addrs
 
     event SafeDeposit(address _addr, uint _amount, uint _lockDay, uint _id);
     event SafeWithdraw(address _addr, uint _amount, uint[] _ids);
@@ -31,6 +34,7 @@ contract AccountManager is IAccountManager, System {
 
     // deposit
     function deposit(address _to, uint _lockDay) public payable override returns (uint) {
+        require(_to != address(0), "invalid deposit-address");
         require(msg.value >= getPropertyValue("deposit_min_amount"), "invalid amount");
         uint id = addRecord(_to, msg.value, _lockDay);
         emit SafeDeposit(_to, msg.value, _lockDay, id);
@@ -38,6 +42,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     function depositWithSecond(address _to, uint _lockSecond) public payable override onlyProposalContract returns (uint) {
+        require(_to != address(0), "invalid deposit-address");
         require(msg.value >= getPropertyValue("deposit_min_amount"), "invalid amount");
         if(_lockSecond == 0) {
             balances[_to] += msg.value;
@@ -60,6 +65,7 @@ contract AccountManager is IAccountManager, System {
     }
 
     function depositReturnNewID(address _to) public payable override returns (uint) {
+        require(_to != address(0), "invalid deposit-address");
         require(msg.value >= getPropertyValue("deposit_min_amount"), "invalid amount");
         uint id = ++record_no;
         AccountRecord[] storage records = addr2records[_to];
@@ -133,7 +139,6 @@ contract AccountManager is IAccountManager, System {
                 if(balances[msg.sender] == 0) {
                     continue;
                 }
-                payable(msg.sender).transfer(balances[msg.sender]);
                 amount += balances[msg.sender];
                 balances[msg.sender] = 0;
             } else {
@@ -145,7 +150,6 @@ contract AccountManager is IAccountManager, System {
                 if(record.addr != msg.sender || block.number < record.unlockHeight || block.number < useinfo.unfreezeHeight || block.number < useinfo.releaseHeight) {
                     continue;
                 }
-                payable(msg.sender).transfer(record.amount);
                 amount += record.amount;
                 if(useinfo.votedAddr != address(0)) {
                     getSNVote().removeVoteOrApproval2(msg.sender, _ids[i]);
@@ -157,6 +161,9 @@ contract AccountManager is IAccountManager, System {
                 }
                 delRecord(_ids[i]);
             }
+        }
+        if(amount != 0) {
+            payable(msg.sender).transfer(amount);
         }
         emit SafeWithdraw(msg.sender, amount, _ids);
         return amount;
@@ -243,15 +250,24 @@ contract AccountManager is IAccountManager, System {
         require(_addrs.length == _amounts.length, "invalid addrs and amounts");
         uint totalAmount;
         for(uint i; i < _amounts.length; i++) {
+            require(_addrs[i] != address(0), "invalid reward-address");
             totalAmount += _amounts[i];
         }
         require(msg.value >= totalAmount, "msg.value is less than amounts");
+        uint rewardMaturity = block.number + getPropertyValue("reward_maturity");
         for(uint i; i < _addrs.length; i++) {
             if(_addrs[i] == address(0) || _amounts[i] == 0) {
                 continue;
             }
-            addRecord(_addrs[i], _amounts[i], 0);
+            addr2mature[_addrs[i]][rewardMaturity] += _amounts[i];
+            mature2addrs[rewardMaturity].push(_addrs[i]);
         }
+        address[] memory tempAddrs = mature2addrs[block.number];
+        for(uint i; i < tempAddrs.length; i++) {
+            addRecord(tempAddrs[i], addr2mature[tempAddrs[i]][block.number], 0);
+            delete addr2mature[tempAddrs[i]][block.number];
+        }
+        delete mature2addrs[block.number];
     }
 
     // move balance of id0 to new id
@@ -371,6 +387,16 @@ contract AccountManager is IAccountManager, System {
         emit SafeAddLockDay(_id, oldLockDay, record.lockDay);
     }
 
+    // get immature amount
+    function getImmatureAmount(address _addr) public view override returns (uint) {
+        uint immatureAmount;
+        uint rewardMaturity = getPropertyValue("reward_maturity");
+        for(uint i = rewardMaturity; i> 0; i--) {
+            immatureAmount += addr2mature[_addr][block.number + i];
+        }
+        return immatureAmount;
+    }
+
     // get total amount and total record number
     function getTotalAmount(address _addr) public view override returns (uint, uint) {
         uint amount;
@@ -385,6 +411,7 @@ contract AccountManager is IAccountManager, System {
             amount += records[i].amount;
         }
         num += records.length;
+        amount += getImmatureAmount(_addr);
         return (amount, num);
     }
 

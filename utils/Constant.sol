@@ -38,6 +38,15 @@ library Constant {
     // safe3 contract address
     address internal constant SAFE3_ADDR = 0x0000000000000000000000000000000000001090;
 
+    // multicall contract address
+    address internal constant MULTICALL_ADDR = 0x0000000000000000000000000000000000001100;
+
+    // wsafe contract address
+    address internal constant WSAFE_ADDR = 0x0000000000000000000000000000000000001101;
+
+    // multisig contract address
+    address internal constant MULTISIGWALLET_ADDR = 0x0000000000000000000000000000000000001102;
+
     // constant
     uint internal constant COIN = 1000000000000000000;
 

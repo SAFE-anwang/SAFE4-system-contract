@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.6 <=0.8.19;
+pragma solidity ^0.8.6;
 
 import "./System.sol";
 
@@ -76,7 +76,7 @@ contract SNVote is ISNVote, System {
         }
     }
 
-    function removeVoteOrApproval2(address _voterAddr, uint _recordID) public override onlyAmContract {
+    function removeVoteOrApproval2(address _voterAddr, uint _recordID) public override onlyAmOrSnContract {
         if(_recordID == 0) {
             return;
         }
