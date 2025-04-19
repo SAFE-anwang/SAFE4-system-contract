@@ -7,9 +7,14 @@ contract MasterNodeState is INodeState, System {
     mapping(uint => address[]) id2addrs;
     mapping(uint => uint[]) id2states;
     mapping(uint => uint[]) id2heights;
+    mapping(address => uint) sn2height;
 
     function upload(uint[] memory _ids, uint[] memory _states) public override onlyFormalSN {
+        require(_ids.length > 0, "empty ids");
         require(_ids.length == _states.length, "id list isn't matched with state list");
+        require(block.number > sn2height[msg.sender], "upload mn-state frequently");
+        sn2height[msg.sender] = block.number;
+
         uint snNum = getSNNum();
         for(uint i; i < _ids.length; i++) {
             if(getMasterNodeStorage().existID(_ids[i])) {
@@ -45,16 +50,11 @@ contract MasterNodeState is INodeState, System {
                 if(id2states[_id][i] == _state) {
                     revert("upload existent mn-state");
                 }
-                if(block.number <= id2heights[_id][i]) {
-                    revert("upload mn-state frequently");
-                }
                 id2states[_id][i] = _state;
-                id2heights[_id][i] = block.number;
             }
         } else {
             id2addrs[_id].push(msg.sender);
             id2states[_id].push(_state);
-            id2heights[_id].push(block.number);
         }
     }
 
@@ -76,12 +76,9 @@ contract MasterNodeState is INodeState, System {
     function remove(uint _id, uint _index) internal {
         address[] storage addrs = id2addrs[_id];
         uint[] storage states = id2states[_id];
-        uint[] storage heights = id2heights[_id];
         addrs[_index] = addrs[addrs.length - 1];
         addrs.pop();
         states[_index] = states[states.length - 1];
         states.pop();
-        heights[_index] = heights[heights.length - 1];
-        heights.pop();
     }
 }
