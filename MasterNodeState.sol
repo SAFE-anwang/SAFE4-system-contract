@@ -6,7 +6,6 @@ import "./System.sol";
 contract MasterNodeState is INodeState, System {
     mapping(uint => address[]) id2addrs;
     mapping(uint => uint[]) id2states;
-    mapping(uint => uint[]) id2heights;
     mapping(address => uint) sn2height;
 
     function upload(uint[] memory _ids, uint[] memory _states) public override onlyFormalSN {
