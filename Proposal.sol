@@ -48,9 +48,6 @@ contract Proposal is IProposal, System {
         require(bytes(_description).length >= Constant.MIN_PP_DESCRIPTIO_LEN && bytes(_description).length <= Constant.MAX_PP_DESCRIPTIO_LEN, "invalid description");
         require(msg.value >= 1 * Constant.COIN, "need pay 1 SAFE");
 
-        // burn 1 SAFE at least
-        getAccountManager().deposit{value: msg.value}(0x0000000000000000000000000000000000000000, 0);
-
         ProposalInfo storage pp = proposals[++pp_no];
         pp.id = pp_no;
         pp.creator = msg.sender;
@@ -66,6 +63,7 @@ contract Proposal is IProposal, System {
         id2addr[pp.id] = msg.sender;
         ids.push(pp.id);
         emit ProposalAdd(pp.id, pp.title);
+        payable(0x0000000000000000000000000000000000000000).transfer(msg.value); // burn 1 SAFE at least
         return pp.id;
     }
 
