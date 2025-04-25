@@ -7,9 +7,9 @@ library RewardUtil {
     uint internal constant ONLY_MN_REWARD = 2;
     uint internal constant ONLY_PP_REWARD = 3;
 
-    uint internal constant SECONDS_IN_YEAR = 365 * 3600;
+    uint internal constant SECONDS_IN_YEAR = 365 * 24 * 3600;
     uint internal constant AMOUNT_START = 0.47659905e18;
-    uint internal constant NEXT_DECREMENT_HEIGHT = 550752;
+    uint internal constant NEXT_DECREMENT_HEIGHT = 528291;
 
     function getAllReward(uint _height, uint _blockSpace) internal pure returns (uint) {
         return getReward(_height, _blockSpace, ALL_REWARD);
