@@ -7,8 +7,9 @@ library RewardUtil {
     uint internal constant ONLY_MN_REWARD = 2;
     uint internal constant ONLY_PP_REWARD = 3;
 
-    uint internal constant SECONDS_IN_YEAR = 365 * 3600;
-    uint internal constant AMOUNT_START = 1e18;
+    uint internal constant SECONDS_IN_YEAR = 365 * 24 * 3600;
+    uint internal constant AMOUNT_START = 0.47659905e18;
+    uint internal constant NEXT_DECREMENT_HEIGHT = 528291;
 
     function getAllReward(uint _height, uint _blockSpace) internal pure returns (uint) {
         return getReward(_height, _blockSpace, ALL_REWARD);
@@ -29,7 +30,7 @@ library RewardUtil {
     function getReward(uint _height, uint _blockSpace, uint _flag) internal pure returns (uint) {
         uint amount = AMOUNT_START;
         uint halfInterval = SECONDS_IN_YEAR / _blockSpace;
-        for(uint i = 200; i <= _height; i += halfInterval) {
+        for(uint i = NEXT_DECREMENT_HEIGHT; i <= _height; i += halfInterval) {
             amount -= amount / 14;
         }
 
