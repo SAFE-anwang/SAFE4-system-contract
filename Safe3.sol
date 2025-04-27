@@ -86,6 +86,7 @@ contract Safe3 is ISafe3, System {
         require(_pubkeys.length > 0 && _pubkeys.length <= 50, "invalid pubkeys count");
         require(_pubkeys.length == _sigs.length, "invalid parameter count");
         require(_targetAddr != address(0), "invalid target address");
+        uint count;
         for(uint k; k < _pubkeys.length; k++) {
             require(checkPubkey(_pubkeys[k]), "invalid pubkey");
             require(checkSig(_pubkeys[k], _sigs[k], _targetAddr), "invalid signautre");
@@ -98,6 +99,9 @@ contract Safe3 is ISafe3, System {
                     data.safe4Addr = _targetAddr;
                     data.redeemHeight = uint32(block.number);
                     emit RedeemLocked(safe3Addr, uint(data.amount) * 10000000000, _targetAddr, lockID);
+                    if(++count >= 500) {
+                        return;
+                    }
                 }
             }
         }
