@@ -99,7 +99,7 @@ contract Safe3 is ISafe3, System {
                     data.safe4Addr = _targetAddr;
                     data.redeemHeight = uint32(block.number);
                     emit RedeemLocked(safe3Addr, uint(data.amount) * 10000000000, _targetAddr, lockID);
-                    if(++count >= 500) {
+                    if(++count >= 100) {
                         return;
                     }
                 }
