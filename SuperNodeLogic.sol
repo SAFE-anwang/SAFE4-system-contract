@@ -25,15 +25,16 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(_lockDay >= getPropertyValue("supernode_min_lockday"), "less than min lock day");
         require(bytes(_name).length >= Constant.MIN_SN_NAME_LEN && bytes(_name).length <= Constant.MAX_SN_NAME_LEN, "invalid name");
         require(!getSuperNodeStorage().existName(_name), "existent name");
-        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(_enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
-        require(!getSuperNodeStorage().existNodeEnode(_enode), "existent enode");
+        string memory enode = compressEnode(_enode);
+        require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
+        require(!getSuperNodeStorage().existNodeEnode(enode), "existent enode");
         require(bytes(_description).length >= Constant.MIN_NODE_DESCRIPTION_LEN && bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         require(_creatorIncentive + _partnerIncentive + _voterIncentive == Constant.MAX_INCENTIVE, "invalid incentive");
         require(_creatorIncentive >= Constant.MIN_SN_CREATOR_INCENTIVE && _creatorIncentive <= Constant.MAX_SN_CREATOR_INCENTIVE, "creator incentive exceed 10%");
         require(_partnerIncentive >= Constant.MIN_SN_PARTNER_INCENTIVE && _partnerIncentive <= Constant.MAX_SN_PARTNER_INCENTIVE, "partner incentive is 40% - 50%");
         require(_voterIncentive >= Constant.MIN_SN_VOTER_INCENTIVE && _voterIncentive <= Constant.MAX_SN_VOTER_INCENTIVE, "creator incentive is 40% - 50%");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
-        getSuperNodeStorage().create(_addr, _isUnion, lockID, msg.value, _name, _enode, _description, ISuperNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive));
+        getSuperNodeStorage().create(_addr, _isUnion, lockID, msg.value, _name, enode, _description, ISuperNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive));
         getAccountManager().setRecordFreezeInfo(lockID, _addr, _lockDay); // creator's lock id can't register other supernode again
         emit SNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
@@ -145,10 +146,11 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
 
     function changeEnode(address _addr, string memory _enode) public override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
-        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(_enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
-        require(!getSuperNodeStorage().existNodeEnode(_enode), "existent enode");
+        string memory enode = compressEnode(_enode);
+        require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
+        require(!getSuperNodeStorage().existNodeEnode(enode), "existent enode");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
-        getSuperNodeStorage().updateEnode(_addr, _enode);
+        getSuperNodeStorage().updateEnode(_addr, enode);
     }
 
     function changeDescription(address _addr, string memory _description) public override {
@@ -270,5 +272,31 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
                 emit SystemReward(_info.addr, Constant.REWARD_SN, rewardAddrs, rewardTypes, rewardAmounts);
             }
         }
+    }
+
+    function compressEnode(string memory _enode) internal pure returns (string memory) {
+        bytes memory enodeBytes = bytes(_enode);
+        uint pos = enodeBytes.length;
+        for (uint i; i < enodeBytes.length; i++) {
+            if (enodeBytes[i] == "?") {
+                pos = i;
+                break;
+            }
+        }
+
+        if (pos == 0) {
+            return "";
+        }
+
+        if (pos == enodeBytes.length) {
+            return _enode;
+        }
+
+        bytes memory ret = new bytes(pos);
+        for (uint i; i < pos; i++) {
+            ret[i] = enodeBytes[i];
+        }
+
+        return string(ret);
     }
 }

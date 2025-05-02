@@ -23,8 +23,9 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
             require(msg.value >= getPropertyValue("masternode_union_min_amount") * Constant.COIN, "less than min union lock amount");
         }
         require(_lockDay >= getPropertyValue("masternode_min_lockday"), "less than min lock day");
-        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(_enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
-        require(!getMasterNodeStorage().existNodeEnode(_enode), "existent enode");
+        string memory enode = compressEnode(_enode);
+        require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
+        require(!getMasterNodeStorage().existNodeEnode(enode), "existent enode");
         require(bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         if(!_isUnion) {
             require(_creatorIncentive == Constant.MAX_INCENTIVE && _partnerIncentive == 0, "invalid incentive");
@@ -32,7 +33,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
             require(_creatorIncentive > 0 && _creatorIncentive <= Constant.MAX_MN_CREATOR_INCENTIVE && _creatorIncentive + _partnerIncentive == Constant.MAX_INCENTIVE, "invalid incentive");
         }
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
-        getMasterNodeStorage().create(_addr, _isUnion, msg.sender, lockID, msg.value, _enode, _description, IMasterNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
+        getMasterNodeStorage().create(_addr, _isUnion, msg.sender, lockID, msg.value, enode, _description, IMasterNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
         getAccountManager().setRecordFreezeInfo(lockID, _addr, _lockDay); // creator's lock id can't register other masternode again
         emit MNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
@@ -106,7 +107,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(record.addr == _creator, "lockID is conflicted with creator");
         require(record.amount == _amount, "lockID is conflicted with amount");
         require(record.lockDay == _lockDay, "lockID is conflicted with lockDay");
-        getMasterNodeStorage().create(_addr, false, _creator, _lockID, _amount, _enode, "MasterNode from Safe3", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0));
+        getMasterNodeStorage().create(_addr, false, _creator, _lockID, _amount, compressEnode(_enode), "MasterNode from Safe3", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0));
         getMasterNodeStorage().updateState(_addr, Constant.NODE_STATE_START);
         getAccountManager().setRecordFreezeInfo(_lockID, _addr, _lockDay);
         emit MNRegister(_addr, _creator, _amount, _lockDay, _lockID);
@@ -129,10 +130,11 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
 
     function changeEnode(address _addr, string memory _enode) public override {
         require(getMasterNodeStorage().exist(_addr), "non-existent masternode");
-        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(_enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
-        require(!getMasterNodeStorage().existNodeEnode(_enode), "existent enode");
+        string memory enode = compressEnode(_enode);
+        require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
+        require(!getMasterNodeStorage().existNodeEnode(enode), "existent enode");
         require(msg.sender == getMasterNodeStorage().getInfo(_addr).creator || msg.sender == Constant.SAFE3_ADDR, "caller isn't masternode creator");
-        getMasterNodeStorage().updateEnode(_addr, _enode);
+        getMasterNodeStorage().updateEnode(_addr, enode);
     }
 
     function changeDescription(address _addr, string memory _description) public override {
@@ -205,5 +207,31 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
 
         getAccountManager().reward{value: _amount}(rewardAddrs, rewardAmounts);
         emit SystemReward(_info.addr, Constant.REWARD_MN, rewardAddrs, rewardTypes, rewardAmounts);
+    }
+
+    function compressEnode(string memory _enode) internal pure returns (string memory) {
+        bytes memory enodeBytes = bytes(_enode);
+        uint pos = enodeBytes.length;
+        for (uint i; i < enodeBytes.length; i++) {
+            if (enodeBytes[i] == "?") {
+                pos = i;
+                break;
+            }
+        }
+
+        if (pos == 0) {
+            return "";
+        }
+
+        if (pos == enodeBytes.length) {
+            return _enode;
+        }
+
+        bytes memory ret = new bytes(pos);
+        for (uint i; i < pos; i++) {
+            ret[i] = enodeBytes[i];
+        }
+
+        return string(ret);
     }
 }
