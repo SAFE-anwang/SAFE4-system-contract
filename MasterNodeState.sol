@@ -8,8 +8,17 @@ contract MasterNodeState is INodeState, System {
     mapping(uint => uint[]) id2states;
     mapping(address => uint) sn2height;
 
-    function upload(uint[] memory _ids, uint[] memory _states) public override onlyFormalSN {
+    bool internal lock; // re-entrant lock
+    modifier noReentrant() {
+        require(!lock, "Error: reentrant call");
+        lock = true;
+        _;
+        lock = false;
+    }
+
+    function upload(uint[] memory _ids, uint[] memory _states) public override onlyFormalSN noReentrant {
         require(_ids.length > 0, "empty ids");
+        require(_ids.length <= 20, "too more ids");
         require(_ids.length == _states.length, "id list isn't matched with state list");
         require(block.number > sn2height[msg.sender], "upload mn-state frequently");
         sn2height[msg.sender] = block.number;
