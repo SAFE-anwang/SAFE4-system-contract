@@ -12,6 +12,8 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
     event MNEnodeChanged(address _addr, string _newEnode, string _oldEnode);
     event MNStateUpdate(address _addr, uint _newState, uint _oldState);
     event SystemReward(address _nodeAddr, uint _nodeType, address[] _addrs, uint[] _rewardTypes, uint[] _amounts);
+    event MNDissolve(address _addr, uint _id, address _creator, uint _lockID);
+    event MNRemoveMember(address _addr, uint _id, address _founder, uint _lockID);
 
     function register(bool _isUnion, address _addr, uint _lockDay, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive) public payable override {
         require(_addr != address(0), "invalid address");
@@ -97,6 +99,11 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
                     getSNVote().clearVoteOrApproval(_addr);
                 }
                 getMasterNodeStorage().removeMember(_addr, i);
+                if(i == 0) {
+                    emit MNDissolve(_addr, info.id, info.creator, _lockID);
+                } else {
+                    emit MNRemoveMember(_addr, info.id, info.founders[i].addr, _lockID);
+                }
                 return;
             }
         }

@@ -12,6 +12,8 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
     event SNEnodeChanged(address _addr, string _newEnode, string _oldEnode);
     event SNStateUpdate(address _addr, uint _newState, uint _oldState);
     event SystemReward(address _nodeAddr, uint _nodeType, address[] _addrs, uint[] _rewardTypes, uint[] _amounts);
+    event SNDissolve(address _addr, uint _id, address _creator, uint _lockID);
+    event SNRemoveMember(address _addr, uint _id, address _founder, uint _lockID);
 
     function register(bool _isUnion, address _addr, uint _lockDay, string memory _name, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable override {
         require(_addr != address(0), "invalid address");
@@ -103,6 +105,11 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
                     getSNVote().clearVoteOrApproval(_addr);
                 }
                 getSuperNodeStorage().removeMember(_addr, i);
+                if(i == 0) {
+                    emit SNDissolve(_addr, info.id, info.creator, _lockID);
+                } else {
+                    emit SNRemoveMember(_addr, info.id, info.founders[i].addr, _lockID);
+                }
                 return;
             }
         }
