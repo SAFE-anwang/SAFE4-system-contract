@@ -8,6 +8,8 @@ import "./utils/RewardUtil.sol";
 contract SuperNodeLogic is ISuperNodeLogic, System {
     event SNRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _reocrdID);
     event SNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _recordID);
+    event SNAddressChanged(address _addr, address _newAddr);
+    event SNEnodeChanged(address _addr, string _newEnode, string _oldEnode);
     event SNStateUpdate(address _addr, uint _newState, uint _oldState);
     event SystemReward(address _nodeAddr, uint _nodeType, address[] _addrs, uint[] _rewardTypes, uint[] _amounts);
 
@@ -134,6 +136,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
             }
         }
         getSNVote().updateDstAddr(_addr, _newAddr);
+        emit SNAddressChanged(_addr, _newAddr);
     }
 
     function changeName(address _addr, string memory _name) public override {
@@ -149,8 +152,11 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         string memory enode = compressEnode(_enode);
         require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
         require(!getSuperNodeStorage().existNodeEnode(enode), "existent enode");
-        require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
+        ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_addr);
+        string memory oldEnode = info.enode;
+        require(msg.sender == info.creator, "caller isn't creator");
         getSuperNodeStorage().updateEnode(_addr, enode);
+        emit SNEnodeChanged(_addr, enode, oldEnode);
     }
 
     function changeDescription(address _addr, string memory _description) public override {

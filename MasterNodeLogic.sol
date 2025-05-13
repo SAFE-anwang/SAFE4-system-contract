@@ -8,6 +8,8 @@ import "./utils/RewardUtil.sol";
 contract MasterNodeLogic is IMasterNodeLogic, System {
     event MNRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _lockID);
     event MNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _lockID);
+    event MNAddressChanged(address _addr, address _newAddr);
+    event MNEnodeChanged(address _addr, string _newEnode, string _oldEnode);
     event MNStateUpdate(address _addr, uint _newState, uint _oldState);
     event SystemReward(address _nodeAddr, uint _nodeType, address[] _addrs, uint[] _rewardTypes, uint[] _amounts);
 
@@ -126,6 +128,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
             getAccountManager().updateRecordFreezeAddr(info.founders[i].lockID, _newAddr);
         }
         getSNVote().updateDstAddr(_addr, _newAddr);
+        emit MNAddressChanged(_addr, _newAddr);
     }
 
     function changeEnode(address _addr, string memory _enode) public override {
@@ -133,8 +136,11 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         string memory enode = compressEnode(_enode);
         require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
         require(!getMasterNodeStorage().existNodeEnode(enode), "existent enode");
-        require(msg.sender == getMasterNodeStorage().getInfo(_addr).creator || msg.sender == Constant.SAFE3_ADDR, "caller isn't masternode creator");
+        IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfo(_addr);
+        string memory oldEnode = info.enode;
+        require(msg.sender == info.creator, "caller isn't masternode creator");
         getMasterNodeStorage().updateEnode(_addr, enode);
+        emit MNEnodeChanged(_addr, enode, oldEnode);
     }
 
     function changeDescription(address _addr, string memory _description) public override {
