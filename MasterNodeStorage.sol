@@ -28,7 +28,9 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         info.updateHeight = 0;
         ids.push(info.id);
         id2addr[info.id] = _addr;
-        enode2addr[info.enode] = _addr;
+        if(bytes(_enode).length > 0) {
+            enode2addr[info.enode] = _addr;
+        }
     }
 
     function append(address _addr, uint _lockID, uint _amount) public override onlyMasterNodeLogic {
@@ -42,7 +44,9 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         addr2info[_newAddr].updateHeight = 0;
         delete addr2info[_addr];
         id2addr[addr2info[_newAddr].id] = _newAddr;
-        enode2addr[addr2info[_newAddr].enode] = _newAddr;
+        if(bytes(addr2info[_newAddr].enode).length != 0) {
+            enode2addr[addr2info[_newAddr].enode] = _newAddr;
+        }
     }
 
     function updateEnode(address _addr, string memory _enode) public override onlyMasterNodeLogic {
