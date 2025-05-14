@@ -82,23 +82,27 @@ contract Safe3 is ISafe3, System {
         }
     }
 
-    function batchRedeemLocked(bytes[] memory _pubkeys, bytes[] memory _sigs, address _targetAddr) public override {
+    function batchRedeemLocked(bytes[] memory _pubkeys, bytes[] memory _sigs, address _targetAddr) public override noReentrant {
         require(_pubkeys.length > 0 && _pubkeys.length <= 50, "invalid pubkeys count");
         require(_pubkeys.length == _sigs.length, "invalid parameter count");
         require(_targetAddr != address(0), "invalid target address");
+        bytes memory keyID;
+        string memory safe3Addr;
+        LockedData[] memory temps;
+        uint lockID;
         uint count;
         for(uint k; k < _pubkeys.length; k++) {
             require(checkPubkey(_pubkeys[k]), "invalid pubkey");
             require(checkSig(_pubkeys[k], _sigs[k], _targetAddr), "invalid signautre");
-            bytes memory keyID = getKeyIDFromPubkey(_pubkeys[k]);
-            string memory safe3Addr = getSafe3Addr(_pubkeys[k]);
-            for(uint i; i < locks[keyID].length; i++) {
-                LockedData storage data = locks[keyID][i];
-                if(data.amount > 0 && data.redeemHeight == 0 && !data.isMN) {
-                    uint lockID = getAccountManager().fromSafe3{value: uint(data.amount) * 10000000000}(_targetAddr, data.lockDay, data.remainLockHeight);
-                    data.safe4Addr = _targetAddr;
-                    data.redeemHeight = uint32(block.number);
-                    emit RedeemLocked(safe3Addr, uint(data.amount) * 10000000000, _targetAddr, lockID);
+            keyID = getKeyIDFromPubkey(_pubkeys[k]);
+            safe3Addr = getSafe3Addr(_pubkeys[k]);
+            temps = locks[keyID];
+            for(uint i; i < temps.length; i++) {
+                if(temps[i].amount > 0 && temps[i].redeemHeight == 0 && !temps[i].isMN) {
+                    lockID = getAccountManager().fromSafe3{value: uint(temps[i].amount) * 10000000000}(_targetAddr, temps[i].lockDay, temps[i].remainLockHeight);
+                    locks[keyID][i].safe4Addr = _targetAddr;
+                    locks[keyID][i].redeemHeight = uint32(block.number);
+                    emit RedeemLocked(safe3Addr, uint(temps[i].amount) * 10000000000, _targetAddr, lockID);
                     if(++count >= 100) {
                         return;
                     }
@@ -111,20 +115,27 @@ contract Safe3 is ISafe3, System {
         require(_pubkeys.length > 0 && _pubkeys.length <= 50, "invalid pubkeys count");
         require(_pubkeys.length == _sigs.length && _pubkeys.length == _enodes.length, "invalid parameter count");
         require(_targetAddr != address(0), "invalid target address");
+        bytes memory keyID;
+        string memory safe3Addr;
+        address mnAddr;
+        LockedData[] memory temps;
+        string memory enode;
+        uint lockID;
         for(uint k; k < _pubkeys.length; k++) {
             require(checkPubkey(_pubkeys[k]), "invalid pubkey");
             require(checkSig(_pubkeys[k], _sigs[k], _targetAddr), "invalid signautre");
             require(bytes(_enodes[k]).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
-            bytes memory keyID = getKeyIDFromPubkey(_pubkeys[k]);
-            string memory safe3Addr = getSafe3Addr(_pubkeys[k]);
-            address mnAddr = getSafe4Addr(_pubkeys[k]);
-            for(uint i; i < locks[keyID].length; i++) {
-                LockedData storage data = locks[keyID][i];
-                if(data.amount > 0 && data.redeemHeight == 0 && data.isMN) {
-                    uint lockID = getAccountManager().fromSafe3{value: uint(data.amount) * 10000000000}(_targetAddr, data.lockDay, data.remainLockHeight);
-                    getMasterNodeLogic().fromSafe3(mnAddr, _targetAddr, uint(data.amount) * 10000000000, data.lockDay, lockID, _enodes[k]);
-                    data.safe4Addr = _targetAddr;
-                    data.redeemHeight = uint32(block.number);
+            keyID = getKeyIDFromPubkey(_pubkeys[k]);
+            safe3Addr = getSafe3Addr(_pubkeys[k]);
+            mnAddr = getSafe4Addr(_pubkeys[k]);
+            temps = locks[keyID];
+            enode = _enodes[k];
+            for(uint i; i < temps.length; i++) {
+                if(temps[i].amount > 0 && temps[i].redeemHeight == 0 && temps[i].isMN) {
+                    lockID = getAccountManager().fromSafe3{value: uint(temps[i].amount) * 10000000000}(_targetAddr, temps[i].lockDay, temps[i].remainLockHeight);
+                    getMasterNodeLogic().fromSafe3(mnAddr, _targetAddr, uint(temps[i].amount) * 10000000000, temps[i].lockDay, lockID, enode);
+                    locks[keyID][i].safe4Addr = _targetAddr;
+                    locks[keyID][i].redeemHeight = uint32(block.number);
                     emit RedeemMasterNode(safe3Addr, _targetAddr, lockID, mnAddr);
                     break;
                 }
@@ -256,19 +267,20 @@ contract Safe3 is ISafe3, System {
 
     function getLockedInfo(string memory _safe3Addr, uint _start, uint _count) public view override returns (LockedSafe3Info[] memory) {
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
-        require(locks[keyID].length > 0, "insufficient quantity");
-        require(_start < locks[keyID].length, "invalid _start, must be in [0, getLockedNum(addr))");
+        LockedData[] memory temps = locks[keyID];
+        require(temps.length > 0, "insufficient quantity");
+        require(_start < temps.length, "invalid _start, must be in [0, getLockedNum(addr))");
         require(_count > 0 && _count <= 10, "max return 10 locked infos");
 
         uint num = _count;
-        if(_start + _count >= locks[keyID].length) {
-            num = locks[keyID].length - _start;
+        if(_start + _count >= temps.length) {
+            num = temps.length - _start;
         }
 
         LockedSafe3Info[] memory ret = new LockedSafe3Info[](num);
         LockedData memory data;
         for(uint i; i < num; i++) {
-            data = locks[keyID][i + _start];
+            data = temps[i + _start];
             ret[i] = LockedSafe3Info(_safe3Addr, uint(data.amount) * 10000000000, data.remainLockHeight, data.lockDay, data.isMN, data.safe4Addr, data.redeemHeight);
         }
         return ret;
@@ -337,12 +349,9 @@ contract Safe3 is ISafe3, System {
 
     function existLockedNeedToRedeem(string memory _safe3Addr) public view override returns (bool) {
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
-        if(locks[keyID].length == 0) {
-            return false;
-        }
-        for(uint i; i < locks[keyID].length; i++) {
-            LockedData memory data = locks[keyID][i];
-            if(data.amount > 0 && data.redeemHeight == 0 && !data.isMN) {
+        LockedData[] memory temps = locks[keyID];
+        for(uint i; i < temps.length; i++) {
+            if(temps[i].amount > 0 && temps[i].redeemHeight == 0 && !temps[i].isMN) {
                 return true;
             }
         }
@@ -351,12 +360,9 @@ contract Safe3 is ISafe3, System {
 
     function existMasterNodeNeedToRedeem(string memory _safe3Addr) public view override returns (bool) {
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
-        if(locks[keyID].length == 0) {
-            return false;
-        }
-        for(uint i; i < locks[keyID].length; i++) {
-            LockedData memory data = locks[keyID][i];
-            if(data.amount > 0 && data.redeemHeight == 0 && data.isMN) {
+        LockedData[] memory temps = locks[keyID];
+        for(uint i; i < temps.length; i++) {
+            if(temps[i].amount > 0 && temps[i].redeemHeight == 0 && temps[i].isMN) {
                 return true;
             }
         }
