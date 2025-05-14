@@ -20,8 +20,8 @@ contract SuperNodeState is INodeState, System {
         require(_ids.length > 0, "empty ids");
         require(_ids.length <= 20, "too more ids");
         require(_ids.length == _states.length, "id list isn't matched with state list");
-        require(block.number > sn2height[msg.sender], "upload sn-state frequently");
-        sn2height[msg.sender] = block.number;
+        // require(block.number > sn2height[msg.sender], "upload sn-state frequently");
+        // sn2height[msg.sender] = block.number;
 
         uint snNum = getSNNum();
         for(uint i; i < _ids.length; i++) {
@@ -55,10 +55,9 @@ contract SuperNodeState is INodeState, System {
             if(getSuperNodeStorage().getInfoByID(_id).state == _state) {
                 remove(_id, i);
             } else {
-                if(id2states[_id][i] == _state) {
-                    revert("upload existent sn-state");
+                if(id2states[_id][i] != _state) {
+                    id2states[_id][i] = _state;
                 }
-                id2states[_id][i] = _state;
             }
         } else {
             id2addrs[_id].push(msg.sender);
