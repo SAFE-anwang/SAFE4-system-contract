@@ -150,11 +150,31 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         emit MNEnodeChanged(_addr, enode, oldEnode);
     }
 
+    function changeEnode(uint _id, string memory _enode) public override {
+        require(getMasterNodeStorage().existID(_id), "non-existent masternode");
+        string memory enode = compressEnode(_enode);
+        require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
+        require(!getMasterNodeStorage().existNodeEnode(enode), "existent enode");
+        IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfoByID(_id);
+        require(msg.sender == info.creator, "caller isn't masternode creator");
+        string memory oldEnode = info.enode;
+        getMasterNodeStorage().updateEnode(info.addr, enode);
+        emit MNEnodeChanged(info.addr, enode, oldEnode);
+    }
+
     function changeDescription(address _addr, string memory _description) public override {
         require(getMasterNodeStorage().exist(_addr), "non-existent masternode");
         require(bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         require(msg.sender == getMasterNodeStorage().getInfo(_addr).creator, "caller isn't masternode creator");
         getMasterNodeStorage().updateDescription(_addr, _description);
+    }
+
+    function changeDescription(uint _id, string memory _description) public override {
+        require(getMasterNodeStorage().existID(_id), "non-existent masternode");
+        require(bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
+        IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfoByID(_id);
+        require(msg.sender == info.creator, "caller isn't masternode creator");
+        getMasterNodeStorage().updateDescription(info.addr, _description);
     }
 
     function changeIsOfficial(address _addr, bool _flag) public override onlyOwner {
