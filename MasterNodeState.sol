@@ -8,6 +8,8 @@ contract MasterNodeState is INodeState, System {
     mapping(uint => uint[]) id2states;
     mapping(address => uint) sn2height;
 
+    mapping(uint => mapping(address => uint)) id2addr2state;
+
     bool internal lock; // re-entrant lock
     modifier noReentrant() {
         require(!lock, "Error: reentrant call");
@@ -20,72 +22,49 @@ contract MasterNodeState is INodeState, System {
         require(_ids.length > 0, "empty ids");
         require(_ids.length <= 20, "too more ids");
         require(_ids.length == _states.length, "id list isn't matched with state list");
-        // require(block.number > sn2height[msg.sender], "upload mn-state frequently");
-        // sn2height[msg.sender] = block.number;
 
-        uint snNum = getSNNum();
+        address[] memory sns = getSuperNodeStorage().getTops();
+        IMasterNodeStorage.MasterNodeInfo memory info;
         for(uint i; i < _ids.length; i++) {
-            if(getMasterNodeStorage().existID(_ids[i])) {
-                save(_ids[i], _states[i]);
-                update(_ids[i], _states[i], snNum);
+            info = getMasterNodeStorage().getInfoByID(_ids[i]);
+            if(info.id == 0 || info.state == _states[i]) {
+                continue;
             }
+            id2addr2state[_ids[i]][msg.sender] = _states[i];
+            update(_ids[i], _states[i], sns);
         }
     }
 
     function get(uint _id) public view override returns (StateEntry[] memory) {
-        address[] memory addrs = id2addrs[_id];
-        uint[] memory states = id2states[_id];
-        StateEntry[] memory entries = new StateEntry[](addrs.length);
-        for(uint i; i < addrs.length; i++) {
-            entries[i] = StateEntry(addrs[i], states[i]);
+        address[] memory sns = getSuperNodeStorage().getTops();
+        StateEntry[] memory ret = new StateEntry[](sns.length);
+        for(uint i; i < ret.length; i++) {
+            ret[i] = StateEntry(sns[i], id2addr2state[_id][sns[i]]);
         }
-        return entries;
+        return ret;
     }
 
-    function save(uint _id, uint _state) internal {
-        bool exist;
-        uint i;
-        for(; i < id2addrs[_id].length; i++) {
-            if(id2addrs[_id][i] == msg.sender) {
-                exist = true;
+    function getByAddr(uint _id, address _addr) public view override returns(uint) {
+        return id2addr2state[_id][_addr];
+    }
+
+    function update(uint _id, uint _state, address[] memory _sns) internal {
+        uint num;
+        bool ok;
+        for(uint i; i < _sns.length; i++) {
+            if(_state == id2addr2state[_id][_sns[i]]) {
+                num+=1;
+            }
+            if(num > _sns.length * 2 /3) {
+                ok = true;
                 break;
             }
         }
-        if(exist) {
-            if(getMasterNodeStorage().getInfoByID(_id).state == _state) {
-                remove(_id, i);
-            } else {
-                if(id2states[_id][i] != _state) {
-                    id2states[_id][i] = _state;
-                }
-            }
-        } else {
-            id2addrs[_id].push(msg.sender);
-            id2states[_id].push(_state);
-        }
-    }
-
-    function update(uint _id, uint _state, uint _snNum) internal {
-        uint num;
-        for(uint i; i < id2states[_id].length; i++) {
-            if(_state == id2states[_id][i]) {
-                num += 1;
-                if(num > _snNum * 2 / 3) {
-                    getMasterNodeLogic().changeState(_id, _state);
-                    delete id2addrs[_id];
-                    delete id2states[_id];
-                    return;
-                }
+        if(ok) {
+            getMasterNodeLogic().changeState(_id, _state);
+            for(uint i; i < _sns.length; i++) {
+                id2addr2state[_id][_sns[i]] = 0;
             }
         }
-    }
-
-    function remove(uint _id, uint _index) internal {
-        address[] storage addrs = id2addrs[_id];
-        uint[] storage states = id2states[_id];
-        addrs[_index] = addrs[addrs.length - 1];
-        addrs.pop();
-        states[_index] = states[states.length - 1];
-        states.pop();
     }
 }
