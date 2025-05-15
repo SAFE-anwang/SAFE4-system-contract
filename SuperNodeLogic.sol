@@ -154,6 +154,15 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         getSuperNodeStorage().updateName(_addr, _name);
     }
 
+    function changeName(uint _id, string memory _name) public override {
+        require(getSuperNodeStorage().existID(_id), "non-existent supernode");
+        require(bytes(_name).length >= Constant.MIN_SN_NAME_LEN && bytes(_name).length <= Constant.MAX_SN_NAME_LEN, "invalid name");
+        require(!getSuperNodeStorage().existName(_name), "existent name");
+        ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfoByID(_id);
+        require(msg.sender == info.creator, "caller isn't creator");
+        getSuperNodeStorage().updateName(info.addr, _name);
+    }
+
     function changeEnode(address _addr, string memory _enode) public override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
         string memory enode = compressEnode(_enode);
@@ -166,11 +175,31 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         emit SNEnodeChanged(_addr, enode, oldEnode);
     }
 
+    function changeEnode(uint _id, string memory _enode) public override {
+        require(getSuperNodeStorage().existID(_id), "non-existent supernode");
+        string memory enode = compressEnode(_enode);
+        require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
+        require(!getSuperNodeStorage().existNodeEnode(enode), "existent enode");
+        ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfoByID(_id);
+        require(msg.sender == info.creator, "caller isn't creator");
+        string memory oldEnode = info.enode;
+        getSuperNodeStorage().updateEnode(info.addr, enode);
+        emit SNEnodeChanged(info.addr, enode, oldEnode);
+    }
+
     function changeDescription(address _addr, string memory _description) public override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
         require(bytes(_description).length >= Constant.MIN_NODE_DESCRIPTION_LEN && bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
         getSuperNodeStorage().updateDescription(_addr, _description);
+    }
+
+    function changeDescription(uint _id, string memory _description) public override {
+        require(getSuperNodeStorage().existID(_id), "non-existent supernode");
+        require(bytes(_description).length >= Constant.MIN_NODE_DESCRIPTION_LEN && bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
+        ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfoByID(_id);
+        require(msg.sender == info.creator, "caller isn't creator");
+        getSuperNodeStorage().updateDescription(info.addr, _description);
     }
 
     function changeIsOfficial(address _addr, bool _flag) public override onlyOwner {
