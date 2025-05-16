@@ -154,7 +154,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         getSuperNodeStorage().updateName(_addr, _name);
     }
 
-    function changeName(uint _id, string memory _name) public override {
+    function changeNameByID(uint _id, string memory _name) public override {
         require(getSuperNodeStorage().existID(_id), "non-existent supernode");
         require(bytes(_name).length >= Constant.MIN_SN_NAME_LEN && bytes(_name).length <= Constant.MAX_SN_NAME_LEN, "invalid name");
         require(!getSuperNodeStorage().existName(_name), "existent name");
@@ -175,7 +175,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         emit SNEnodeChanged(_addr, enode, oldEnode);
     }
 
-    function changeEnode(uint _id, string memory _enode) public override {
+    function changeEnodeByID(uint _id, string memory _enode) public override {
         require(getSuperNodeStorage().existID(_id), "non-existent supernode");
         string memory enode = compressEnode(_enode);
         require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
@@ -194,7 +194,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         getSuperNodeStorage().updateDescription(_addr, _description);
     }
 
-    function changeDescription(uint _id, string memory _description) public override {
+    function changeDescriptionByID(uint _id, string memory _description) public override {
         require(getSuperNodeStorage().existID(_id), "non-existent supernode");
         require(bytes(_description).length >= Constant.MIN_NODE_DESCRIPTION_LEN && bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfoByID(_id);

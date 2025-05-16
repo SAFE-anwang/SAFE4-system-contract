@@ -150,7 +150,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         emit MNEnodeChanged(_addr, enode, oldEnode);
     }
 
-    function changeEnode(uint _id, string memory _enode) public override {
+    function changeEnodeByID(uint _id, string memory _enode) public override {
         require(getMasterNodeStorage().existID(_id), "non-existent masternode");
         string memory enode = compressEnode(_enode);
         require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
@@ -169,7 +169,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         getMasterNodeStorage().updateDescription(_addr, _description);
     }
 
-    function changeDescription(uint _id, string memory _description) public override {
+    function changeDescriptionByID(uint _id, string memory _description) public override {
         require(getMasterNodeStorage().existID(_id), "non-existent masternode");
         require(bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfoByID(_id);
