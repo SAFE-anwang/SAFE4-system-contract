@@ -169,17 +169,25 @@ contract SNVote is ISNVote, System {
             delete dst2details[_oldAddr][voter];
         }
         // copy dst2amount
-        dst2amount[_newAddr] = dst2amount[_oldAddr];
-        delete dst2amount[_oldAddr];
+        if(dst2amount[_oldAddr] != 0) {
+            dst2amount[_newAddr] = dst2amount[_oldAddr];
+            delete dst2amount[_oldAddr];
+        }
         // copy dst2num
-        dst2num[_newAddr] = dst2num[_oldAddr];
-        delete dst2num[_oldAddr];
+        if(dst2num[_oldAddr] != 0) {
+            dst2num[_newAddr] = dst2num[_oldAddr];
+            delete dst2num[_oldAddr];
+        }
         // copy dst2voters
-        dst2voters[_newAddr] = dst2voters[_oldAddr];
-        delete dst2voters[_oldAddr];
+        if(dst2voters[_oldAddr].length != 0) {
+            dst2voters[_newAddr] = dst2voters[_oldAddr];
+            delete dst2voters[_oldAddr];
+        }
         // copy dst2ids
-        dst2ids[_newAddr] = dst2ids[_oldAddr];
-        delete dst2ids[_oldAddr];
+        if(dst2ids[_oldAddr].length != 0) {
+            dst2ids[_newAddr] = dst2ids[_oldAddr];
+            delete dst2ids[_oldAddr];
+        }
     }
 
     function getAmount4Voter(address _voterAddr) public view override returns (uint) {
