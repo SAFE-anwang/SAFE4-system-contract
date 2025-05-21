@@ -331,7 +331,7 @@ contract AccountManager is IAccountManager, System {
         useinfo.frozenAddr = _target;
         useinfo.freezeHeight = block.number;
         useinfo.unfreezeHeight = _height;
-        emit SafeFreeze(_id, _target, (_height - block.number)/getPropertyValue("block_space"));
+        emit SafeFreeze(_id, _target, (_height - block.number)*getPropertyValue("block_space")/Constant.SECONDS_IN_DAY);
     }
 
     function setRecordVoteInfo(uint _id, address _target, uint _day) public override onlySnOrSNVoteContract {
