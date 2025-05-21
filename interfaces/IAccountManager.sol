@@ -35,6 +35,7 @@ interface IAccountManager {
     function fromSafe3(address _addr, uint _lockDay, uint _remainLockHeight) external payable returns (uint);
 
     function setRecordFreezeInfo(uint _id, address _target, uint _day) external;
+    function setRecordFreezeInfo2(uint _id, address _target, uint _height) external;
     function setRecordVoteInfo(uint _id, address _target, uint _day) external;
 
     function updateRecordFreezeAddr(uint _id, address _target) external;

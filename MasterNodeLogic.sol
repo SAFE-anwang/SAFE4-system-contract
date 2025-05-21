@@ -118,7 +118,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(record.lockDay == _lockDay, "lockID is conflicted with lockDay");
         getMasterNodeStorage().create(_addr, false, _creator, _lockID, _amount, compressEnode(_enode), "MasterNode from Safe3", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0));
         getMasterNodeStorage().updateState(_addr, Constant.NODE_STATE_STOP);
-        getAccountManager().setRecordFreezeInfo(_lockID, _addr, _lockDay);
+        getAccountManager().setRecordFreezeInfo2(_lockID, _addr, record.unlockHeight);
         emit MNRegister(_addr, _creator, _amount, _lockDay, _lockID);
     }
 

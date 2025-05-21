@@ -323,6 +323,17 @@ contract AccountManager is IAccountManager, System {
         }
     }
 
+    function setRecordFreezeInfo2(uint _id, address _target, uint _height) public override onlyMnOrSnContract {
+        if(_id == 0) {
+            return;
+        }
+        RecordUseInfo storage useinfo = id2useinfo[_id];
+        useinfo.frozenAddr = _target;
+        useinfo.freezeHeight = block.number;
+        useinfo.unfreezeHeight = _height;
+        emit SafeFreeze(_id, _target, (_height - block.number)/getPropertyValue("block_space"));
+    }
+
     function setRecordVoteInfo(uint _id, address _target, uint _day) public override onlySnOrSNVoteContract {
         if(_id == 0) {
             return;
