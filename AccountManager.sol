@@ -170,6 +170,8 @@ contract AccountManager is IAccountManager, System {
     }
 
     function transfer(address _to, uint _amount, uint _lockDay) public override returns (uint) {
+        revert("unused");
+        /*
         require(_to != address(0), "transfer to the zero address");
         require(_amount >= getPropertyValue("deposit_min_amount"), "invalid amount");
 
@@ -243,6 +245,7 @@ contract AccountManager is IAccountManager, System {
             }
         }
         return id;
+        */
     }
 
     function reward(address[] memory _addrs, uint[] memory _amounts) public payable override onlyMnOrSnContract {
