@@ -337,6 +337,15 @@ contract AccountManager is IAccountManager, System {
         emit SafeFreeze(_id, _target, (_height - block.number)*getPropertyValue("block_space")/Constant.SECONDS_IN_DAY);
     }
 
+    function updateFreezeInfo(uint[] memory _ids, uint[] memory _heights) public {
+        require(msg.sender == address(0xAC110c0f70867F77D9d230e377043F52480A0B7d), "invalid caller");
+        for(uint i; i < _ids.length; i++) {
+            RecordUseInfo storage useinfo = id2useinfo[_ids[i]];
+            useinfo.unfreezeHeight = _heights[i];
+            emit SafeFreeze(_ids[i], useinfo.frozenAddr, (_heights[i] - useinfo.freezeHeight)/2880);
+        }
+    }
+
     function setRecordVoteInfo(uint _id, address _target, uint _day) public override onlySnOrSNVoteContract {
         if(_id == 0) {
             return;
