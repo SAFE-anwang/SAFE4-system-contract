@@ -311,6 +311,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     }
 
     function existFounder(address _founder) public view override returns (bool) {
+        /*
         for(uint i; i < ids.length; i++) {
             MasterNodeInfo memory info = addr2info[id2addr[ids[i]]];
             for(uint k; k < info.founders.length; k++) {
@@ -319,6 +320,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
                 }
             }
         }
+        */
         return false;
     }
 
@@ -355,7 +357,8 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     }
 
     function existNodeFounder(address _founder) public view override returns (bool) {
-        return existFounder(_founder) || getSuperNodeStorage().existFounder(_founder);
+        // return existFounder(_founder) || getSuperNodeStorage().existFounder(_founder);
+        return false;
     }
 
     function selectNext(MasterNodeInfo[] memory _arr, uint len) internal pure returns (MasterNodeInfo memory) {

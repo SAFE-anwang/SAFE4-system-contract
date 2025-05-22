@@ -362,6 +362,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     }
 
     function existFounder(address _founder) public view override returns (bool) {
+        /*
         for(uint i; i < ids.length; i++) {
             SuperNodeInfo memory info = addr2info[id2addr[ids[i]]];
             for(uint k; k < info.founders.length; k++) {
@@ -370,6 +371,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
                 }
             }
         }
+        */
         return false;
     }
 
@@ -416,7 +418,8 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     }
 
     function existNodeFounder(address _founder) public view override returns (bool) {
-        return existFounder(_founder) || getMasterNodeStorage().existFounder(_founder);
+        // return existFounder(_founder) || getMasterNodeStorage().existFounder(_founder);
+        return false;
     }
 
     function sortByVoteNum(address[] memory _arr, uint _left, uint _right) internal view {

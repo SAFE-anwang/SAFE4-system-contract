@@ -19,7 +19,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(_addr != address(0), "invalid address");
         require(_addr != msg.sender, "address can't be caller");
         require(!getMasterNodeStorage().existNodeAddress(_addr), "existent address");
-        require(!getMasterNodeStorage().existNodeFounder(_addr), "address can't be founder of supernode and masternode");
+        // require(!getMasterNodeStorage().existNodeFounder(_addr), "address can't be founder of supernode and masternode");
         require(!getMasterNodeStorage().existNodeAddress(msg.sender), "caller can't be supernode and masternode");
         if(!_isUnion) {
             require(msg.value >= getPropertyValue("masternode_min_amount") * Constant.COIN, "less than min lock amount");
@@ -127,7 +127,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(_newAddr != address(0), "invalid new address");
         require(_newAddr != msg.sender, "new address can't be caller");
         require(!getMasterNodeStorage().existNodeAddress(_newAddr), "existent new address");
-        require(!getMasterNodeStorage().existNodeFounder(_newAddr), "new address can't be founder of supernode and masternode");
+        // require(!getMasterNodeStorage().existNodeFounder(_newAddr), "new address can't be founder of supernode and masternode");
         require(msg.sender == getMasterNodeStorage().getInfo(_addr).creator, "caller isn't masternode creator");
         getMasterNodeStorage().updateAddress(_addr, _newAddr);
         IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfo(_newAddr);
