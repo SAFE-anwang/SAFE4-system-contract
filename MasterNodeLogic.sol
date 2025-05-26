@@ -37,7 +37,8 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
             require(_creatorIncentive > 0 && _creatorIncentive <= Constant.MAX_MN_CREATOR_INCENTIVE && _creatorIncentive + _partnerIncentive == Constant.MAX_INCENTIVE, "invalid incentive");
         }
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
-        getMasterNodeStorage().create(_addr, _isUnion, msg.sender, lockID, msg.value, enode, _description, IMasterNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
+        uint unlockHeight = block.number + _lockDay * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
+        getMasterNodeStorage().create(_addr, _isUnion, msg.sender, lockID, msg.value, enode, _description, IMasterNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, 0), unlockHeight);
         getAccountManager().setRecordFreezeInfo(lockID, _addr, _lockDay); // creator's lock id can't register other masternode again
         emit MNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
@@ -49,7 +50,8 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(msg.value >= getPropertyValue("masternode_append_min_amount") * Constant.COIN, "less than min append lock amount");
         require(_lockDay >= getPropertyValue("masternode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
-        getMasterNodeStorage().append(_addr, lockID, msg.value);
+        uint unlockHeight = block.number + _lockDay * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
+        getMasterNodeStorage().append(_addr, lockID, msg.value, unlockHeight);
         getAccountManager().setRecordFreezeInfo(lockID, _addr, getPropertyValue("record_masternode_freezeday")); // partner's lock id can‘t register other masternode until unfreeze it
         emit MNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
@@ -70,7 +72,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         } else if(isMN(useinfo.frozenAddr)) {
             getMasterNodeLogic().removeMember(useinfo.frozenAddr, _lockID);
         }
-        getMasterNodeStorage().append(_addr, _lockID, record.amount);
+        getMasterNodeStorage().append(_addr, _lockID, record.amount, record.unlockHeight);
         getAccountManager().setRecordFreezeInfo(_lockID, _addr, getPropertyValue("record_masternode_freezeday")); // partner's lock id can't register other masternode until unfreeze it
         emit MNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
@@ -116,7 +118,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(record.addr == _creator, "lockID is conflicted with creator");
         require(record.amount == _amount, "lockID is conflicted with amount");
         require(record.lockDay == _lockDay, "lockID is conflicted with lockDay");
-        getMasterNodeStorage().create(_addr, false, _creator, _lockID, _amount, compressEnode(_enode), "MasterNode from Safe3", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0));
+        getMasterNodeStorage().create(_addr, false, _creator, _lockID, _amount, compressEnode(_enode), "MasterNode from Safe3", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0), record.unlockHeight);
         getMasterNodeStorage().updateState(_addr, Constant.NODE_STATE_STOP);
         getAccountManager().setRecordFreezeInfo2(_lockID, _addr, record.unlockHeight);
         emit MNRegister(_addr, _creator, _amount, _lockDay, _lockID);

@@ -11,7 +11,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     mapping(uint => address) id2addr;
     mapping(string => address) enode2addr;
 
-    function create(address _addr, bool _isUnion, address _creator, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory plan) public override onlyMasterNodeLogic {
+    function create(address _addr, bool _isUnion, address _creator, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory _plan, uint _unlockHeight) public override onlyMasterNodeLogic {
         MasterNodeInfo storage info = addr2info[_addr];
         info.id = ++no;
         info.addr = _addr;
@@ -21,8 +21,8 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         info.description = _description;
         info.isOfficial = false;
         info.state = Constant.NODE_STATE_INIT;
-        info.founders.push(MemberInfo(_lockID, _creator, _amount, block.number));
-        info.incentivePlan = plan;
+        info.founders.push(MemberInfo(_lockID, _creator, _amount, _unlockHeight));
+        info.incentivePlan = _plan;
         info.lastRewardHeight = 0;
         info.createHeight = block.number;
         info.updateHeight = 0;
@@ -33,8 +33,8 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         }
     }
 
-    function append(address _addr, uint _lockID, uint _amount) public override onlyMasterNodeLogic {
-        addr2info[_addr].founders.push(MemberInfo(_lockID, tx.origin, _amount, block.number));
+    function append(address _addr, uint _lockID, uint _amount, uint _unlockHeight) public override onlyMasterNodeLogic {
+        addr2info[_addr].founders.push(MemberInfo(_lockID, tx.origin, _amount, _unlockHeight));
         addr2info[_addr].updateHeight = block.number;
     }
 
