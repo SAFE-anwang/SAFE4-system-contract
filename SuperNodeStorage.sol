@@ -12,7 +12,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     mapping(string => address) name2addr;
     mapping(string => address) enode2addr;
 
-    function create(address _addr, bool _isUnion, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan) public override onlySuperNodeLogic {
+    function create(address _addr, bool _isUnion, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan, uint _unlockHeight) public override onlySuperNodeLogic {
         SuperNodeInfo storage info = addr2info[_addr];
         info.id = ++no;
         info.name = _name;
@@ -23,7 +23,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         info.description = _description;
         info.isOfficial = false;
         info.state = Constant.NODE_STATE_INIT;
-        info.founders.push(MemberInfo(_lockID, tx.origin, _amount, block.number));
+        info.founders.push(MemberInfo(_lockID, tx.origin, _amount, _unlockHeight));
         info.incentivePlan = _incentivePlan;
         info.lastRewardHeight = 0;
         info.createHeight = block.number;
@@ -34,8 +34,8 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         enode2addr[info.enode] = _addr;
     }
 
-    function append(address _addr, uint _lockID, uint _amount) public override onlySuperNodeLogic {
-        addr2info[_addr].founders.push(MemberInfo(_lockID, tx.origin, _amount, block.number));
+    function append(address _addr, uint _lockID, uint _amount, uint _unlockHeight) public override onlySuperNodeLogic {
+        addr2info[_addr].founders.push(MemberInfo(_lockID, tx.origin, _amount, _unlockHeight));
         addr2info[_addr].updateHeight = block.number;
     }
 

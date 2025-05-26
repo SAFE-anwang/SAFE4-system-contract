@@ -6,7 +6,7 @@ interface ISuperNodeStorage {
         uint lockID; // lock id
         address addr; // member address
         uint amount; // lock amount
-        uint height; // add height
+        uint unlockHeight; // unlock height
     }
 
     struct IncentivePlan {
@@ -32,8 +32,8 @@ interface ISuperNodeStorage {
         uint updateHeight; // supernode update height
     }
 
-    function create(address _addr, bool _isUnion, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan) external;
-    function append(address _addr, uint _lockID, uint _amount) external;
+    function create(address _addr, bool _isUnion, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan, uint _unlockHeight) external;
+    function append(address _addr, uint _lockID, uint _amount, uint _unlockHeight) external;
     function updateAddress(address _addr, address _newAddr) external;
     function updateName(address _addr, string memory _name) external;
     function updateEnode(address _addr, string memory _enode) external;

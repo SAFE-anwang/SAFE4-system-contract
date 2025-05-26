@@ -38,7 +38,9 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(_partnerIncentive >= Constant.MIN_SN_PARTNER_INCENTIVE && _partnerIncentive <= Constant.MAX_SN_PARTNER_INCENTIVE, "partner incentive is 40% - 50%");
         require(_voterIncentive >= Constant.MIN_SN_VOTER_INCENTIVE && _voterIncentive <= Constant.MAX_SN_VOTER_INCENTIVE, "creator incentive is 40% - 50%");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
-        getSuperNodeStorage().create(_addr, _isUnion, lockID, msg.value, _name, enode, _description, ISuperNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive));
+        uint unlockHeight = block.number + _lockDay * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
+        ISuperNodeStorage.IncentivePlan memory incentive = ISuperNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive);
+        getSuperNodeStorage().create(_addr, _isUnion, lockID, msg.value, _name, enode, _description, incentive, unlockHeight);
         getAccountManager().setRecordFreezeInfo(lockID, _addr, _lockDay); // creator's lock id can't register other supernode again
         emit SNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
@@ -50,7 +52,8 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(msg.value >= getPropertyValue("supernode_append_min_amount") * Constant.COIN, "less than min append lock amount");
         require(_lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
-        getSuperNodeStorage().append(_addr, lockID, msg.value);
+        uint unlockHeight = block.number + _lockDay * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
+        getSuperNodeStorage().append(_addr, lockID, msg.value, unlockHeight);
         getAccountManager().setRecordFreezeInfo(lockID, _addr, getPropertyValue("record_supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
         emit SNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
@@ -74,7 +77,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         } else if(isMN(useinfo.frozenAddr)) {
             getMasterNodeLogic().removeMember(useinfo.frozenAddr, _lockID);
         }
-        getSuperNodeStorage().append(_addr, _lockID, record.amount);
+        getSuperNodeStorage().append(_addr, _lockID, record.amount, record.unlockHeight);
         getAccountManager().setRecordFreezeInfo(_lockID, _addr, getPropertyValue("record_supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
         emit SNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
