@@ -126,41 +126,69 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
 
     function getNext() public view override returns (address) {
         uint minAmount = getPropertyValue("masternode_min_amount") * Constant.COIN;
-        uint count;
-        MasterNodeInfo[] memory mns = new MasterNodeInfo[](ids.length);
-        for(uint i; i < ids.length; i++) {
-            MasterNodeInfo memory info = addr2info[id2addr[ids[i]]];
+        MasterNodeInfo memory info;
+        uint lockAmount;
+        uint minLastRewardHeight;
+        uint pos;
+        uint i;
+        for(; i < ids.length; i++) {
+            info = addr2info[id2addr[ids[i]]];
             if(info.state != Constant.NODE_STATE_START) {
                 continue;
             }
-            uint lockAmount;
             // check creator
-            if(block.number >= getAccountManager().getRecordByID(info.founders[0].lockID).unlockHeight) { // creator must be locked
+            if(block.number >= info.founders[0].unlockHeight) { // creator must be locked
                 continue;
             }
-            lockAmount += info.founders[0].amount;
+            lockAmount = info.founders[0].amount;
             // check partner
             for(uint k = 1; k < info.founders.length; k++) {
-                if(block.number < getAccountManager().getRecordByID(info.founders[k].lockID).unlockHeight) {
+                if(block.number < info.founders[k].unlockHeight) {
                     lockAmount += info.founders[k].amount;
                 }
             }
             if(lockAmount < minAmount) {
                 continue;
             }
-            mns[count++] = info;
+            minLastRewardHeight = info.lastRewardHeight;
+            pos = i;
+            break;
         }
-        if(count != 0) {
-            return selectNext(mns, count).addr;
+
+        if(i == ids.length) {
+            address[] memory officials = getOfficials();
+            if(officials.length != 0) {
+                return selectNext2(officials, officials.length);
+            } else {
+                return id2addr[(block.number % ids.length) + 1];
+            }
         }
-        // select official addr2info
-        // select official addr2info
-        address[] memory officials = getOfficials();
-        if(officials.length != 0) {
-            return selectNext2(officials, officials.length);
-        } else {
-            return id2addr[(block.number % ids.length) + 1];
+
+        for(; i < ids.length; i++) {
+            info = addr2info[id2addr[ids[i]]];
+            if(info.state != Constant.NODE_STATE_START) {
+                continue;
+            }
+            // check creator
+            if(block.number >= info.founders[0].unlockHeight) { // creator must be locked
+                continue;
+            }
+            lockAmount = info.founders[0].amount;
+            // check partner
+            for(uint k = 1; k < info.founders.length; k++) {
+                if(block.number < info.founders[k].unlockHeight) {
+                    lockAmount += info.founders[k].amount;
+                }
+            }
+            if(lockAmount < minAmount) {
+                continue;
+            }
+            if(minLastRewardHeight > info.lastRewardHeight) {
+                minLastRewardHeight = info.lastRewardHeight;
+                pos = i;
+            }
         }
+        return id2addr[ids[pos]];
     }
 
     function getNum() public view override returns (uint) {
@@ -327,12 +355,12 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         if(info.id == 0) {
             return false;
         }
-        if(block.number >= getAccountManager().getRecordByID(info.founders[0].lockID).unlockHeight) { // creator must be locked
+        if(block.number >= info.founders[0].unlockHeight) { // creator must be locked
             return false;
         }
         uint lockAmount = info.founders[0].amount;
         for(uint i = 1; i < info.founders.length; i++) {
-            if(block.number < getAccountManager().getRecordByID(info.founders[i].lockID).unlockHeight) {
+            if(block.number < info.founders[i].unlockHeight) {
                 lockAmount += info.founders[i].amount;
             }
         }
