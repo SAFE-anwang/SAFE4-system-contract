@@ -99,7 +99,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         }
     }
 
-    function dissolve(address _addr) public override onlySuperNodeLogic {
+    function dissolve(address _addr) internal {
         SuperNodeInfo memory info = addr2info[_addr];
         // remove id
         uint pos;
@@ -109,9 +109,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
                 break;
             }
         }
-        for(; pos < ids.length - 1; pos++) {
-            ids[pos] = ids[pos + 1];
-        }
+        ids[pos] = ids[ids.length - 1];
         ids.pop();
         // remove id2addr
         delete id2addr[info.id];

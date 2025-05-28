@@ -91,7 +91,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         }
     }
 
-    function dissolve(address _addr) public override onlyMasterNodeLogic {
+    function dissolve(address _addr) internal {
         MasterNodeInfo memory info = addr2info[_addr];
         // remove id
         uint pos;
@@ -101,9 +101,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
                 break;
             }
         }
-        for(; pos < ids.length - 1; pos++) {
-            ids[pos] = ids[pos + 1];
-        }
+        ids[pos] = ids[ids.length - 1];
         ids.pop();
         // remove id2addr
         delete id2addr[info.id];
@@ -116,16 +114,6 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     function updateLastRewardHeight(address _addr, uint _height) public override onlyMasterNodeLogic {
         addr2info[_addr].lastRewardHeight = _height;
         addr2info[_addr].updateHeight = block.number;
-    }
-
-    function updateFounderUnlockHeight(address _addr, uint _lockID, uint _unlockHeight) public override onlyAmContract {
-        MasterNodeInfo storage info = addr2info[_addr];
-        for(uint i; i < info.founders.length; i++) {
-            if(info.founders[i].lockID == _lockID) {
-                info.founders[i].unlockHeight = _unlockHeight;
-                return;
-            }
-        }
     }
 
     function resetFounderInfo(uint[] memory _ids, uint[] memory _unlockHeights) public {
