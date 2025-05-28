@@ -127,17 +127,16 @@ contract Safe3 is ISafe3, System {
             require(bytes(_enodes[k]).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
             keyID = getKeyIDFromPubkey(_pubkeys[k]);
             safe3Addr = getSafe3Addr(_pubkeys[k]);
-            mnAddr = getSafe4Addr(_pubkeys[k]);
             temps = locks[keyID];
             enode = _enodes[k];
             for(uint i; i < temps.length; i++) {
                 if(temps[i].amount > 0 && temps[i].redeemHeight == 0 && temps[i].isMN) {
+                    mnAddr = getRandomAddress(i);
                     lockID = getAccountManager().fromSafe3{value: uint(temps[i].amount) * 10000000000}(_targetAddr, temps[i].lockDay, temps[i].remainLockHeight);
                     getMasterNodeLogic().fromSafe3(mnAddr, _targetAddr, uint(temps[i].amount) * 10000000000, temps[i].lockDay, lockID, enode);
                     locks[keyID][i].safe4Addr = _targetAddr;
                     locks[keyID][i].redeemHeight = uint32(block.number);
                     emit RedeemMasterNode(safe3Addr, _targetAddr, lockID, mnAddr);
-                    break;
                 }
             }
         }
@@ -426,5 +425,15 @@ contract Safe3 is ISafe3, System {
         bytes32 h = sha256(abi.encodePacked(safe3Addr, _targetAddr));
         bytes32 msgHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", h));
         return getSafe4Addr(_pubkey) == ECDSA.recover(msgHash, _sig);
+    }
+
+    function getRandomAddress(uint _index) internal view returns (address) {
+        bytes32 hash = keccak256(abi.encodePacked(
+            msg.sender,
+            block.timestamp,
+            block.difficulty,
+            _index
+        ));
+        return address(uint160(uint(hash)));
     }
 }
