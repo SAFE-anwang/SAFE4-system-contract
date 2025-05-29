@@ -126,6 +126,23 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         addr2info[_addr].updateHeight = block.number;
     }
 
+    function resetFounderInfo(uint[] memory _ids, uint[] memory _unlockHeights) public {
+        require(msg.sender == address(0xAC110c0f70867F77D9d230e377043F52480A0B7d), "invalid caller");
+        SuperNodeInfo storage info;
+        for(uint i; i < _ids.length; i++) {
+            info = addr2info[id2addr[_ids[i]]];
+            info.founders[0].unlockHeight = _unlockHeights[i];
+        }
+    }
+
+    function resetFounderInfo2(uint _id, uint[] memory _unlockHeights) public {
+        require(msg.sender == address(0xAC110c0f70867F77D9d230e377043F52480A0B7d), "invalid caller");
+        SuperNodeInfo storage info = addr2info[id2addr[_id]];
+        for(uint i; i < info.founders.length; i++) {
+            info.founders[i].unlockHeight = _unlockHeights[i];
+        }
+    }
+
     function getInfo(address _addr) public view override returns (SuperNodeInfo memory) {
         return addr2info[_addr];
     }
