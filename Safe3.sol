@@ -131,7 +131,7 @@ contract Safe3 is ISafe3, System {
             enode = _enodes[k];
             for(uint i; i < temps.length; i++) {
                 if(temps[i].amount > 0 && temps[i].redeemHeight == 0 && temps[i].isMN) {
-                    mnAddr = getRandomAddress(i);
+                    mnAddr = getRandomAddress(i, _pubkeys[k]);
                     lockID = getAccountManager().fromSafe3{value: uint(temps[i].amount) * 10000000000}(_targetAddr, temps[i].lockDay, temps[i].remainLockHeight);
                     getMasterNodeLogic().fromSafe3(mnAddr, _targetAddr, uint(temps[i].amount) * 10000000000, temps[i].lockDay, lockID, enode);
                     locks[keyID][i].safe4Addr = _targetAddr;
@@ -427,12 +427,13 @@ contract Safe3 is ISafe3, System {
         return getSafe4Addr(_pubkey) == ECDSA.recover(msgHash, _sig);
     }
 
-    function getRandomAddress(uint _index) internal view returns (address) {
+    function getRandomAddress(uint _index, bytes memory _pubkey) internal view returns (address) {
         bytes32 hash = keccak256(abi.encodePacked(
             msg.sender,
             block.timestamp,
             block.difficulty,
-            _index
+            _index,
+            _pubkey
         ));
         return address(uint160(uint(hash)));
     }
