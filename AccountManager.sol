@@ -381,7 +381,8 @@ contract AccountManager is IAccountManager, System {
             return;
         }
         require(id2addr[_id] == msg.sender, "record isn't your");
-        if(id2useinfo[_id].frozenAddr != address(0)) { // used for mn/sn
+        address frozenAddr = id2useinfo[_id].frozenAddr;
+        if(frozenAddr != address(0)) { // used for mn/sn
             require(_day >= 360, "invalid day, must be 360 at least");
         } else {
             if(_day == 0) {
@@ -398,6 +399,15 @@ contract AccountManager is IAccountManager, System {
             record.lockDay += _day;
             record.unlockHeight += _day * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
         }
+
+        if(frozenAddr != address(0)) { // used for mn/sn
+            if(getMasterNodeStorage().exist(frozenAddr)) {
+                getMasterNodeStorage().updateFounderUnlockHeight(frozenAddr, _id, record.unlockHeight);
+            } else if(getSuperNodeStorage().exist(frozenAddr)) {
+                getSuperNodeStorage().updateFounderUnlockHeight(frozenAddr, _id, record.unlockHeight);
+            }
+        }
+
         emit SafeAddLockDay(_id, oldLockDay, record.lockDay);
     }
 

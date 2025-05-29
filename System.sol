@@ -33,6 +33,11 @@ contract System is Initializable, OwnableUpgradeable {
         _;
     }
 
+    modifier onlyAmContract {
+        require(msg.sender == Constant.ACCOUNT_MANAGER_ADDR, "No account-manager contract");
+        _;
+    }
+
     modifier onlyAmOrSnContract {
         require(msg.sender == Constant.ACCOUNT_MANAGER_ADDR || msg.sender == Constant.SUPERNODE_LOGIC_ADDR, "No account-manager and supernode-logic contract");
         _;

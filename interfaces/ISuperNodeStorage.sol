@@ -42,6 +42,7 @@ interface ISuperNodeStorage {
     function updateState(address _addr, uint _state) external;
     function removeMember(address _addr, uint _index) external;
     function updateLastRewardHeight(address _addr, uint _height) external;
+    function updateFounderUnlockHeight(address _addr, uint _lockID, uint _unlockheight) external;
 
     function getInfo(address _addr) external view returns (SuperNodeInfo memory);
     function getInfoByID(uint _id) external view returns (SuperNodeInfo memory);
