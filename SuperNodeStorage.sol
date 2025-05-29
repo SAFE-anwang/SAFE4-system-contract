@@ -258,13 +258,13 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
             }
             uint lockAmount;
             // check creator
-            if(block.number >= getAccountManager().getRecordByID(info.founders[0].lockID).unlockHeight) { // creator must be locked
+            if(block.number >= info.founders[0].unlockHeight) { // creator must be locked
                 continue;
             }
             lockAmount += info.founders[0].amount;
             // check partner
             for(uint k = 1; k < info.founders.length; k++) {
-                if(block.number < getAccountManager().getRecordByID(info.founders[k].lockID).unlockHeight) {
+                if(block.number < info.founders[k].unlockHeight) {
                     lockAmount += info.founders[k].amount;
                 }
             }
@@ -378,12 +378,12 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         if(info.id == 0) {
             return false;
         }
-        if(block.number >= getAccountManager().getRecordByID(info.founders[0].lockID).unlockHeight) { // creator must be locked
+        if(block.number >= info.founders[0].unlockHeight) { // creator must be locked
             return false;
         }
         uint lockAmount = info.founders[0].amount;
         for(uint i = 1; i < info.founders.length; i++) {
-            if(block.number < getAccountManager().getRecordByID(info.founders[i].lockID).unlockHeight) {
+            if(block.number < info.founders[i].unlockHeight) {
                 lockAmount += info.founders[i].amount;
             }
         }
