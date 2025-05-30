@@ -116,7 +116,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         addr2info[_addr].updateHeight = block.number;
     }
 
-    function updateFounderUnlockHeight(address _addr, uint _lockID, uint _unlockHeight) public override onlyAmContract {
+    function updateFounderUnlockHeight(address _addr, uint _lockID, uint _unlockHeight) public override {
         MasterNodeInfo storage info = addr2info[_addr];
         for(uint i; i < info.founders.length; i++) {
             if(info.founders[i].lockID == _lockID) {
