@@ -70,6 +70,11 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         addr2info[_addr].updateHeight = block.number;
     }
 
+    function updateIncentivePlan(address _addr, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public override onlySuperNodeLogic {
+        addr2info[_addr].incentivePlan = IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive);
+        addr2info[_addr].updateHeight = block.number;
+    }
+
     function updateIsOfficial(address _addr, bool _flag) public override onlySuperNodeLogic {
         if(tx.origin != owner()) {
             return;

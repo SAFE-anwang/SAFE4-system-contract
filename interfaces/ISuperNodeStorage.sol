@@ -38,6 +38,7 @@ interface ISuperNodeStorage {
     function updateName(address _addr, string memory _name) external;
     function updateEnode(address _addr, string memory _enode) external;
     function updateDescription(address _addr, string memory _description) external;
+    function updateIncentivePlan(address _addr, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) external;
     function updateIsOfficial(address _addr, bool _flag) external;
     function updateState(address _addr, uint _state) external;
     function removeMember(address _addr, uint _index) external;

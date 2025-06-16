@@ -205,6 +205,17 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         getSuperNodeStorage().updateDescription(info.addr, _description);
     }
 
+    function changeIncentivePlan(uint _id, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public override {
+        require(getSuperNodeStorage().existID(_id), "non-existent supernode");
+        require(_creatorIncentive + _partnerIncentive + _voterIncentive == Constant.MAX_INCENTIVE, "invalid incentive");
+        require(_creatorIncentive >= Constant.MIN_SN_CREATOR_INCENTIVE && _creatorIncentive <= Constant.MAX_SN_CREATOR_INCENTIVE, "creator incentive exceed 10%");
+        require(_partnerIncentive >= Constant.MIN_SN_PARTNER_INCENTIVE && _partnerIncentive <= Constant.MAX_SN_PARTNER_INCENTIVE, "partner incentive is 40% - 50%");
+        require(_voterIncentive >= Constant.MIN_SN_VOTER_INCENTIVE && _voterIncentive <= Constant.MAX_SN_VOTER_INCENTIVE, "creator incentive is 40% - 50%");
+        ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfoByID(_id);
+        require(msg.sender == info.creator, "caller isn't creator");
+        getSuperNodeStorage().updateIncentivePlan(info.addr, _creatorIncentive, _partnerIncentive, _voterIncentive);
+    }
+
     function changeIsOfficial(address _addr, bool _flag) public override onlyOwner {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
         getSuperNodeStorage().updateIsOfficial(_addr, _flag);

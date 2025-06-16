@@ -14,6 +14,7 @@ interface ISuperNodeLogic {
     function changeEnodeByID(uint _id, string memory _enode) external;
     function changeDescription(address _addr, string memory _description) external;
     function changeDescriptionByID(uint _id, string memory _description) external;
+    function changeIncentivePlan(uint _id, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) external;
     function changeIsOfficial(address _addr, bool _flag) external;
     function changeState(uint _id, uint _state) external;
 }
