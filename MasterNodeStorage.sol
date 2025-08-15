@@ -103,7 +103,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         }
         ids[pos] = ids[ids.length - 1];
         ids.pop();
-        sortIDs();
+        // sortIDs();
         // remove id2addr
         delete id2addr[info.id];
         // remove enode2addr
@@ -127,10 +127,10 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         }
     }
 
-    function sortIDs() public {
-        if(ids.length == 0) return;
-        quickSort(0, ids.length - 1);
-    }
+    // function sortIDs() public {
+    //     if(ids.length == 0) return;
+    //     quickSort(0, ids.length - 1);
+    // }
 
     function getInfo(address _addr) public view override returns (MasterNodeInfo memory) {
         return addr2info[_addr];
@@ -427,21 +427,21 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         return _arr[pos];
     }
 
-    function quickSort(uint _left, uint _right) internal {
-        if (_left >= _right) return;
-        uint pivot = ids[(_left + _right) / 2];
-        uint i = _left;
-        uint j = _right;
-        while (i <= j) {
-            while (ids[i] < pivot) i++;
-            while (ids[j] > pivot && j > 0) j--;
-            if (i <= j) {
-                (ids[i], ids[j]) = (ids[j], ids[i]);
-                i++;
-                if(j != 0) j--;
-            }
-        }
-        if (_left < j) quickSort(_left, j);
-        if (i < _right) quickSort(i, _right);
-    }
+    // function quickSort(uint _left, uint _right) internal {
+    //     if (_left >= _right) return;
+    //     uint pivot = ids[(_left + _right) / 2];
+    //     uint i = _left;
+    //     uint j = _right;
+    //     while (i <= j) {
+    //         while (ids[i] < pivot) i++;
+    //         while (ids[j] > pivot && j > 0) j--;
+    //         if (i <= j) {
+    //             (ids[i], ids[j]) = (ids[j], ids[i]);
+    //             i++;
+    //             if(j != 0) j--;
+    //         }
+    //     }
+    //     if (_left < j) quickSort(_left, j);
+    //     if (i < _right) quickSort(i, _right);
+    // }
 }
