@@ -103,6 +103,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         }
         ids[pos] = ids[ids.length - 1];
         ids.pop();
+        sortIDs();
         // remove id2addr
         delete id2addr[info.id];
         // remove enode2addr
@@ -124,6 +125,10 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
                 return;
             }
         }
+    }
+
+    function sortIDs() public {
+        quickSort(ids, 0, ids.length - 1);
     }
 
     function getInfo(address _addr) public view override returns (MasterNodeInfo memory) {
@@ -419,5 +424,24 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
             }
         }
         return _arr[pos];
+    }
+
+    function quickSort(uint[] memory _arr, uint _left, uint _right) internal view {
+        if (_left >= _right) return;
+
+        uint pivot = _arr[(_left + _right) / 2];
+        uint i = _left;
+        uint j = _right;
+        while (i <= j) {
+            while (_arr[i] < pivot) i++;
+            while (_arr[j] > pivot && j > 0) j--;
+            if (i <= j) {
+                (_arr[i], _arr[j]) = (_arr[j], _arr[i]);
+                i++;
+                if(j != 0) j--;
+            }
+        }
+        if (_left < j) quickSort(_arr, _left, j);
+        if (i < _right) quickSort(_arr, i, _right);
     }
 }
