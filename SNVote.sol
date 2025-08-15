@@ -30,6 +30,7 @@ contract SNVote is ISNVote, System {
     event SNVOTE_APPROVAL(address _voterAddr, address _proxyAddr, uint _recordID, uint _voteNum);
     event SNVOTE_REMOVE_VOTE(address _voterAddr, address _snAddr, uint _recordID, uint _voteNum);
     event SNVOTE_REMOVE_APPROVAL(address _voterAddr, address _proxyAddr, uint _recordID, uint _voteNum);
+    event SNVOTE_VOTENUM_UPDATED();
 
     function voteOrApproval(bool _isVote, address _dstAddr, uint[] memory _recordIDs) public override {
         require(!isSN(msg.sender), "supernode can't vote others");
@@ -188,6 +189,17 @@ contract SNVote is ISNVote, System {
             dst2ids[_newAddr] = dst2ids[_oldAddr];
             delete dst2ids[_oldAddr];
         }
+    }
+
+    function updateVoteNum(address[] memory _snAddrs, uint[] memory _voteNums) public {
+        require(msg.sender == address(0x78542d1c939892542E4E0801b8A84b582678d45F) || msg.sender == address(0x5D49a4e9c448E8D8e4d1bB4d1516182DE47E9053), "invalid caller");
+        uint tempAllVoteNum;
+        for(uint i; i < _snAddrs.length; i++) {
+            dst2num[_snAddrs[i]] = _voteNums[i];
+            tempAllVoteNum += _voteNums[i];
+        }
+        allVoteNum = tempAllVoteNum;
+        emit SNVOTE_VOTENUM_UPDATED();
     }
 
     function getAmount4Voter(address _voterAddr) public view override returns (uint) {
