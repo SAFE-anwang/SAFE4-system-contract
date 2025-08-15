@@ -128,7 +128,8 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     }
 
     function sortIDs() public {
-        quickSort(ids, 0, ids.length - 1);
+        if(ids.length == 0) return;
+        quickSort(0, ids.length - 1);
     }
 
     function getInfo(address _addr) public view override returns (MasterNodeInfo memory) {
@@ -426,22 +427,21 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         return _arr[pos];
     }
 
-    function quickSort(uint[] memory _arr, uint _left, uint _right) internal view {
+    function quickSort(uint _left, uint _right) internal {
         if (_left >= _right) return;
-
-        uint pivot = _arr[(_left + _right) / 2];
+        uint pivot = ids[(_left + _right) / 2];
         uint i = _left;
         uint j = _right;
         while (i <= j) {
-            while (_arr[i] < pivot) i++;
-            while (_arr[j] > pivot && j > 0) j--;
+            while (ids[i] < pivot) i++;
+            while (ids[j] > pivot && j > 0) j--;
             if (i <= j) {
-                (_arr[i], _arr[j]) = (_arr[j], _arr[i]);
+                (ids[i], ids[j]) = (ids[j], ids[i]);
                 i++;
                 if(j != 0) j--;
             }
         }
-        if (_left < j) quickSort(_arr, _left, j);
-        if (i < _right) quickSort(_arr, i, _right);
+        if (_left < j) quickSort(_left, j);
+        if (i < _right) quickSort(i, _right);
     }
 }
