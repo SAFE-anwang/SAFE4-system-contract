@@ -94,7 +94,7 @@ contract SNVote is ISNVote, System {
             if(voteRecord.dstAddr != _dstAddr) {
                 continue;
             }
-            remove(voteRecord.voterAddr, ids[i]);
+            remove(voteRecord.voterAddr, ids[i], false);
         }
     }
 
@@ -740,13 +740,17 @@ contract SNVote is ISNVote, System {
     }
 
     function remove(address _voterAddr, uint _recordID) internal {
+        remove(_voterAddr, _recordID, true);
+    }
+
+    function remove(address _voterAddr, uint _recordID, bool _check) internal {
         IAccountManager.AccountRecord memory record = getAccountManager().getRecordByID(_recordID);
-        if(record.addr != _voterAddr) {
+        if(_check && record.addr != _voterAddr) {
             return;
         }
 
         IAccountManager.RecordUseInfo memory useinfo = getAccountManager().getRecordUseInfo(_recordID);
-        if(block.number < useinfo.releaseHeight) {
+        if(_check && block.number < useinfo.releaseHeight) {
             return;
         }
 
