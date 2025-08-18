@@ -87,41 +87,14 @@ contract SNVote is ISNVote, System {
     function clearVoteOrApproval(address _dstAddr) public override onlyMnOrSnContract {
         uint[] memory ids = dst2ids[_dstAddr];
         for(uint i; i < ids.length; i++) {
-            VoteRecord memory voteRecord = id2record[ids[i]];
-            // update voter
-            remove4Voter(voteRecord.voterAddr, _dstAddr, ids[i], voteRecord.amount, voteRecord.num);
-
-            // update dst
-            remove4Dst(_dstAddr, voteRecord.voterAddr, ids[i], voteRecord.amount, voteRecord.num);
-
-            // remove vote record
-            delete id2record[ids[i]];
-
-            // unfreeze record
-            if(isSN(_dstAddr)) { // vote
-                if(allAmount > voteRecord.amount) {
-                    allAmount -= voteRecord.amount;
-                } else {
-                    allAmount = 0;
-                }
-                if(allVoteNum > voteRecord.num) {
-                    allVoteNum -= voteRecord.num;
-                } else {
-                    allVoteNum = 0;
-                }
-                getAccountManager().setRecordVoteInfo(ids[i], address(0), 0);
-            } else { // proxy
-                if(allProxiedAmount > voteRecord.amount) {
-                    allProxiedAmount -= voteRecord.amount;
-                } else {
-                    allProxiedAmount = 0;
-                }
-                if(allProxiedVoteNum > voteRecord.num) {
-                    allProxiedVoteNum -= voteRecord.num;
-                } else {
-                    allProxiedVoteNum = 0;
-                }
+            if(ids[i] == 0) {
+                continue;
             }
+            VoteRecord memory voteRecord = id2record[ids[i]];
+            if(voteRecord.dstAddr != _dstAddr) {
+                continue;
+            }
+            remove(voteRecord.voterAddr, ids[i]);
         }
     }
 
@@ -191,14 +164,37 @@ contract SNVote is ISNVote, System {
         }
     }
 
-    function updateVoteNum(address[] memory _snAddrs, uint[] memory _voteNums) public {
+    function updateVoteNum(address _snAddr, address[] memory _voters, uint[] memory _voteNums) public {
         require(msg.sender == address(0x78542d1c939892542E4E0801b8A84b582678d45F) || msg.sender == address(0x5D49a4e9c448E8D8e4d1bB4d1516182DE47E9053), "invalid caller");
-        uint tempAllVoteNum;
-        for(uint i; i < _snAddrs.length; i++) {
-            dst2num[_snAddrs[i]] = _voteNums[i];
-            tempAllVoteNum += _voteNums[i];
+        uint old;
+        for(uint i = 0; i < _voters.length; i++) {
+            old = voter2details[_voters[i]][_snAddr].totalNum;
+
+            // update for voter
+            voter2details[_voters[i]][_snAddr].totalNum = _voteNums[i];
+            if(voter2num[_voters[i]] > old) {
+                voter2num[_voters[i]] -= old;
+            } else {
+                voter2num[_voters[i]] = 0;
+            }
+            voter2num[_voters[i]] += _voteNums[i];
+
+            // update for sn
+            dst2details[_snAddr][_voters[i]].totalNum = _voteNums[i];
+            if(dst2num[_snAddr] > old) {
+                dst2num[_snAddr] -= old;
+            } else {
+                dst2num[_snAddr] = 0;
+            }
+            dst2num[_snAddr] += _voteNums[i];
+
+            if(allVoteNum > old) {
+                allVoteNum -= old;
+            } else {
+                allVoteNum = 0;
+            }
+            allVoteNum += _voteNums[i];
         }
-        allVoteNum = tempAllVoteNum;
         emit SNVOTE_VOTENUM_UPDATED();
     }
 
@@ -549,11 +545,24 @@ contract SNVote is ISNVote, System {
         }
 
         uint amount = record.amount;
-        uint num = amount;
-        if(isMN(useinfo.frozenAddr)) {
-             num = record.amount * 2;
-        } else if(block.number < record.unlockHeight) {
-            num = record.amount * 15 / 10;
+        uint num;
+        if(block.number >= record.unlockHeight) { // unlocked
+            num = amount;
+        } else {
+            IMasterNodeStorage.MasterNodeInfo memory mnInfo = getMasterNodeStorage().getInfo(useinfo.frozenAddr);
+            if(mnInfo.id == 0) { // common locked
+                num = record.amount * 3 / 2;
+            } else { // locked for masternode
+                if(!isValidMN(useinfo.frozenAddr)) { // invalid masternode
+                    num = record.amount * 3 / 2;
+                } else {
+                    if(bytes(mnInfo.enode).length == 0) { // without vps
+                        num = record.amount * 3 / 2;
+                    } else { // valid masternode
+                        num = record.amount * 2;
+                    }
+                }
+            }
         }
 
         // update vote record
@@ -748,7 +757,25 @@ contract SNVote is ISNVote, System {
         }
 
         uint amount = voteRecord.amount;
-        uint num = voteRecord.num;
+        uint num;
+        if(block.number >= record.unlockHeight) { // unlocked
+            num = amount;
+        } else {
+            IMasterNodeStorage.MasterNodeInfo memory mnInfo = getMasterNodeStorage().getInfo(useinfo.frozenAddr);
+            if(mnInfo.id == 0) { // common locked
+                num = record.amount * 3 / 2;
+            } else { // locked for masternode
+                if(!isValidMN(useinfo.frozenAddr)) { // invalid masternode
+                    num = record.amount * 3 / 2;
+                } else {
+                    if(bytes(mnInfo.enode).length == 0) { // without vps
+                        num = record.amount * 3 / 2;
+                    } else { // valid masternode
+                        num = record.amount * 2;
+                    }
+                }
+            }
+        }
 
         // update voter
         remove4Voter(_voterAddr, dstAddr, _recordID, amount, num);
