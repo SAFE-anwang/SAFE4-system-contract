@@ -164,7 +164,7 @@ contract SNVote is ISNVote, System {
         }
     }
 
-    function updateVoteNum(address _snAddr, address[] memory _voters, uint[] memory _voteNums) public {
+    function updateVoteNum(address _snAddr, address[] memory _voters, uint[] memory _voteNums, uint _allVoteNum) public {
         require(msg.sender == address(0x78542d1c939892542E4E0801b8A84b582678d45F) || msg.sender == address(0x5D49a4e9c448E8D8e4d1bB4d1516182DE47E9053), "invalid caller");
         uint old;
         for(uint i = 0; i < _voters.length; i++) {
@@ -187,14 +187,8 @@ contract SNVote is ISNVote, System {
                 dst2num[_snAddr] = 0;
             }
             dst2num[_snAddr] += _voteNums[i];
-
-            if(allVoteNum > old) {
-                allVoteNum -= old;
-            } else {
-                allVoteNum = 0;
-            }
-            allVoteNum += _voteNums[i];
         }
+        allVoteNum = _allVoteNum;
         emit SNVOTE_VOTENUM_UPDATED();
     }
 
