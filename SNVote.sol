@@ -208,6 +208,10 @@ contract SNVote is ISNVote, System {
         return voter2num[_voterAddr];
     }
 
+    function getVoteNum4Voter(address _voterAddr, address _dstAddr) public view returns (uint) {
+        return voter2details[_voterAddr][_dstAddr].totalNum;
+    }
+
     // get voter's supernode number
     function getSNNum4Voter(address _voterAddr) public view override returns (uint) {
         uint num;
