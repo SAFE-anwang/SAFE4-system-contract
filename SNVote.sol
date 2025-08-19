@@ -192,6 +192,10 @@ contract SNVote is ISNVote, System {
         emit SNVOTE_VOTENUM_UPDATED();
     }
 
+    function getRecordByID(uint _id) public view returns (VoteRecord memory) {
+        return id2record[_id];
+    }
+
     function getAmount4Voter(address _voterAddr) public view override returns (uint) {
         return voter2amount[_voterAddr];
     }
