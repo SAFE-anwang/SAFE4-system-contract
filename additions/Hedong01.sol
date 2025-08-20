@@ -50,7 +50,7 @@ contract Hedong001 is Initializable, OwnableUpgradeable {
         require(msg.value > 0, "invalid value");
         require(_to != address(0), "invalid target address");
         require(_times > 0, "invalid times");
-        require(msg.value / _times >= 100000000000000000 && msg.value / _times < 1000000000000000000, "amount/times need in range of [0.1, 1)");
+        require(msg.value / _times >= 1e17 && msg.value / _times < 1e18, "amount/times need in range of [0.1, 1)");
         require(_spaceDay + _startDay != 0, "invalid space and start day");
 
         uint[] memory ids = new uint[](_times);
