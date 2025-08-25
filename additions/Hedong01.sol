@@ -10,7 +10,7 @@ interface IProperty {
     function getValue(string memory _name) external view returns (uint);
 }
 
-contract Hedong001 is Initializable, OwnableUpgradeable {
+contract Hedong01 is Initializable, OwnableUpgradeable {
     uint record_no; // record no.
     mapping(address => uint[]) addr2ids;
     mapping(uint => AccountRecord) id2record;
