@@ -47,6 +47,9 @@ contract Safe3 is ISafe3, System {
     bytes[] specialKeyIDs;
     mapping(bytes => SpecialData) specials;
 
+    bytes[] pettyKeyIDs;
+    mapping(bytes => AvailableData) petties;
+
     event RedeemAvailable(string _safe3Addr, uint _amount, address _safe4Addr);
     event RedeemLocked(string _safe3Addr, uint _amount, address _safe4Addr, uint _lockID);
     event RedeemMasterNode(string _safe3Addr, address _safe4Addr, uint _lockID, address _mnAddr);
@@ -54,6 +57,7 @@ contract Safe3 is ISafe3, System {
     event RedeemSpecialReject(string _safe3Addr);
     event RedeemSpecialAgree(string _safe3Addr);
     event RedeemSpecialVote(string _safe3Addr, address _voter, uint _voteResult);
+    event RedeemPetty(string _safe3Addr, uint _amount, address _safe4Addr);
 
     bool internal lock; // re-entrant lock
     modifier noReentrant() {
@@ -207,6 +211,25 @@ contract Safe3 is ISafe3, System {
         }
     }
 
+    function batchRedeemPetty(bytes[] memory _pubkeys, bytes[] memory _sigs, address _targetAddr) public override noReentrant {
+        require(_pubkeys.length > 0 && _pubkeys.length <= 50, "invalid pubkeys count");
+        require(_pubkeys.length == _sigs.length, "invalid parameter count");
+        require(_targetAddr != address(0), "invalid target address");
+        for(uint k; k < _pubkeys.length; k++) {
+            require(checkPubkey(_pubkeys[k]), "invalid pubkey");
+            require(checkSig(_pubkeys[k], _sigs[k], _targetAddr), "invalid signautre");
+            bytes memory keyID = getKeyIDFromPubkey(_pubkeys[k]);
+            if(petties[keyID].amount == 0 || petties[keyID].redeemHeight != 0) {
+                continue;
+            }
+            string memory safe3Addr = getSafe3Addr(_pubkeys[k]);
+            payable(_targetAddr).transfer(uint(petties[keyID].amount) * 10000000000);
+            petties[keyID].safe4Addr = _targetAddr;
+            petties[keyID].redeemHeight = uint32(block.number);
+            emit RedeemPetty(safe3Addr, uint(petties[keyID].amount) * 10000000000, _targetAddr);
+        }
+    }
+
     function getAllAvailableNum() public view override returns (uint) {
         return keyIDs.length;
     }
@@ -341,6 +364,34 @@ contract Safe3 is ISafe3, System {
         return ret;
     }
 
+    function getAllPettyNum() public view override returns (uint) {
+        return pettyKeyIDs.length;
+    }
+
+    function getPettyInfos(uint _start, uint _count) public view override returns (AvailableSafe3Info[] memory) {
+        require(pettyKeyIDs.length > 0, "insufficient quantity");
+        require(_start < pettyKeyIDs.length, "invalid _start, must be in [0, getAllPettyNum())");
+        require(_count > 0 && _count <= 10, "max return 10 available infos");
+
+        uint num = _count;
+        if(_start + _count >= pettyKeyIDs.length) {
+            num = pettyKeyIDs.length - _start;
+        }
+
+        AvailableSafe3Info[] memory ret = new AvailableSafe3Info[](num);
+        bytes memory keyID;
+        for(uint i; i < num; i++) {
+            keyID = pettyKeyIDs[i + _start];
+            ret[i] = AvailableSafe3Info(string(Base58.encode(keyID)), uint(petties[keyID].amount) * 10000000000, petties[keyID].safe4Addr, petties[keyID].redeemHeight);
+        }
+        return ret;
+    }
+
+    function getPettyInfo(string memory _safe3Addr) public view override returns (AvailableSafe3Info memory) {
+        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
+        return AvailableSafe3Info(_safe3Addr, uint(petties[keyID].amount) * 10000000000, petties[keyID].safe4Addr, petties[keyID].redeemHeight);
+    }
+
     function existAvailableNeedToRedeem(string memory _safe3Addr) public view override returns (bool) {
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
         return (availables[keyID].amount > 0 && availables[keyID].redeemHeight == 0);
@@ -366,6 +417,11 @@ contract Safe3 is ISafe3, System {
             }
         }
         return false;
+    }
+
+    function existPettyNeedToRedeem(string memory _safe3Addr) public view override returns (bool) {
+        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
+        return (petties[keyID].amount > 0 && petties[keyID].redeemHeight == 0);
     }
 
     function getKeyIDFromPubkey(bytes memory _pubkey) internal pure returns (bytes memory) {
