@@ -63,59 +63,6 @@ contract Safe3 is ISafe3, System {
         lock = false;
     }
 
-    function addAvailable(string memory _safe3Addr, uint _amount) public {
-        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
-        if(availables[keyID].amount == 0) {
-            keyIDs.push(keyID);
-        }
-        availables[keyID] = AvailableData(uint64(_amount / 10000000000), 0, address(0));
-    }
-
-    function addLocked(string memory _safe3Addr, uint _amount) public {
-        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
-        lockedNum++;
-        LockedData[] storage datas = locks[keyID];
-        if(datas.length == 0) {
-            lockedKeyIDs.push(keyID);
-        }
-        datas.push(LockedData(uint64(_amount / 10000000000), 551200, 180, false, 0, address(0)));
-    }
-
-    function addMasterNode(string memory _safe3Addr) public {
-        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
-        lockedNum++;
-        LockedData[] storage datas = locks[keyID];
-        if(datas.length == 0) {
-            lockedKeyIDs.push(keyID);
-        }
-        bool flag = false;
-        for(uint i; i < datas.length; i++) {
-            LockedData memory data = datas[i];
-            if(data.isMN) {
-                flag = true;
-                break;
-            }
-        }
-        if(!flag) {
-            datas.push(LockedData(uint64(100000000000), 810400, 720, true, 0, address(0)));
-        }
-    }
-
-    function reset(string memory _safe3Addr) public {
-        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
-        if(availables[keyID].amount != 0) {
-            availables[keyID].redeemHeight = 0;
-            availables[keyID].safe4Addr = address(0);
-        }
-        LockedData[] storage datas = locks[keyID];
-        if(datas.length != 0) {
-            for(uint i; i < datas.length; i++) {
-                datas[i].redeemHeight = 0;
-                datas[i].safe4Addr = address(0);
-            }
-        }
-    }
-
     function batchRedeemAvailable(bytes[] memory _pubkeys, bytes[] memory _sigs, address _targetAddr) public override noReentrant {
         require(_pubkeys.length > 0 && _pubkeys.length <= 50, "invalid pubkeys count");
         require(_pubkeys.length == _sigs.length, "invalid parameter count");
