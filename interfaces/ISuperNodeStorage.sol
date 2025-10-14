@@ -6,7 +6,7 @@ interface ISuperNodeStorage {
         uint lockID; // lock id
         address addr; // member address
         uint amount; // lock amount
-        uint height; // add height
+        uint unlockHeight; // unlock height
     }
 
     struct IncentivePlan {
@@ -32,17 +32,18 @@ interface ISuperNodeStorage {
         uint updateHeight; // supernode update height
     }
 
-    function create(address _addr, bool _isUnion, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan) external;
-    function append(address _addr, uint _lockID, uint _amount) external;
+    function create(address _addr, bool _isUnion, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan, uint _unlockHeight) external;
+    function append(address _addr, uint _lockID, uint _amount, uint _unlockHeight) external;
     function updateAddress(address _addr, address _newAddr) external;
     function updateName(address _addr, string memory _name) external;
     function updateEnode(address _addr, string memory _enode) external;
     function updateDescription(address _addr, string memory _description) external;
+    function updateIncentivePlan(address _addr, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) external;
     function updateIsOfficial(address _addr, bool _flag) external;
     function updateState(address _addr, uint _state) external;
     function removeMember(address _addr, uint _index) external;
-    function dissolve(address _addr) external;
     function updateLastRewardHeight(address _addr, uint _height) external;
+    function updateFounderUnlockHeight(address _addr, uint _lockID, uint _unlockheight) external;
 
     function getInfo(address _addr) external view returns (SuperNodeInfo memory);
     function getInfoByID(uint _id) external view returns (SuperNodeInfo memory);

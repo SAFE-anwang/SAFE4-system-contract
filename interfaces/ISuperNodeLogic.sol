@@ -9,8 +9,12 @@ interface ISuperNodeLogic {
     function removeMember(address _addr, uint _lockID) external;
     function changeAddress(address _addr, address _newAddr) external;
     function changeName(address _addr, string memory _name) external;
+    function changeNameByID(uint _id, string memory _name) external;
     function changeEnode(address _addr, string memory _enode) external;
+    function changeEnodeByID(uint _id, string memory _enode) external;
     function changeDescription(address _addr, string memory _description) external;
+    function changeDescriptionByID(uint _id, string memory _description) external;
+    function changeIncentivePlan(uint _id, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) external;
     function changeIsOfficial(address _addr, bool _flag) external;
     function changeState(uint _id, uint _state) external;
 }

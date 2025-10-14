@@ -9,4 +9,5 @@ interface INodeState {
 
     function upload(uint[] memory _ids, uint[] memory _states) external;
     function get(uint _id) external view returns (StateEntry[] memory);
+    function getByAddr(uint _id, address _addr) external view returns (uint);
 }

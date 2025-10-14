@@ -170,6 +170,8 @@ contract AccountManager is IAccountManager, System {
     }
 
     function transfer(address _to, uint _amount, uint _lockDay) public override returns (uint) {
+        revert("unused");
+        /*
         require(_to != address(0), "transfer to the zero address");
         require(_amount >= getPropertyValue("deposit_min_amount"), "invalid amount");
 
@@ -243,6 +245,7 @@ contract AccountManager is IAccountManager, System {
             }
         }
         return id;
+        */
     }
 
     function reward(address[] memory _addrs, uint[] memory _amounts) public payable override onlyMnOrSnContract {
@@ -323,6 +326,17 @@ contract AccountManager is IAccountManager, System {
         }
     }
 
+    function setRecordFreezeInfo2(uint _id, address _target, uint _height) public override onlyMnOrSnContract {
+        if(_id == 0) {
+            return;
+        }
+        RecordUseInfo storage useinfo = id2useinfo[_id];
+        useinfo.frozenAddr = _target;
+        useinfo.freezeHeight = block.number;
+        useinfo.unfreezeHeight = _height;
+        emit SafeFreeze(_id, _target, (_height - block.number)*getPropertyValue("block_space")/Constant.SECONDS_IN_DAY);
+    }
+
     function setRecordVoteInfo(uint _id, address _target, uint _day) public override onlySnOrSNVoteContract {
         if(_id == 0) {
             return;
@@ -367,7 +381,8 @@ contract AccountManager is IAccountManager, System {
             return;
         }
         require(id2addr[_id] == msg.sender, "record isn't your");
-        if(id2useinfo[_id].frozenAddr != address(0)) { // used for mn/sn
+        address frozenAddr = id2useinfo[_id].frozenAddr;
+        if(frozenAddr != address(0)) { // used for mn/sn
             require(_day >= 360, "invalid day, must be 360 at least");
         } else {
             if(_day == 0) {
@@ -384,6 +399,15 @@ contract AccountManager is IAccountManager, System {
             record.lockDay += _day;
             record.unlockHeight += _day * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
         }
+
+        if(frozenAddr != address(0)) { // used for mn/sn
+            if(getMasterNodeStorage().exist(frozenAddr)) {
+                getMasterNodeStorage().updateFounderUnlockHeight(frozenAddr, _id, record.unlockHeight);
+            } else if(getSuperNodeStorage().exist(frozenAddr)) {
+                getSuperNodeStorage().updateFounderUnlockHeight(frozenAddr, _id, record.unlockHeight);
+            }
+        }
+
         emit SafeAddLockDay(_id, oldLockDay, record.lockDay);
     }
 

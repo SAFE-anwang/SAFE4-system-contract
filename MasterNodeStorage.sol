@@ -11,7 +11,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     mapping(uint => address) id2addr;
     mapping(string => address) enode2addr;
 
-    function create(address _addr, bool _isUnion, address _creator, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory plan) public override onlyMasterNodeLogic {
+    function create(address _addr, bool _isUnion, address _creator, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory _plan, uint _unlockHeight) public override onlyMasterNodeLogic {
         MasterNodeInfo storage info = addr2info[_addr];
         info.id = ++no;
         info.addr = _addr;
@@ -21,18 +21,20 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         info.description = _description;
         info.isOfficial = false;
         info.state = Constant.NODE_STATE_INIT;
-        info.founders.push(MemberInfo(_lockID, _creator, _amount, block.number));
-        info.incentivePlan = plan;
+        info.founders.push(MemberInfo(_lockID, _creator, _amount, _unlockHeight));
+        info.incentivePlan = _plan;
         info.lastRewardHeight = 0;
         info.createHeight = block.number;
         info.updateHeight = 0;
         ids.push(info.id);
         id2addr[info.id] = _addr;
-        enode2addr[info.enode] = _addr;
+        if(bytes(_enode).length > 0) {
+            enode2addr[info.enode] = _addr;
+        }
     }
 
-    function append(address _addr, uint _lockID, uint _amount) public override onlyMasterNodeLogic {
-        addr2info[_addr].founders.push(MemberInfo(_lockID, tx.origin, _amount, block.number));
+    function append(address _addr, uint _lockID, uint _amount, uint _unlockHeight) public override onlyMasterNodeLogic {
+        addr2info[_addr].founders.push(MemberInfo(_lockID, tx.origin, _amount, _unlockHeight));
         addr2info[_addr].updateHeight = block.number;
     }
 
@@ -42,7 +44,9 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         addr2info[_newAddr].updateHeight = 0;
         delete addr2info[_addr];
         id2addr[addr2info[_newAddr].id] = _newAddr;
-        enode2addr[addr2info[_newAddr].enode] = _newAddr;
+        if(bytes(addr2info[_newAddr].enode).length != 0) {
+            enode2addr[addr2info[_newAddr].enode] = _newAddr;
+        }
     }
 
     function updateEnode(address _addr, string memory _enode) public override onlyMasterNodeLogic {
@@ -87,7 +91,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         }
     }
 
-    function dissolve(address _addr) public override onlyMasterNodeLogic {
+    function dissolve(address _addr) internal {
         MasterNodeInfo memory info = addr2info[_addr];
         // remove id
         uint pos;
@@ -97,10 +101,9 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
                 break;
             }
         }
-        for(; pos < ids.length - 1; pos++) {
-            ids[pos] = ids[pos + 1];
-        }
+        ids[pos] = ids[ids.length - 1];
         ids.pop();
+        // sortIDs();
         // remove id2addr
         delete id2addr[info.id];
         // remove enode2addr
@@ -114,6 +117,21 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         addr2info[_addr].updateHeight = block.number;
     }
 
+    function updateFounderUnlockHeight(address _addr, uint _lockID, uint _unlockHeight) public override onlyAmContract {
+        MasterNodeInfo storage info = addr2info[_addr];
+        for(uint i; i < info.founders.length; i++) {
+            if(info.founders[i].lockID == _lockID) {
+                info.founders[i].unlockHeight = _unlockHeight;
+                return;
+            }
+        }
+    }
+
+    // function sortIDs() public {
+    //     if(ids.length == 0) return;
+    //     quickSort(0, ids.length - 1);
+    // }
+
     function getInfo(address _addr) public view override returns (MasterNodeInfo memory) {
         return addr2info[_addr];
     }
@@ -124,41 +142,69 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
 
     function getNext() public view override returns (address) {
         uint minAmount = getPropertyValue("masternode_min_amount") * Constant.COIN;
-        uint count;
-        MasterNodeInfo[] memory mns = new MasterNodeInfo[](ids.length);
-        for(uint i; i < ids.length; i++) {
-            MasterNodeInfo memory info = addr2info[id2addr[ids[i]]];
+        MasterNodeInfo memory info;
+        uint lockAmount;
+        uint minLastRewardHeight;
+        uint pos;
+        uint i;
+        for(; i < ids.length; i++) {
+            info = addr2info[id2addr[ids[i]]];
             if(info.state != Constant.NODE_STATE_START) {
                 continue;
             }
-            uint lockAmount;
             // check creator
-            if(block.number >= getAccountManager().getRecordByID(info.founders[0].lockID).unlockHeight) { // creator must be locked
+            if(block.number >= info.founders[0].unlockHeight) { // creator must be locked
                 continue;
             }
-            lockAmount += info.founders[0].amount;
+            lockAmount = info.founders[0].amount;
             // check partner
             for(uint k = 1; k < info.founders.length; k++) {
-                if(block.number < getAccountManager().getRecordByID(info.founders[k].lockID).unlockHeight) {
+                if(block.number < info.founders[k].unlockHeight) {
                     lockAmount += info.founders[k].amount;
                 }
             }
             if(lockAmount < minAmount) {
                 continue;
             }
-            mns[count++] = info;
+            minLastRewardHeight = info.lastRewardHeight;
+            pos = i;
+            break;
         }
-        if(count != 0) {
-            return selectNext(mns, count).addr;
+
+        if(i == ids.length) {
+            address[] memory officials = getOfficials();
+            if(officials.length != 0) {
+                return selectNext2(officials, officials.length);
+            } else {
+                return id2addr[(block.number % ids.length) + 1];
+            }
         }
-        // select official addr2info
-        // select official addr2info
-        address[] memory officials = getOfficials();
-        if(officials.length != 0) {
-            return selectNext2(officials, officials.length);
-        } else {
-            return id2addr[(block.number % ids.length) + 1];
+
+        for(; i < ids.length; i++) {
+            info = addr2info[id2addr[ids[i]]];
+            if(info.state != Constant.NODE_STATE_START) {
+                continue;
+            }
+            // check creator
+            if(block.number >= info.founders[0].unlockHeight) { // creator must be locked
+                continue;
+            }
+            lockAmount = info.founders[0].amount;
+            // check partner
+            for(uint k = 1; k < info.founders.length; k++) {
+                if(block.number < info.founders[k].unlockHeight) {
+                    lockAmount += info.founders[k].amount;
+                }
+            }
+            if(lockAmount < minAmount) {
+                continue;
+            }
+            if(minLastRewardHeight > info.lastRewardHeight) {
+                minLastRewardHeight = info.lastRewardHeight;
+                pos = i;
+            }
         }
+        return id2addr[ids[pos]];
     }
 
     function getNum() public view override returns (uint) {
@@ -307,6 +353,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     }
 
     function existFounder(address _founder) public view override returns (bool) {
+        /*
         for(uint i; i < ids.length; i++) {
             MasterNodeInfo memory info = addr2info[id2addr[ids[i]]];
             for(uint k; k < info.founders.length; k++) {
@@ -315,6 +362,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
                 }
             }
         }
+        */
         return false;
     }
 
@@ -323,12 +371,12 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         if(info.id == 0) {
             return false;
         }
-        if(block.number >= getAccountManager().getRecordByID(info.founders[0].lockID).unlockHeight) { // creator must be locked
+        if(block.number >= info.founders[0].unlockHeight) { // creator must be locked
             return false;
         }
         uint lockAmount = info.founders[0].amount;
         for(uint i = 1; i < info.founders.length; i++) {
-            if(block.number < getAccountManager().getRecordByID(info.founders[i].lockID).unlockHeight) {
+            if(block.number < info.founders[i].unlockHeight) {
                 lockAmount += info.founders[i].amount;
             }
         }
@@ -351,7 +399,8 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     }
 
     function existNodeFounder(address _founder) public view override returns (bool) {
-        return existFounder(_founder) || getSuperNodeStorage().existFounder(_founder);
+        // return existFounder(_founder) || getSuperNodeStorage().existFounder(_founder);
+        return false;
     }
 
     function selectNext(MasterNodeInfo[] memory _arr, uint len) internal pure returns (MasterNodeInfo memory) {
@@ -377,4 +426,22 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         }
         return _arr[pos];
     }
+
+    // function quickSort(uint _left, uint _right) internal {
+    //     if (_left >= _right) return;
+    //     uint pivot = ids[(_left + _right) / 2];
+    //     uint i = _left;
+    //     uint j = _right;
+    //     while (i <= j) {
+    //         while (ids[i] < pivot) i++;
+    //         while (ids[j] > pivot && j > 0) j--;
+    //         if (i <= j) {
+    //             (ids[i], ids[j]) = (ids[j], ids[i]);
+    //             i++;
+    //             if(j != 0) j--;
+    //         }
+    //     }
+    //     if (_left < j) quickSort(_left, j);
+    //     if (i < _right) quickSort(i, _right);
+    // }
 }

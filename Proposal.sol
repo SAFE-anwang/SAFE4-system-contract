@@ -14,6 +14,8 @@ contract Proposal is IProposal, System {
 
     mapping(uint => uint) mature2amount; // key: mature height, value: amount
 
+    mapping(uint => uint[]) id2rewardIDs;
+
     event ProposalAdd(uint _id, string _title);
     event ProposalVote(uint _id, address _voter, uint _voteResult);
     event ProposalState(uint _id, uint _state);
@@ -186,6 +188,10 @@ contract Proposal is IProposal, System {
         return ret;
     }
 
+    function getRewardIDs(uint _id) public view override returns (uint[] memory) {
+        return id2rewardIDs[_id];
+    }
+
     function getNum() public view override returns (uint) {
         return ids.length;
     }
@@ -233,17 +239,21 @@ contract Proposal is IProposal, System {
 
     function handle(uint _id) internal {
         ProposalInfo memory pp = proposals[_id];
+        uint rewardID;
         if(pp.payTimes == 1) {
-            getAccountManager().depositWithSecond{value: pp.payAmount}(pp.creator, pp.startPayTime - block.timestamp);
+            rewardID = getAccountManager().depositWithSecond{value: pp.payAmount}(pp.creator, pp.startPayTime - block.timestamp);
+            id2rewardIDs[_id].push(rewardID);
             return;
         }
         uint space = (pp.endPayTime - pp.startPayTime) / (pp.payTimes - 1);
         uint usedAmount;
         for(uint i; i < pp.payTimes - 1; i++) {
-            getAccountManager().depositWithSecond{value: pp.payAmount / pp.payTimes}(pp.creator, pp.startPayTime + space * i - block.timestamp);
+            rewardID = getAccountManager().depositWithSecond{value: pp.payAmount / pp.payTimes}(pp.creator, pp.startPayTime + space * i - block.timestamp);
+            id2rewardIDs[_id].push(rewardID);
             usedAmount += pp.payAmount / pp.payTimes;
         }
-        getAccountManager().depositWithSecond{value: pp.payAmount - usedAmount}(pp.creator, pp.endPayTime - block.timestamp);
+        rewardID = getAccountManager().depositWithSecond{value: pp.payAmount - usedAmount}(pp.creator, pp.endPayTime - block.timestamp);
+        id2rewardIDs[_id].push(rewardID);
     }
 
     function updateVoteInfo(uint _id, address _voter, uint _voteResult) internal {

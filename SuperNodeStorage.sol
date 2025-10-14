@@ -12,7 +12,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     mapping(string => address) name2addr;
     mapping(string => address) enode2addr;
 
-    function create(address _addr, bool _isUnion, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan) public override onlySuperNodeLogic {
+    function create(address _addr, bool _isUnion, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan, uint _unlockHeight) public override onlySuperNodeLogic {
         SuperNodeInfo storage info = addr2info[_addr];
         info.id = ++no;
         info.name = _name;
@@ -23,7 +23,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         info.description = _description;
         info.isOfficial = false;
         info.state = Constant.NODE_STATE_INIT;
-        info.founders.push(MemberInfo(_lockID, tx.origin, _amount, block.number));
+        info.founders.push(MemberInfo(_lockID, tx.origin, _amount, _unlockHeight));
         info.incentivePlan = _incentivePlan;
         info.lastRewardHeight = 0;
         info.createHeight = block.number;
@@ -34,8 +34,8 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         enode2addr[info.enode] = _addr;
     }
 
-    function append(address _addr, uint _lockID, uint _amount) public override onlySuperNodeLogic {
-        addr2info[_addr].founders.push(MemberInfo(_lockID, tx.origin, _amount, block.number));
+    function append(address _addr, uint _lockID, uint _amount, uint _unlockHeight) public override onlySuperNodeLogic {
+        addr2info[_addr].founders.push(MemberInfo(_lockID, tx.origin, _amount, _unlockHeight));
         addr2info[_addr].updateHeight = block.number;
     }
 
@@ -70,6 +70,11 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         addr2info[_addr].updateHeight = block.number;
     }
 
+    function updateIncentivePlan(address _addr, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public override onlySuperNodeLogic {
+        addr2info[_addr].incentivePlan = IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive);
+        addr2info[_addr].updateHeight = block.number;
+    }
+
     function updateIsOfficial(address _addr, bool _flag) public override onlySuperNodeLogic {
         if(tx.origin != owner()) {
             return;
@@ -99,7 +104,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         }
     }
 
-    function dissolve(address _addr) public override onlySuperNodeLogic {
+    function dissolve(address _addr) internal {
         SuperNodeInfo memory info = addr2info[_addr];
         // remove id
         uint pos;
@@ -109,9 +114,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
                 break;
             }
         }
-        for(; pos < ids.length - 1; pos++) {
-            ids[pos] = ids[pos + 1];
-        }
+        ids[pos] = ids[ids.length - 1];
         ids.pop();
         // remove id2addr
         delete id2addr[info.id];
@@ -126,6 +129,16 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     function updateLastRewardHeight(address _addr, uint _height) public override onlySuperNodeLogic {
         addr2info[_addr].lastRewardHeight = _height;
         addr2info[_addr].updateHeight = block.number;
+    }
+
+    function updateFounderUnlockHeight(address _addr, uint _lockID, uint _unlockHeight) public override onlyAmContract {
+        SuperNodeInfo storage info = addr2info[_addr];
+        for(uint i; i < info.founders.length; i++) {
+            if(info.founders[i].lockID == _lockID) {
+                info.founders[i].unlockHeight = _unlockHeight;
+                return;
+            }
+        }
     }
 
     function getInfo(address _addr) public view override returns (SuperNodeInfo memory) {
@@ -260,13 +273,13 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
             }
             uint lockAmount;
             // check creator
-            if(block.number >= getAccountManager().getRecordByID(info.founders[0].lockID).unlockHeight) { // creator must be locked
+            if(block.number >= info.founders[0].unlockHeight) { // creator must be locked
                 continue;
             }
             lockAmount += info.founders[0].amount;
             // check partner
             for(uint k = 1; k < info.founders.length; k++) {
-                if(block.number < getAccountManager().getRecordByID(info.founders[k].lockID).unlockHeight) {
+                if(block.number < info.founders[k].unlockHeight) {
                     lockAmount += info.founders[k].amount;
                 }
             }
@@ -362,6 +375,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     }
 
     function existFounder(address _founder) public view override returns (bool) {
+        /*
         for(uint i; i < ids.length; i++) {
             SuperNodeInfo memory info = addr2info[id2addr[ids[i]]];
             for(uint k; k < info.founders.length; k++) {
@@ -370,6 +384,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
                 }
             }
         }
+        */
         return false;
     }
 
@@ -378,12 +393,12 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         if(info.id == 0) {
             return false;
         }
-        if(block.number >= getAccountManager().getRecordByID(info.founders[0].lockID).unlockHeight) { // creator must be locked
+        if(block.number >= info.founders[0].unlockHeight) { // creator must be locked
             return false;
         }
         uint lockAmount = info.founders[0].amount;
         for(uint i = 1; i < info.founders.length; i++) {
-            if(block.number < getAccountManager().getRecordByID(info.founders[i].lockID).unlockHeight) {
+            if(block.number < info.founders[i].unlockHeight) {
                 lockAmount += info.founders[i].amount;
             }
         }
@@ -416,7 +431,8 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     }
 
     function existNodeFounder(address _founder) public view override returns (bool) {
-        return existFounder(_founder) || getMasterNodeStorage().existFounder(_founder);
+        // return existFounder(_founder) || getMasterNodeStorage().existFounder(_founder);
+        return false;
     }
 
     function sortByVoteNum(address[] memory _arr, uint _left, uint _right) internal view {

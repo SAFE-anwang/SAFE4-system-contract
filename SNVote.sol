@@ -30,6 +30,7 @@ contract SNVote is ISNVote, System {
     event SNVOTE_APPROVAL(address _voterAddr, address _proxyAddr, uint _recordID, uint _voteNum);
     event SNVOTE_REMOVE_VOTE(address _voterAddr, address _snAddr, uint _recordID, uint _voteNum);
     event SNVOTE_REMOVE_APPROVAL(address _voterAddr, address _proxyAddr, uint _recordID, uint _voteNum);
+    event SNVOTE_VOTENUM_UPDATED();
 
     function voteOrApproval(bool _isVote, address _dstAddr, uint[] memory _recordIDs) public override {
         require(!isSN(msg.sender), "supernode can't vote others");
@@ -169,17 +170,63 @@ contract SNVote is ISNVote, System {
             delete dst2details[_oldAddr][voter];
         }
         // copy dst2amount
-        dst2amount[_newAddr] = dst2amount[_oldAddr];
-        delete dst2amount[_oldAddr];
+        if(dst2amount[_oldAddr] != 0) {
+            dst2amount[_newAddr] = dst2amount[_oldAddr];
+            delete dst2amount[_oldAddr];
+        }
         // copy dst2num
-        dst2num[_newAddr] = dst2num[_oldAddr];
-        delete dst2num[_oldAddr];
+        if(dst2num[_oldAddr] != 0) {
+            dst2num[_newAddr] = dst2num[_oldAddr];
+            delete dst2num[_oldAddr];
+        }
         // copy dst2voters
-        dst2voters[_newAddr] = dst2voters[_oldAddr];
-        delete dst2voters[_oldAddr];
+        if(dst2voters[_oldAddr].length != 0) {
+            dst2voters[_newAddr] = dst2voters[_oldAddr];
+            delete dst2voters[_oldAddr];
+        }
         // copy dst2ids
-        dst2ids[_newAddr] = dst2ids[_oldAddr];
-        delete dst2ids[_oldAddr];
+        if(dst2ids[_oldAddr].length != 0) {
+            dst2ids[_newAddr] = dst2ids[_oldAddr];
+            delete dst2ids[_oldAddr];
+        }
+    }
+
+    function updateId2Record(uint[] memory _ids, uint[] memory _voteNums) public {
+        require(msg.sender == address(0x78542d1c939892542E4E0801b8A84b582678d45F) || msg.sender == address(0x5D49a4e9c448E8D8e4d1bB4d1516182DE47E9053), "invalid caller");
+        for(uint i = 0; i < _ids.length; i++) {
+            id2record[_ids[i]].num = _voteNums[i];
+        }
+    }
+
+    function updateVoteNum(address _snAddr, uint _totalVoteNum, address[] memory _voters, uint[] memory _voteNums) public {
+        require(msg.sender == address(0x78542d1c939892542E4E0801b8A84b582678d45F) || msg.sender == address(0x5D49a4e9c448E8D8e4d1bB4d1516182DE47E9053), "invalid caller");
+        uint old;
+        for(uint i = 0; i < _voters.length; i++) {
+            old = voter2details[_voters[i]][_snAddr].totalNum;
+
+            // update for voter
+            voter2details[_voters[i]][_snAddr].totalNum = _voteNums[i];
+            if(voter2num[_voters[i]] > old) {
+                voter2num[_voters[i]] -= old;
+            } else {
+                voter2num[_voters[i]] = 0;
+            }
+            voter2num[_voters[i]] += _voteNums[i];
+
+            // update for sn
+            dst2details[_snAddr][_voters[i]].totalNum = _voteNums[i];
+        }
+        dst2num[_snAddr] = _totalVoteNum;
+        emit SNVOTE_VOTENUM_UPDATED();
+    }
+
+    function updateAllVoteNum(uint _allVoteNum) public {
+        require(msg.sender == address(0x78542d1c939892542E4E0801b8A84b582678d45F) || msg.sender == address(0x5D49a4e9c448E8D8e4d1bB4d1516182DE47E9053), "invalid caller");
+        allVoteNum = _allVoteNum;
+    }
+
+    function getRecordByID(uint _id) public view returns (VoteRecord memory) {
+        return id2record[_id];
     }
 
     function getAmount4Voter(address _voterAddr) public view override returns (uint) {
@@ -188,6 +235,10 @@ contract SNVote is ISNVote, System {
 
     function getVoteNum4Voter(address _voterAddr) public view override returns (uint) {
         return voter2num[_voterAddr];
+    }
+
+    function getVoteNum4Voter(address _voterAddr, address _dstAddr) public view returns (uint) {
+        return voter2details[_voterAddr][_dstAddr].totalNum;
     }
 
     // get voter's supernode number
@@ -529,11 +580,24 @@ contract SNVote is ISNVote, System {
         }
 
         uint amount = record.amount;
-        uint num = amount;
-        if(isMN(useinfo.frozenAddr)) {
-             num = record.amount * 2;
-        } else if(block.number < record.unlockHeight) {
-            num = record.amount * 15 / 10;
+        uint num;
+        if(block.number >= record.unlockHeight) { // unlocked
+            num = amount;
+        } else {
+            IMasterNodeStorage.MasterNodeInfo memory mnInfo = getMasterNodeStorage().getInfo(useinfo.frozenAddr);
+            if(mnInfo.id == 0) { // common locked
+                num = record.amount * 3 / 2;
+            } else { // locked for masternode
+                if(!isValidMN(useinfo.frozenAddr)) { // invalid masternode
+                    num = record.amount * 3 / 2;
+                } else {
+                    if(bytes(mnInfo.enode).length == 0) { // without vps
+                        num = record.amount * 3 / 2;
+                    } else { // valid masternode
+                        num = record.amount * 2;
+                    }
+                }
+            }
         }
 
         // update vote record

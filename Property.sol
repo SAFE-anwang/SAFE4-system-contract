@@ -13,6 +13,9 @@ contract Property is IProperty, System {
     mapping(string => UnconfirmedPropertyInfo) unconfirmedProperties;
     string[] unconfirmedNames;
 
+    mapping(string => PropertyInfo) ownerProperties;
+    string[] ownerNames;
+
     event PropertyAdd(string _name, uint _value);
     event PropertyUpdateApply(string _name, uint _newValue, uint _oldValue);
     event PropertyUpdateReject(string _name, uint _newValue);
@@ -163,5 +166,17 @@ contract Property is IProperty, System {
             info.voteResults.push(_voteResult);
         }
         emit PropertyUpdateVote(_name, info.value, _voter, _voteResult);
+    }
+
+    // just for owner properties
+    function update4Owner(string memory _name, uint _value, string memory _description) public onlyOwner {
+        require(bytes(_name).length >= Constant.MIN_PROPERTY_NAME_LEN && bytes(_name).length <= Constant.MAX_PROPERTY_NAME_LEN, "invalid name");
+        require(bytes(_description).length >= Constant.MIN_PROPERTY_DESCRIPTION_LEN && bytes(_description).length <= Constant.MAX_PROPERTY_DESCRIPTION_LEN, "invalid description");
+        ownerProperties[_name] = PropertyInfo(_name, _value, _description, block.number, 0);
+        ownerNames.push(_name);
+    }
+
+    function getOwnerValue(string memory _name) public view returns (uint) {
+        return ownerProperties[_name].value;
     }
 }

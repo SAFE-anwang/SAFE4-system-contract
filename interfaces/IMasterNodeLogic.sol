@@ -10,7 +10,9 @@ interface IMasterNodeLogic {
     function fromSafe3(address _addr, address _creator, uint _amount, uint _lockDay, uint _lockID, string memory _enode) external;
     function changeAddress(address _addr, address _newAddr) external;
     function changeEnode(address _addr, string memory _enode) external;
+    function changeEnodeByID(uint _id, string memory _enode) external;
     function changeDescription(address _addr, string memory _description) external;
+    function changeDescriptionByID(uint _id, string memory _description) external;
     function changeIsOfficial(address _addr, bool _flag) external;
     function changeState(uint _id, uint _state) external;
 }

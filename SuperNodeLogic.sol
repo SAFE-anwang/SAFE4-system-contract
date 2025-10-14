@@ -8,14 +8,18 @@ import "./utils/RewardUtil.sol";
 contract SuperNodeLogic is ISuperNodeLogic, System {
     event SNRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _reocrdID);
     event SNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _recordID);
+    event SNAddressChanged(address _addr, address _newAddr);
+    event SNEnodeChanged(address _addr, string _newEnode, string _oldEnode);
     event SNStateUpdate(address _addr, uint _newState, uint _oldState);
     event SystemReward(address _nodeAddr, uint _nodeType, address[] _addrs, uint[] _rewardTypes, uint[] _amounts);
+    event SNDissolve(address _addr, uint _id, address _creator, uint _lockID);
+    event SNRemoveMember(address _addr, uint _id, address _founder, uint _lockID);
 
     function register(bool _isUnion, address _addr, uint _lockDay, string memory _name, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public payable override {
         require(_addr != address(0), "invalid address");
         require(_addr != msg.sender, "address can't be caller");
         require(!getSuperNodeStorage().existNodeAddress(_addr), "existent address");
-        require(!getSuperNodeStorage().existNodeFounder(_addr), "address can't be founder of supernode and masternode");
+        // require(!getSuperNodeStorage().existNodeFounder(_addr), "address can't be founder of supernode and masternode");
         require(!getSuperNodeStorage().existNodeAddress(msg.sender), "caller can't be supernode and masternode");
         if(!_isUnion) {
             require(msg.value >= getPropertyValue("supernode_min_amount") * Constant.COIN, "less than min lock amount");
@@ -25,15 +29,18 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(_lockDay >= getPropertyValue("supernode_min_lockday"), "less than min lock day");
         require(bytes(_name).length >= Constant.MIN_SN_NAME_LEN && bytes(_name).length <= Constant.MAX_SN_NAME_LEN, "invalid name");
         require(!getSuperNodeStorage().existName(_name), "existent name");
-        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(_enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
-        require(!getSuperNodeStorage().existNodeEnode(_enode), "existent enode");
+        string memory enode = compressEnode(_enode);
+        require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
+        require(!getSuperNodeStorage().existNodeEnode(enode), "existent enode");
         require(bytes(_description).length >= Constant.MIN_NODE_DESCRIPTION_LEN && bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         require(_creatorIncentive + _partnerIncentive + _voterIncentive == Constant.MAX_INCENTIVE, "invalid incentive");
         require(_creatorIncentive >= Constant.MIN_SN_CREATOR_INCENTIVE && _creatorIncentive <= Constant.MAX_SN_CREATOR_INCENTIVE, "creator incentive exceed 10%");
         require(_partnerIncentive >= Constant.MIN_SN_PARTNER_INCENTIVE && _partnerIncentive <= Constant.MAX_SN_PARTNER_INCENTIVE, "partner incentive is 40% - 50%");
         require(_voterIncentive >= Constant.MIN_SN_VOTER_INCENTIVE && _voterIncentive <= Constant.MAX_SN_VOTER_INCENTIVE, "creator incentive is 40% - 50%");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
-        getSuperNodeStorage().create(_addr, _isUnion, lockID, msg.value, _name, _enode, _description, ISuperNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive));
+        uint unlockHeight = block.number + _lockDay * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
+        ISuperNodeStorage.IncentivePlan memory incentive = ISuperNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, _voterIncentive);
+        getSuperNodeStorage().create(_addr, _isUnion, lockID, msg.value, _name, enode, _description, incentive, unlockHeight);
         getAccountManager().setRecordFreezeInfo(lockID, _addr, _lockDay); // creator's lock id can't register other supernode again
         emit SNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
@@ -45,7 +52,8 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(msg.value >= getPropertyValue("supernode_append_min_amount") * Constant.COIN, "less than min append lock amount");
         require(_lockDay >= getPropertyValue("supernode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
-        getSuperNodeStorage().append(_addr, lockID, msg.value);
+        uint unlockHeight = block.number + _lockDay * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
+        getSuperNodeStorage().append(_addr, lockID, msg.value, unlockHeight);
         getAccountManager().setRecordFreezeInfo(lockID, _addr, getPropertyValue("record_supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
         emit SNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
@@ -69,7 +77,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         } else if(isMN(useinfo.frozenAddr)) {
             getMasterNodeLogic().removeMember(useinfo.frozenAddr, _lockID);
         }
-        getSuperNodeStorage().append(_addr, _lockID, record.amount);
+        getSuperNodeStorage().append(_addr, _lockID, record.amount, record.unlockHeight);
         getAccountManager().setRecordFreezeInfo(_lockID, _addr, getPropertyValue("record_supernode_freezeday")); // partner's lock id can't register other supernode until unfreeze it
         emit SNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
@@ -100,6 +108,11 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
                     getSNVote().clearVoteOrApproval(_addr);
                 }
                 getSuperNodeStorage().removeMember(_addr, i);
+                if(i == 0) {
+                    emit SNDissolve(_addr, info.id, info.creator, _lockID);
+                } else {
+                    emit SNRemoveMember(_addr, info.id, info.founders[i].addr, _lockID);
+                }
                 return;
             }
         }
@@ -110,7 +123,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(_newAddr != address(0), "invalid new address");
         require(_newAddr != msg.sender, "new address can't be caller");
         require(!getSuperNodeStorage().existNodeAddress(_newAddr), "existent new address");
-        require(!getSuperNodeStorage().existNodeFounder(_newAddr), "new address can't be founder of supernode and masternode");
+        // require(!getSuperNodeStorage().existNodeFounder(_newAddr), "new address can't be founder of supernode and masternode");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
         getSuperNodeStorage().updateAddress(_addr, _newAddr);
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_newAddr);
@@ -133,6 +146,7 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
             }
         }
         getSNVote().updateDstAddr(_addr, _newAddr);
+        emit SNAddressChanged(_addr, _newAddr);
     }
 
     function changeName(address _addr, string memory _name) public override {
@@ -143,12 +157,37 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         getSuperNodeStorage().updateName(_addr, _name);
     }
 
+    function changeNameByID(uint _id, string memory _name) public override {
+        require(getSuperNodeStorage().existID(_id), "non-existent supernode");
+        require(bytes(_name).length >= Constant.MIN_SN_NAME_LEN && bytes(_name).length <= Constant.MAX_SN_NAME_LEN, "invalid name");
+        require(!getSuperNodeStorage().existName(_name), "existent name");
+        ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfoByID(_id);
+        require(msg.sender == info.creator, "caller isn't creator");
+        getSuperNodeStorage().updateName(info.addr, _name);
+    }
+
     function changeEnode(address _addr, string memory _enode) public override {
         require(getSuperNodeStorage().exist(_addr), "non-existent supernode");
-        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(_enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
-        require(!getSuperNodeStorage().existNodeEnode(_enode), "existent enode");
-        require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
-        getSuperNodeStorage().updateEnode(_addr, _enode);
+        string memory enode = compressEnode(_enode);
+        require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
+        require(!getSuperNodeStorage().existNodeEnode(enode), "existent enode");
+        ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfo(_addr);
+        string memory oldEnode = info.enode;
+        require(msg.sender == info.creator, "caller isn't creator");
+        getSuperNodeStorage().updateEnode(_addr, enode);
+        emit SNEnodeChanged(_addr, enode, oldEnode);
+    }
+
+    function changeEnodeByID(uint _id, string memory _enode) public override {
+        require(getSuperNodeStorage().existID(_id), "non-existent supernode");
+        string memory enode = compressEnode(_enode);
+        require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
+        require(!getSuperNodeStorage().existNodeEnode(enode), "existent enode");
+        ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfoByID(_id);
+        require(msg.sender == info.creator, "caller isn't creator");
+        string memory oldEnode = info.enode;
+        getSuperNodeStorage().updateEnode(info.addr, enode);
+        emit SNEnodeChanged(info.addr, enode, oldEnode);
     }
 
     function changeDescription(address _addr, string memory _description) public override {
@@ -156,6 +195,25 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
         require(bytes(_description).length >= Constant.MIN_NODE_DESCRIPTION_LEN && bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         require(msg.sender == getSuperNodeStorage().getInfo(_addr).creator, "caller isn't creator");
         getSuperNodeStorage().updateDescription(_addr, _description);
+    }
+
+    function changeDescriptionByID(uint _id, string memory _description) public override {
+        require(getSuperNodeStorage().existID(_id), "non-existent supernode");
+        require(bytes(_description).length >= Constant.MIN_NODE_DESCRIPTION_LEN && bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
+        ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfoByID(_id);
+        require(msg.sender == info.creator, "caller isn't creator");
+        getSuperNodeStorage().updateDescription(info.addr, _description);
+    }
+
+    function changeIncentivePlan(uint _id, uint _creatorIncentive, uint _partnerIncentive, uint _voterIncentive) public override {
+        require(getSuperNodeStorage().existID(_id), "non-existent supernode");
+        require(_creatorIncentive + _partnerIncentive + _voterIncentive == Constant.MAX_INCENTIVE, "invalid incentive");
+        require(_creatorIncentive >= Constant.MIN_SN_CREATOR_INCENTIVE && _creatorIncentive <= Constant.MAX_SN_CREATOR_INCENTIVE, "creator incentive exceed 10%");
+        require(_partnerIncentive >= Constant.MIN_SN_PARTNER_INCENTIVE && _partnerIncentive <= Constant.MAX_SN_PARTNER_INCENTIVE, "partner incentive is 40% - 50%");
+        require(_voterIncentive >= Constant.MIN_SN_VOTER_INCENTIVE && _voterIncentive <= Constant.MAX_SN_VOTER_INCENTIVE, "creator incentive is 40% - 50%");
+        ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfoByID(_id);
+        require(msg.sender == info.creator, "caller isn't creator");
+        getSuperNodeStorage().updateIncentivePlan(info.addr, _creatorIncentive, _partnerIncentive, _voterIncentive);
     }
 
     function changeIsOfficial(address _addr, bool _flag) public override onlyOwner {
@@ -270,5 +328,31 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
                 emit SystemReward(_info.addr, Constant.REWARD_SN, rewardAddrs, rewardTypes, rewardAmounts);
             }
         }
+    }
+
+    function compressEnode(string memory _enode) internal pure returns (string memory) {
+        bytes memory enodeBytes = bytes(_enode);
+        uint pos = enodeBytes.length;
+        for (uint i; i < enodeBytes.length; i++) {
+            if (enodeBytes[i] == "?") {
+                pos = i;
+                break;
+            }
+        }
+
+        if (pos == 0) {
+            return "";
+        }
+
+        if (pos == enodeBytes.length) {
+            return _enode;
+        }
+
+        bytes memory ret = new bytes(pos);
+        for (uint i; i < pos; i++) {
+            ret[i] = enodeBytes[i];
+        }
+
+        return string(ret);
     }
 }

@@ -38,6 +38,8 @@ interface IProposal {
     function getVoterNum(uint _id) external view returns (uint);
     function getVoteInfo(uint _id, uint _start, uint _count) external view returns (VoteInfo[] memory);
 
+    function getRewardIDs(uint _id) external view returns (uint[] memory);
+
     function getNum() external view returns (uint);
     function getAll(uint _start, uint _count) external view returns (uint[] memory);
 

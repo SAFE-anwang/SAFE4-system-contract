@@ -36,6 +36,8 @@ interface ISafe3 {
     function applyRedeemSpecial(bytes memory _pubkey, bytes memory _sig, address _targetAddr) external;
     function vote4Special(string memory _safe3Addr, uint _voteResult) external;
 
+    function batchRedeemPetty(bytes[] memory _pubkeys, bytes[] memory _sigs, address _targetAddr) external;
+
     function getAllAvailableNum() external view returns (uint);
     function getAvailableInfos(uint _start, uint _count) external view returns (AvailableSafe3Info[] memory);
     function getAvailableInfo(string memory _safe3Addr) external view returns (AvailableSafe3Info memory);
@@ -50,7 +52,12 @@ interface ISafe3 {
     function getSpecialInfos(uint _start, uint _count) external view returns (SpecialSafe3Info[] memory);
     function getSpecialInfo(string memory _safe3Addr) external view returns (SpecialSafe3Info memory);
 
+    function getAllPettyNum() external view returns (uint);
+    function getPettyInfos(uint _start, uint _count) external view returns (AvailableSafe3Info[] memory);
+    function getPettyInfo(string memory _safe3Addr) external view returns (AvailableSafe3Info memory);
+
     function existAvailableNeedToRedeem(string memory _safe3Addr) external view returns (bool);
     function existLockedNeedToRedeem(string memory _safe3Addr) external view returns (bool);
     function existMasterNodeNeedToRedeem(string memory _safe3Addr) external view returns (bool);
+    function existPettyNeedToRedeem(string memory _safe3Addr) external view returns (bool);
 }

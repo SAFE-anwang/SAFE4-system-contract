@@ -8,14 +8,18 @@ import "./utils/RewardUtil.sol";
 contract MasterNodeLogic is IMasterNodeLogic, System {
     event MNRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _lockID);
     event MNAppendRegister(address _addr, address _operator, uint _amount, uint _lockDay, uint _lockID);
+    event MNAddressChanged(address _addr, address _newAddr);
+    event MNEnodeChanged(address _addr, string _newEnode, string _oldEnode);
     event MNStateUpdate(address _addr, uint _newState, uint _oldState);
     event SystemReward(address _nodeAddr, uint _nodeType, address[] _addrs, uint[] _rewardTypes, uint[] _amounts);
+    event MNDissolve(address _addr, uint _id, address _creator, uint _lockID);
+    event MNRemoveMember(address _addr, uint _id, address _founder, uint _lockID);
 
     function register(bool _isUnion, address _addr, uint _lockDay, string memory _enode, string memory _description, uint _creatorIncentive, uint _partnerIncentive) public payable override {
         require(_addr != address(0), "invalid address");
         require(_addr != msg.sender, "address can't be caller");
         require(!getMasterNodeStorage().existNodeAddress(_addr), "existent address");
-        require(!getMasterNodeStorage().existNodeFounder(_addr), "address can't be founder of supernode and masternode");
+        // require(!getMasterNodeStorage().existNodeFounder(_addr), "address can't be founder of supernode and masternode");
         require(!getMasterNodeStorage().existNodeAddress(msg.sender), "caller can't be supernode and masternode");
         if(!_isUnion) {
             require(msg.value >= getPropertyValue("masternode_min_amount") * Constant.COIN, "less than min lock amount");
@@ -23,8 +27,9 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
             require(msg.value >= getPropertyValue("masternode_union_min_amount") * Constant.COIN, "less than min union lock amount");
         }
         require(_lockDay >= getPropertyValue("masternode_min_lockday"), "less than min lock day");
-        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(_enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
-        require(!getMasterNodeStorage().existNodeEnode(_enode), "existent enode");
+        string memory enode = compressEnode(_enode);
+        require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
+        require(!getMasterNodeStorage().existNodeEnode(enode), "existent enode");
         require(bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         if(!_isUnion) {
             require(_creatorIncentive == Constant.MAX_INCENTIVE && _partnerIncentive == 0, "invalid incentive");
@@ -32,7 +37,8 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
             require(_creatorIncentive > 0 && _creatorIncentive <= Constant.MAX_MN_CREATOR_INCENTIVE && _creatorIncentive + _partnerIncentive == Constant.MAX_INCENTIVE, "invalid incentive");
         }
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
-        getMasterNodeStorage().create(_addr, _isUnion, msg.sender, lockID, msg.value, _enode, _description, IMasterNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, 0));
+        uint unlockHeight = block.number + _lockDay * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
+        getMasterNodeStorage().create(_addr, _isUnion, msg.sender, lockID, msg.value, enode, _description, IMasterNodeStorage.IncentivePlan(_creatorIncentive, _partnerIncentive, 0), unlockHeight);
         getAccountManager().setRecordFreezeInfo(lockID, _addr, _lockDay); // creator's lock id can't register other masternode again
         emit MNRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
@@ -44,7 +50,8 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(msg.value >= getPropertyValue("masternode_append_min_amount") * Constant.COIN, "less than min append lock amount");
         require(_lockDay >= getPropertyValue("masternode_append_min_lockday"), "less than min append lock day");
         uint lockID = getAccountManager().deposit{value: msg.value}(msg.sender, _lockDay);
-        getMasterNodeStorage().append(_addr, lockID, msg.value);
+        uint unlockHeight = block.number + _lockDay * Constant.SECONDS_IN_DAY / getPropertyValue("block_space");
+        getMasterNodeStorage().append(_addr, lockID, msg.value, unlockHeight);
         getAccountManager().setRecordFreezeInfo(lockID, _addr, getPropertyValue("record_masternode_freezeday")); // partner's lock id can‘t register other masternode until unfreeze it
         emit MNAppendRegister(_addr, msg.sender, msg.value, _lockDay, lockID);
     }
@@ -65,7 +72,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         } else if(isMN(useinfo.frozenAddr)) {
             getMasterNodeLogic().removeMember(useinfo.frozenAddr, _lockID);
         }
-        getMasterNodeStorage().append(_addr, _lockID, record.amount);
+        getMasterNodeStorage().append(_addr, _lockID, record.amount, record.unlockHeight);
         getAccountManager().setRecordFreezeInfo(_lockID, _addr, getPropertyValue("record_masternode_freezeday")); // partner's lock id can't register other masternode until unfreeze it
         emit MNAppendRegister(_addr, msg.sender, record.amount, record.lockDay, _lockID);
     }
@@ -94,6 +101,11 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
                     getSNVote().clearVoteOrApproval(_addr);
                 }
                 getMasterNodeStorage().removeMember(_addr, i);
+                if(i == 0) {
+                    emit MNDissolve(_addr, info.id, info.creator, _lockID);
+                } else {
+                    emit MNRemoveMember(_addr, info.id, info.founders[i].addr, _lockID);
+                }
                 return;
             }
         }
@@ -106,9 +118,9 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(record.addr == _creator, "lockID is conflicted with creator");
         require(record.amount == _amount, "lockID is conflicted with amount");
         require(record.lockDay == _lockDay, "lockID is conflicted with lockDay");
-        getMasterNodeStorage().create(_addr, false, _creator, _lockID, _amount, _enode, "MasterNode from Safe3", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0));
-        getMasterNodeStorage().updateState(_addr, Constant.NODE_STATE_START);
-        getAccountManager().setRecordFreezeInfo(_lockID, _addr, _lockDay);
+        getMasterNodeStorage().create(_addr, false, _creator, _lockID, _amount, compressEnode(_enode), "MasterNode from Safe3", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0), record.unlockHeight);
+        getMasterNodeStorage().updateState(_addr, Constant.NODE_STATE_STOP);
+        getAccountManager().setRecordFreezeInfo2(_lockID, _addr, record.unlockHeight);
         emit MNRegister(_addr, _creator, _amount, _lockDay, _lockID);
     }
 
@@ -117,7 +129,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(_newAddr != address(0), "invalid new address");
         require(_newAddr != msg.sender, "new address can't be caller");
         require(!getMasterNodeStorage().existNodeAddress(_newAddr), "existent new address");
-        require(!getMasterNodeStorage().existNodeFounder(_newAddr), "new address can't be founder of supernode and masternode");
+        // require(!getMasterNodeStorage().existNodeFounder(_newAddr), "new address can't be founder of supernode and masternode");
         require(msg.sender == getMasterNodeStorage().getInfo(_addr).creator, "caller isn't masternode creator");
         getMasterNodeStorage().updateAddress(_addr, _newAddr);
         IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfo(_newAddr);
@@ -125,14 +137,31 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
             getAccountManager().updateRecordFreezeAddr(info.founders[i].lockID, _newAddr);
         }
         getSNVote().updateDstAddr(_addr, _newAddr);
+        emit MNAddressChanged(_addr, _newAddr);
     }
 
     function changeEnode(address _addr, string memory _enode) public override {
         require(getMasterNodeStorage().exist(_addr), "non-existent masternode");
-        require(bytes(_enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(_enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
-        require(!getMasterNodeStorage().existNodeEnode(_enode), "existent enode");
-        require(msg.sender == getMasterNodeStorage().getInfo(_addr).creator || msg.sender == Constant.SAFE3_ADDR, "caller isn't masternode creator");
-        getMasterNodeStorage().updateEnode(_addr, _enode);
+        string memory enode = compressEnode(_enode);
+        require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
+        require(!getMasterNodeStorage().existNodeEnode(enode), "existent enode");
+        IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfo(_addr);
+        string memory oldEnode = info.enode;
+        require(msg.sender == info.creator, "caller isn't masternode creator");
+        getMasterNodeStorage().updateEnode(_addr, enode);
+        emit MNEnodeChanged(_addr, enode, oldEnode);
+    }
+
+    function changeEnodeByID(uint _id, string memory _enode) public override {
+        require(getMasterNodeStorage().existID(_id), "non-existent masternode");
+        string memory enode = compressEnode(_enode);
+        require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
+        require(!getMasterNodeStorage().existNodeEnode(enode), "existent enode");
+        IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfoByID(_id);
+        require(msg.sender == info.creator, "caller isn't masternode creator");
+        string memory oldEnode = info.enode;
+        getMasterNodeStorage().updateEnode(info.addr, enode);
+        emit MNEnodeChanged(info.addr, enode, oldEnode);
     }
 
     function changeDescription(address _addr, string memory _description) public override {
@@ -140,6 +169,14 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         require(msg.sender == getMasterNodeStorage().getInfo(_addr).creator, "caller isn't masternode creator");
         getMasterNodeStorage().updateDescription(_addr, _description);
+    }
+
+    function changeDescriptionByID(uint _id, string memory _description) public override {
+        require(getMasterNodeStorage().existID(_id), "non-existent masternode");
+        require(bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
+        IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfoByID(_id);
+        require(msg.sender == info.creator, "caller isn't masternode creator");
+        getMasterNodeStorage().updateDescription(info.addr, _description);
     }
 
     function changeIsOfficial(address _addr, bool _flag) public override onlyOwner {
@@ -205,5 +242,31 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
 
         getAccountManager().reward{value: _amount}(rewardAddrs, rewardAmounts);
         emit SystemReward(_info.addr, Constant.REWARD_MN, rewardAddrs, rewardTypes, rewardAmounts);
+    }
+
+    function compressEnode(string memory _enode) internal pure returns (string memory) {
+        bytes memory enodeBytes = bytes(_enode);
+        uint pos = enodeBytes.length;
+        for (uint i; i < enodeBytes.length; i++) {
+            if (enodeBytes[i] == "?") {
+                pos = i;
+                break;
+            }
+        }
+
+        if (pos == 0) {
+            return "";
+        }
+
+        if (pos == enodeBytes.length) {
+            return _enode;
+        }
+
+        bytes memory ret = new bytes(pos);
+        for (uint i; i < pos; i++) {
+            ret[i] = enodeBytes[i];
+        }
+
+        return string(ret);
     }
 }
