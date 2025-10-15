@@ -67,6 +67,52 @@ contract Safe3 is ISafe3, System {
         lock = false;
     }
 
+    function addAvailable(string memory _safe3Addr, uint _amount) public {
+        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
+        if(availables[keyID].amount == 0) {
+            keyIDs.push(keyID);
+        }
+        availables[keyID] = AvailableData(uint64(_amount), 0, address(0));
+    }
+
+    function addLocked(string memory _safe3Addr, uint _amount) public {
+        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
+        lockedNum++;
+        LockedData[] storage datas = locks[keyID];
+        if(datas.length == 0) {
+            lockedKeyIDs.push(keyID);
+        }
+        datas.push(LockedData(uint64(_amount), 551200, 180, false, 0, address(0)));
+    }
+
+    function addMasterNode(string memory _safe3Addr) public {
+        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
+        lockedNum++;
+        LockedData[] storage datas = locks[keyID];
+        if(datas.length == 0) {
+            lockedKeyIDs.push(keyID);
+        }
+        bool flag = false;
+        for(uint i; i < datas.length; i++) {
+            LockedData memory data = datas[i];
+            if(data.isMN) {
+                flag = true;
+                break;
+            }
+        }
+        if(!flag) {
+            datas.push(LockedData(uint64(100000000000), 810400, 720, true, 0, address(0)));
+        }
+    }
+
+    function addPetty(string memory _safe3Addr, uint _amount) public {
+        bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
+        if(petties[keyID].amount == 0) {
+            pettyKeyIDs.push(keyID);
+        }
+        petties[keyID] = AvailableData(uint64(_amount), 0, address(0)); // amounts must come from SAFE3 (decimal: 8)
+    }
+
     function batchRedeemAvailable(bytes[] memory _pubkeys, bytes[] memory _sigs, address _targetAddr) public override noReentrant {
         require(_pubkeys.length > 0 && _pubkeys.length <= 50, "invalid pubkeys count");
         require(_pubkeys.length == _sigs.length, "invalid parameter count");
@@ -147,6 +193,7 @@ contract Safe3 is ISafe3, System {
     }
 
     function applyRedeemSpecial(bytes memory _pubkey, bytes memory _sig, address _targetAddr) public override {
+        /*
         require(block.number > 86400, "redeem-special is unopened");
         require(_targetAddr != address(0), "invalid target address");
         require(checkPubkey(_pubkey), "invalid pubkey");
@@ -161,9 +208,11 @@ contract Safe3 is ISafe3, System {
         specials[keyID].safe4Addr = _targetAddr;
         specials[keyID].applyHeight = uint32(block.number);
         emit ApplyRedeemSpecial(safe3Addr, uint(specials[keyID].amount) * 10000000000, specials[keyID].safe4Addr);
+        */
     }
 
     function vote4Special(string memory _safe3Addr, uint _voteResult) public override noReentrant { // only for creator of formal supernodes
+        /*
         bytes memory keyID = getKeyIDFromAddress(_safe3Addr);
         require(specials[keyID].amount != 0, "non-existent special safe3 address");
         require(specials[keyID].applyHeight > 0, "need apply first");
@@ -209,6 +258,7 @@ contract Safe3 is ISafe3, System {
                 return;
             }
         }
+        */
     }
 
     function batchRedeemPetty(bytes[] memory _pubkeys, bytes[] memory _sigs, address _targetAddr) public override noReentrant {
