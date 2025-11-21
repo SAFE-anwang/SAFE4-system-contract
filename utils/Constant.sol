@@ -70,6 +70,7 @@ library Constant {
     uint internal constant NODE_STATE_INIT = 0;
     uint internal constant NODE_STATE_START = 1;
     uint internal constant NODE_STATE_STOP = 2;
+    uint internal constant NODE_STATE_DISABLE = 3;
 
     // for node
     uint internal constant MIN_NODE_ENODE_LEN = 150;
