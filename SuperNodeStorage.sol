@@ -11,6 +11,7 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     mapping(uint => address) id2addr;
     mapping(string => address) name2addr;
     mapping(string => address) enode2addr;
+    mapping(uint => uint) id2disableHeight;
 
     function create(address _addr, bool _isUnion, uint _lockID, uint _amount, string memory _name, string memory _enode, string memory _description, IncentivePlan memory _incentivePlan, uint _unlockHeight) public override onlySuperNodeLogic {
         SuperNodeInfo storage info = addr2info[_addr];
@@ -86,6 +87,9 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     function updateState(address _addr, uint _state) public override onlySuperNodeLogic {
         addr2info[_addr].state = _state;
         addr2info[_addr].updateHeight = block.number;
+        if(_state == Constant.NODE_STATE_DISABLE) {
+            id2disableHeight[addr2info[_addr].id] = block.number;
+        }
     }
 
     function removeMember(address _addr, uint _index) public override onlySuperNodeLogic {
@@ -147,6 +151,10 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
 
     function getInfoByID(uint _id) public view override returns (SuperNodeInfo memory) {
         return addr2info[id2addr[_id]];
+    }
+
+    function getDisableHeight(uint _id) public view returns (uint) {
+        return id2disableHeight[_id];
     }
 
     function getNum() public view override returns (uint) {

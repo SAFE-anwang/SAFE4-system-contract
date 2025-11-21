@@ -47,6 +47,7 @@ interface ISuperNodeStorage {
 
     function getInfo(address _addr) external view returns (SuperNodeInfo memory);
     function getInfoByID(uint _id) external view returns (SuperNodeInfo memory);
+    function getDisableHeight(uint _id) external view returns (uint);
 
     function getNum() external view returns (uint);
     function getAll(uint _start, uint _count) external view returns (address[] memory);
