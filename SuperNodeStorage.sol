@@ -89,6 +89,10 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
         addr2info[_addr].updateHeight = block.number;
         if(_state == Constant.NODE_STATE_DISABLE) {
             id2disableHeight[addr2info[_addr].id] = block.number;
+        } else {
+            if(addr2info[_addr].state == Constant.NODE_STATE_DISABLE) {
+                id2disableHeight[addr2info[_addr].id] = 0;
+            }
         }
     }
 
