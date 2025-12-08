@@ -85,12 +85,13 @@ contract SuperNodeStorage is ISuperNodeStorage, System {
     }
 
     function updateState(address _addr, uint _state) public override onlySuperNodeLogic {
+        uint oldState = addr2info[_addr].state;
         addr2info[_addr].state = _state;
         addr2info[_addr].updateHeight = block.number;
         if(_state == Constant.NODE_STATE_DISABLE) {
             id2disableHeight[addr2info[_addr].id] = block.number;
         } else {
-            if(addr2info[_addr].state == Constant.NODE_STATE_DISABLE) {
+            if(oldState == Constant.NODE_STATE_DISABLE) {
                 id2disableHeight[addr2info[_addr].id] = 0;
             }
         }
