@@ -12,8 +12,10 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     mapping(string => address) enode2addr;
     mapping(string => uint[]) enode2ids;
 
-    function migrateEnode(string memory _enode, uint _id) public {
-        enode2ids[_enode].push(_id);
+    function migrateEnode(string[] memory _enodes, uint[] memory _ids) public {
+        for(uint i; i < _enodes.length; i++) {
+            enode2ids[_enodes[i]].push(_ids[i]);
+        }
     }
 
     function create(address _addr, bool _isUnion, address _creator, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory _plan, uint _unlockHeight) public override onlyMasterNodeLogic {
