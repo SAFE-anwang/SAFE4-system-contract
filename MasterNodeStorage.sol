@@ -164,6 +164,10 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         return addr2info[id2addr[_id]];
     }
 
+    function getIDsByEnode(string memory _enode) public view override returns (uint[] memory) {
+        return enode2ids[_enode];
+    }
+
     function getNext() public view override returns (address) {
         uint minAmount = getPropertyValue("masternode_min_amount") * Constant.COIN;
         MasterNodeInfo memory info;

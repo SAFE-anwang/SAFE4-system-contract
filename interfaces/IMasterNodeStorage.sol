@@ -44,6 +44,7 @@ interface IMasterNodeStorage {
 
     function getInfo(address _addr) external view returns (MasterNodeInfo memory);
     function getInfoByID(uint _id) external view returns (MasterNodeInfo memory);
+    function getIDsByEnode(string memory _enode) external view returns (uint[] memory);
     function getNext() external view returns (address);
 
     function getNum() external view returns (uint);
