@@ -68,4 +68,7 @@ interface IMasterNodeStorage {
     function existNodeAddress(address _addr) external view returns (bool);
     function existNodeEnode(string memory _enode) external view returns (bool);
     function existNodeFounder(address _founder) external view returns (bool);
+
+    function isBindEnode(uint _id, string memory _enode) external view returns (bool);
+    function isValidEnode(string memory _enode) external view returns (bool);
 }
