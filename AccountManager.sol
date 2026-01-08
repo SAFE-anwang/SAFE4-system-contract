@@ -109,27 +109,6 @@ contract AccountManager is IAccountManager, System {
         return ids;
     }
 
-    // withdraw all
-    function withdraw() public override returns (uint) {
-        uint amount;
-        uint num;
-        (amount, num) = getAvailableAmount(msg.sender);
-        require(amount > 0, "insufficient amount");
-
-        uint[] memory ids = new uint[](num);
-        uint index;
-        if(balances[msg.sender] != 0) {
-            ids[index++] = 0;
-        }
-        AccountRecord[] memory records = addr2records[msg.sender];
-        for(uint i; i < records.length; i++) {
-            if(block.number >= records[i].unlockHeight && block.number >= id2useinfo[records[i].id].unfreezeHeight && block.number >= id2useinfo[records[i].id].releaseHeight) {
-                ids[index++] = records[i].id;
-            }
-        }
-        return withdrawByID(ids);
-    }
-
     // withdraw by specify amount
     function withdrawByID(uint[] memory _ids) public override noReentrant returns (uint) {
         require(_ids.length > 0, "invalid record ids");
@@ -167,85 +146,6 @@ contract AccountManager is IAccountManager, System {
         }
         emit SafeWithdraw(msg.sender, amount, _ids);
         return amount;
-    }
-
-    function transfer(address _to, uint _amount, uint _lockDay) public override returns (uint) {
-        revert("unused");
-        /*
-        require(_to != address(0), "transfer to the zero address");
-        require(_amount >= getPropertyValue("deposit_min_amount"), "invalid amount");
-
-        uint amount;
-        uint num;
-        (amount, num) = getAvailableAmount(msg.sender);
-        require(amount >= _amount, "insufficient balance");
-
-        uint[] memory ids = new uint[](num);
-        uint index;
-        if(balances[msg.sender] != 0) {
-            ids[index++] = 0;
-        }
-        AccountRecord[] memory records = addr2records[msg.sender];
-        for(uint i; i < records.length; i++) {
-            if(block.number >= records[i].unlockHeight && block.number >= id2useinfo[records[i].id].unfreezeHeight && block.number >= id2useinfo[records[i].id].releaseHeight) {
-                ids[index++] = records[i].id;
-            }
-        }
-
-        uint id = addRecord(_to, _amount, _lockDay);
-        emit SafeTransfer(msg.sender, _to, _amount, _lockDay, id);
-
-        // update record
-        AccountRecord[] memory temp_records = new AccountRecord[](ids.length);
-        for(uint i; i < ids.length; i++) {
-            if(ids[i] != 0) {
-                temp_records[i] = addr2records[msg.sender][id2index[ids[i]]];
-            } else {
-                temp_records[i] = AccountRecord(0, msg.sender, balances[msg.sender], 0, 0, 0);
-            }
-        }
-        //sortRecordByAmount(temp_records, 0, temp_records.length - 1);
-        uint usedAmount;
-        for(uint i; i < temp_records.length; i++) {
-            if(usedAmount + temp_records[i].amount <= _amount) {
-                if(temp_records[i].id != 0) {
-                    RecordUseInfo memory useinfo = id2useinfo[temp_records[i].id];
-                    if(useinfo.votedAddr != address(0)) {
-                        getSNVote().removeVoteOrApproval2(msg.sender, temp_records[i].id);
-                    }
-                    if(getMasterNodeStorage().exist(useinfo.frozenAddr)) {
-                        getMasterNodeLogic().removeMember(useinfo.frozenAddr, temp_records[i].id);
-                    } else if(getSuperNodeStorage().exist(useinfo.frozenAddr)) {
-                        getSuperNodeLogic().removeMember(useinfo.frozenAddr, temp_records[i].id);
-                    }
-                    delRecord(temp_records[i].id);
-                } else {
-                    balances[msg.sender] = 0;
-                }
-                usedAmount += temp_records[i].amount;
-                if(usedAmount == _amount) {
-                    break;
-                }
-            } else {
-                if(temp_records[i].id != 0) {
-                    RecordUseInfo memory useinfo = id2useinfo[temp_records[i].id];
-                    if(useinfo.votedAddr != address(0)) {
-                        getSNVote().removeVoteOrApproval2(msg.sender, temp_records[i].id);
-                    }
-                    if(getMasterNodeStorage().exist(useinfo.frozenAddr)) {
-                        getMasterNodeLogic().removeMember(useinfo.frozenAddr, temp_records[i].id);
-                    } else if(getSuperNodeStorage().exist(useinfo.frozenAddr)) {
-                        getSuperNodeLogic().removeMember(useinfo.frozenAddr, temp_records[i].id);
-                    }
-                    addr2records[msg.sender][id2index[temp_records[i].id]].amount = usedAmount + temp_records[i].amount - _amount;
-                } else {
-                    balances[msg.sender] = usedAmount + temp_records[i].amount - _amount;
-                }
-                break;
-            }
-        }
-        return id;
-        */
     }
 
     function reward(address[] memory _addrs, uint[] memory _amounts) public payable override onlyMnOrSnContract {
