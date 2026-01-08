@@ -16,7 +16,6 @@ contract AccountManager is IAccountManager, System {
 
     event SafeDeposit(address _addr, uint _amount, uint _lockDay, uint _id);
     event SafeWithdraw(address _addr, uint _amount, uint[] _ids);
-    event SafeTransfer(address _from, address _to, uint _amount, uint _lockDay, uint _id);
     event SafeMoveID0(address _addr, uint _amount, uint _id);
     event SafeFreeze(uint _id, address _addr, uint _day);
     event SafeUnfreeze(uint _id, address _addr);
@@ -60,7 +59,7 @@ contract AccountManager is IAccountManager, System {
         records.push(AccountRecord(id, _to, msg.value, lockDay, block.number, unlockHeight));
         id2index[id] = records.length - 1;
         id2addr[id] = _to;
-        emit SafeTransfer(msg.sender, _to, msg.value, lockDay, id);
+        emit SafeDeposit(_to, msg.value, lockDay, id);
         return id;
     }
 
