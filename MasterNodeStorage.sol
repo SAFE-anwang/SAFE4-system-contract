@@ -9,7 +9,8 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     mapping(address => MasterNodeInfo) addr2info;
     uint[] ids;
     mapping(uint => address) id2addr;
-    mapping(string => address) enode2addr;
+    mapping(string => address) enode2addr; // discard
+    mapping(string => uint[]) enode2ids;
 
     function create(address _addr, bool _isUnion, address _creator, uint _lockID, uint _amount, string memory _enode, string memory _description, IncentivePlan memory _plan, uint _unlockHeight) public override onlyMasterNodeLogic {
         MasterNodeInfo storage info = addr2info[_addr];
@@ -29,7 +30,12 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         ids.push(info.id);
         id2addr[info.id] = _addr;
         if(bytes(_enode).length > 0) {
-            enode2addr[info.enode] = _addr;
+            for(uint i; i < enode2ids[_enode].length; i++) {
+                if(info.id == enode2ids[_enode][i]) {
+                    return;
+                }
+            }
+            enode2ids[info.enode].push(info.id);
         }
     }
 
@@ -44,17 +50,21 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         addr2info[_newAddr].updateHeight = 0;
         delete addr2info[_addr];
         id2addr[addr2info[_newAddr].id] = _newAddr;
-        if(bytes(addr2info[_newAddr].enode).length != 0) {
-            enode2addr[addr2info[_newAddr].enode] = _newAddr;
-        }
     }
 
     function updateEnode(address _addr, string memory _enode) public override onlyMasterNodeLogic {
+        uint id = addr2info[_addr].id;
         string memory oldEnode = addr2info[_addr].enode;
         addr2info[_addr].enode = _enode;
         addr2info[_addr].updateHeight = block.number;
-        enode2addr[_enode] = _addr;
-        delete enode2addr[oldEnode];
+        for(uint i; i < enode2ids[oldEnode].length; i++) {
+            if(id == enode2ids[oldEnode][i]) {
+                enode2ids[oldEnode][i] = enode2ids[oldEnode][enode2ids[oldEnode].length - 1];
+                enode2ids[oldEnode].pop();
+                break;
+            }
+        }
+        enode2ids[_enode].push(addr2info[_addr].id);
     }
 
     function updateDescription(address _addr, string memory _description) public override onlyMasterNodeLogic {
@@ -106,8 +116,16 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
         // sortIDs();
         // remove id2addr
         delete id2addr[info.id];
-        // remove enode2addr
-        delete enode2addr[info.enode];
+
+        // remove enode2ids
+        for(uint i; i < enode2ids[info.enode].length; i++) {
+            if(enode2ids[info.enode][i] == info.id) {
+                enode2ids[info.enode][i] = enode2ids[info.enode][enode2ids[info.enode].length - 1];
+                enode2ids[info.enode].pop();
+                break;
+            }
+        }
+
         // remove info
         delete addr2info[_addr];
     }
@@ -138,6 +156,10 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
 
     function getInfoByID(uint _id) public view override returns (MasterNodeInfo memory) {
         return addr2info[id2addr[_id]];
+    }
+
+    function getIDsByEnode(string memory _enode) public view override returns (uint[] memory) {
+        return enode2ids[_enode];
     }
 
     function getNext() public view override returns (address) {
@@ -339,7 +361,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     }
 
     function existEnode(string memory _enode) public view override returns (bool) {
-        return enode2addr[_enode] != address(0);
+        return enode2ids[_enode].length != 0;
     }
 
     function existLockID(address _addr, uint _lockID) public view override returns (bool) {
@@ -401,6 +423,20 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
     function existNodeFounder(address _founder) public view override returns (bool) {
         // return existFounder(_founder) || getSuperNodeStorage().existFounder(_founder);
         return false;
+    }
+
+    function isBindEnode(uint _id, string memory _enode) public view override returns (bool) {
+        uint[] memory tempIDs = enode2ids[_enode];
+        for(uint i; i < tempIDs.length; i++) {
+            if(tempIDs[i] == _id) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function isValidEnode(string memory _enode) public view override returns (bool) {
+        return enode2ids[_enode].length < 5 && !getSuperNodeStorage().existEnode(_enode);
     }
 
     function selectNext(MasterNodeInfo[] memory _arr, uint len) internal pure returns (MasterNodeInfo memory) {

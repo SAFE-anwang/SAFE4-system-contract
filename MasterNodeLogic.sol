@@ -29,7 +29,7 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(_lockDay >= getPropertyValue("masternode_min_lockday"), "less than min lock day");
         string memory enode = compressEnode(_enode);
         require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
-        require(!getMasterNodeStorage().existNodeEnode(enode), "existent enode");
+        require(getMasterNodeStorage().isValidEnode(enode), "exceed limit of bound enode: 5 mns or 1 sn");
         require(bytes(_description).length <= Constant.MAX_NODE_DESCRIPTION_LEN, "invalid description");
         if(!_isUnion) {
             require(_creatorIncentive == Constant.MAX_INCENTIVE && _partnerIncentive == 0, "invalid incentive");
@@ -118,7 +118,12 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(record.addr == _creator, "lockID is conflicted with creator");
         require(record.amount == _amount, "lockID is conflicted with amount");
         require(record.lockDay == _lockDay, "lockID is conflicted with lockDay");
-        getMasterNodeStorage().create(_addr, false, _creator, _lockID, _amount, compressEnode(_enode), "MasterNode from Safe3", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0), record.unlockHeight);
+        string memory enode = compressEnode(_enode);
+        if(bytes(enode).length > 0) {
+            require(bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
+            require(getMasterNodeStorage().isValidEnode(enode), "exceed limit of bound enode: 5 mns or 1 sn");
+        }
+        getMasterNodeStorage().create(_addr, false, _creator, _lockID, _amount, enode, "MasterNode from Safe3", IMasterNodeStorage.IncentivePlan(Constant.MAX_INCENTIVE, 0, 0), record.unlockHeight);
         getMasterNodeStorage().updateState(_addr, Constant.NODE_STATE_STOP);
         getAccountManager().setRecordFreezeInfo2(_lockID, _addr, record.unlockHeight);
         emit MNRegister(_addr, _creator, _amount, _lockDay, _lockID);
@@ -144,8 +149,9 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(getMasterNodeStorage().exist(_addr), "non-existent masternode");
         string memory enode = compressEnode(_enode);
         require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
-        require(!getMasterNodeStorage().existNodeEnode(enode), "existent enode");
+        require(getMasterNodeStorage().isValidEnode(enode), "exceed limit of bound enode: 5 mns or 1 sn");
         IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfo(_addr);
+        require(!getMasterNodeStorage().isBindEnode(info.id, enode), "masternode has bind with new node already");
         string memory oldEnode = info.enode;
         require(msg.sender == info.creator, "caller isn't masternode creator");
         getMasterNodeStorage().updateEnode(_addr, enode);
@@ -156,7 +162,8 @@ contract MasterNodeLogic is IMasterNodeLogic, System {
         require(getMasterNodeStorage().existID(_id), "non-existent masternode");
         string memory enode = compressEnode(_enode);
         require(bytes(enode).length >= Constant.MIN_NODE_ENODE_LEN && bytes(enode).length <= Constant.MAX_NODE_ENODE_LEN, "invalid enode");
-        require(!getMasterNodeStorage().existNodeEnode(enode), "existent enode");
+        require(getMasterNodeStorage().isValidEnode(enode), "exceed limit of bound enode: 5 mns or 1 sn");
+        require(!getMasterNodeStorage().isBindEnode(_id, enode), "masternode has bind with new node already");
         IMasterNodeStorage.MasterNodeInfo memory info = getMasterNodeStorage().getInfoByID(_id);
         require(msg.sender == info.creator, "caller isn't masternode creator");
         string memory oldEnode = info.enode;

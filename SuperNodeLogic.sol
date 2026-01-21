@@ -226,6 +226,10 @@ contract SuperNodeLogic is ISuperNodeLogic, System {
             return;
         }
         ISuperNodeStorage.SuperNodeInfo memory info = getSuperNodeStorage().getInfoByID(_id);
+        uint disableHeight = getSuperNodeStorage().getDisableHeight(_id);
+        if(info.state == Constant.NODE_STATE_DISABLE && block.number <= disableHeight + 2880 && _state != Constant.NODE_STATE_DISABLE) { // can't change 'disable' state until 1 day, unless new state is 'disable'
+            return;
+        }
         uint oldState = info.state;
         getSuperNodeStorage().updateState(info.addr, _state);
         emit SNStateUpdate(info.addr, _state, oldState);
