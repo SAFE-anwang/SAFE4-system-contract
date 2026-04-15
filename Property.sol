@@ -168,7 +168,7 @@ contract Property is IProperty, System {
         emit PropertyUpdateVote(_name, info.value, _voter, _voteResult);
     }
 
-    // just for owner properties
+    // just for official properties
     function update4Owner(string memory _name, uint _value, string memory _description) public onlyOwner {
         require(bytes(_name).length >= Constant.MIN_PROPERTY_NAME_LEN && bytes(_name).length <= Constant.MAX_PROPERTY_NAME_LEN, "invalid name");
         require(bytes(_description).length >= Constant.MIN_PROPERTY_DESCRIPTION_LEN && bytes(_description).length <= Constant.MAX_PROPERTY_DESCRIPTION_LEN, "invalid description");
@@ -178,5 +178,24 @@ contract Property is IProperty, System {
 
     function getOwnerValue(string memory _name) public view returns (uint) {
         return ownerProperties[_name].value;
+    }
+
+    function getNum4Owner() public view returns (uint) {
+        return ownerNames.length;
+    }
+
+    function getAll4Owner(uint _start, uint _count) public view returns (string[] memory) {
+        require(ownerNames.length > 0, "insufficient quantity");
+        require(_start < ownerNames.length, "invalid _start, must be in [0, getNum4Owner())");
+        require(_count > 0 && _count <= 100, "max return 100 properties");
+        uint num = _count;
+        if(_start + _count >= ownerNames.length) {
+            num = ownerNames.length - _start;
+        }
+        string[] memory ret = new string[](num);
+        for(uint i; i < num; i++) {
+            ret[i] = ownerNames[i + _start];
+        }
+        return ret;
     }
 }
