@@ -13,8 +13,8 @@ contract Property is IProperty, System {
     mapping(string => UnconfirmedPropertyInfo) unconfirmedProperties;
     string[] unconfirmedNames;
 
-    mapping(string => PropertyInfo) ownerProperties;
-    string[] ownerNames;
+    mapping(string => PropertyInfo) officialProperties;
+    string[] officialNames;
 
     event PropertyAdd(string _name, uint _value);
     event PropertyUpdateApply(string _name, uint _newValue, uint _oldValue);
@@ -169,32 +169,40 @@ contract Property is IProperty, System {
     }
 
     // just for official properties
-    function update4Owner(string memory _name, uint _value, string memory _description) public onlyOwner {
+    function update4Official(string memory _name, uint _value, string memory _description) public onlyOwner {
         require(bytes(_name).length >= Constant.MIN_PROPERTY_NAME_LEN && bytes(_name).length <= Constant.MAX_PROPERTY_NAME_LEN, "invalid name");
         require(bytes(_description).length >= Constant.MIN_PROPERTY_DESCRIPTION_LEN && bytes(_description).length <= Constant.MAX_PROPERTY_DESCRIPTION_LEN, "invalid description");
-        ownerProperties[_name] = PropertyInfo(_name, _value, _description, block.number, 0);
-        ownerNames.push(_name);
+        officialProperties[_name] = PropertyInfo(_name, _value, _description, block.number, 0);
+        officialNames.push(_name);
     }
 
-    function getOwnerValue(string memory _name) public view returns (uint) {
-        return ownerProperties[_name].value;
+    function getOfficialInfo(string memory _name) public view returns (PropertyInfo memory) {
+        return officialProperties[_name];
     }
 
-    function getNum4Owner() public view returns (uint) {
-        return ownerNames.length;
+    function getOwnerValue(string memory _name) public view returns (uint) { // deprecated
+        return officialProperties[_name].value;
     }
 
-    function getAll4Owner(uint _start, uint _count) public view returns (string[] memory) {
-        require(ownerNames.length > 0, "insufficient quantity");
-        require(_start < ownerNames.length, "invalid _start, must be in [0, getNum4Owner())");
+    function getOfficialValue(string memory _name) public view returns (uint) {
+        return officialProperties[_name].value;
+    }
+
+    function getOfficialNum() public view returns (uint) {
+        return officialNames.length;
+    }
+
+    function getAllOfficial(uint _start, uint _count) public view returns (string[] memory) {
+        require(officialNames.length > 0, "insufficient quantity");
+        require(_start < officialNames.length, "invalid _start, must be in [0, getOfficialNum())");
         require(_count > 0 && _count <= 100, "max return 100 properties");
         uint num = _count;
-        if(_start + _count >= ownerNames.length) {
-            num = ownerNames.length - _start;
+        if(_start + _count >= officialNames.length) {
+            num = officialNames.length - _start;
         }
         string[] memory ret = new string[](num);
         for(uint i; i < num; i++) {
-            ret[i] = ownerNames[i + _start];
+            ret[i] = officialNames[i + _start];
         }
         return ret;
     }
