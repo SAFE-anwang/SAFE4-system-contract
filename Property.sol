@@ -169,7 +169,7 @@ contract Property is IProperty, System {
     }
 
     // just for official properties
-    function update4Official(string memory _name, uint _value, string memory _description) public onlyOwner {
+    function updateOfficial(string memory _name, uint _value, string memory _description) public onlyOwner {
         require(bytes(_name).length >= Constant.MIN_PROPERTY_NAME_LEN && bytes(_name).length <= Constant.MAX_PROPERTY_NAME_LEN, "invalid name");
         require(bytes(_description).length >= Constant.MIN_PROPERTY_DESCRIPTION_LEN && bytes(_description).length <= Constant.MAX_PROPERTY_DESCRIPTION_LEN, "invalid description");
         officialProperties[_name] = PropertyInfo(_name, _value, _description, block.number, 0);
