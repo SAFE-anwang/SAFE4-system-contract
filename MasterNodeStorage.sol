@@ -390,7 +390,7 @@ contract MasterNodeStorage is IMasterNodeStorage, System {
 
     function isValid(address _addr) public view override returns (bool) {
         MasterNodeInfo memory info = addr2info[_addr];
-        if(info.id == 0) {
+        if(info.id == 0 || info.state != Constant.NODE_STATE_START) {
             return false;
         }
         if(block.number >= info.founders[0].unlockHeight) { // creator must be locked
