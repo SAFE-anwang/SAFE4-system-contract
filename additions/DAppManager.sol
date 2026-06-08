@@ -17,7 +17,6 @@ contract DAppManager is Initializable, OwnableUpgradeable {
         string official_email;
         address official_account;
         string keyword;
-        bytes logo;
         uint256 fraudNum;
         bool isFrozen;
     }
@@ -28,6 +27,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
     mapping(uint256 => uint256) id2index;
 
     mapping(uint256 => DAppInfo) dapps;
+    mapping(uint256 => bytes) logos;
 
     mapping(string => uint256) name2id;
     mapping(address => uint256) contractAddr2id;
@@ -188,7 +188,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
         require(msg.value >= getLogoPayAmount(), "invalid pay amount");
         (bool success, ) = getLogoPayAddress().call{value: msg.value}("");
         require(success, "pay failed");
-        dapps[id].logo = logo;
+        logos[id] = logo;
         emit DAppUpdateLogo(id);
     }
 
@@ -257,6 +257,10 @@ contract DAppManager is Initializable, OwnableUpgradeable {
 
     function getInfoByRunUrl(string memory url) public view returns (DAppInfo memory) {
         return dapps[runUrl2id[url]];
+    }
+
+    function getLogo(uint256 id) public view returns (bytes memory) {
+        return logos[id];
     }
 
     function getNum() public view returns (uint256) {
