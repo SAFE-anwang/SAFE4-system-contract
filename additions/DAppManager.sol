@@ -16,6 +16,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
         string official_url;
         string official_email;
         address official_account;
+        string description;
         string keyword;
         uint256 fraudNum;
         bool isFrozen;
@@ -47,7 +48,8 @@ contract DAppManager is Initializable, OwnableUpgradeable {
     event DAppUpdateOfficialUrl(uint256 indexed id, string indexed oldUrl, string indexed newUrl);
     event DAppUpdateOfficialEmail(uint256 indexed id, string indexed odEmail, string indexed newEmail);
     event DAppUpdateOfficialAccount(uint256 indexed id, address indexed oldAccount, address indexed newAccount);
-    event DAppUpdateKeyword(uint256 indexed id, string indexed oldKeyword, string indexed newKeyword);
+    event DAppUpdateDescription(uint256 indexed id);
+    event DAppUpdateKeyword(uint256 indexed id);
     event DAppUpdateLogo(uint256 indexed id);
     event DAppUpdateFraudNum(uint256 indexed id, uint256 indexed num);
     event DAppFreeze(uint256 indexed id);
@@ -62,10 +64,11 @@ contract DAppManager is Initializable, OwnableUpgradeable {
         return abi.encodeWithSignature("initialize()");
     }
 
-    function register(string memory name, address contract_addr, string memory run_url, string memory git_url, string memory official_url, string memory official_email) public {
+    function register(string memory name, address contract_addr, string memory run_url, string memory description, string memory git_url, string memory official_url, string memory official_email) public {
         require(contract_addr != address(0), "invalid contract address");
         require(bytes(name).length >= 5 && bytes(name).length <= 50, "invalid name");
         require(bytes(run_url).length >= 15 && bytes(run_url).length <= 200, "invalid run url");
+        require(bytes(description).length >= 10 && bytes(description).length <= 1024, "invalid description");
         require(bytes(git_url).length <= 200, "invalid git url");
         require(bytes(official_url).length <= 200, "invalid official url");
         require(bytes(official_email).length <= 50, "invalid official email");
@@ -83,6 +86,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
         info.official_url = official_url;
         info.official_email = official_email;
         info.official_account = msg.sender;
+        info.description = description;
 
         name2id[name] = id;
         contractAddr2id[contract_addr] = id;
@@ -172,13 +176,20 @@ contract DAppManager is Initializable, OwnableUpgradeable {
         emit DAppUpdateOfficialAccount(id, msg.sender, account);
     }
 
+    function setDescription(uint256 id, string memory description) public {
+        require(bytes(description).length >= 10 && bytes(description).length <= 1024, "invalid description");
+        require(msg.sender == dapps[id].official_account, "invalid account");
+        require(!dapps[id].isFrozen, "frozen");
+        dapps[id].description = description;
+        emit DAppUpdateDescription(id);
+    }
+
     function setKeyword(uint256 id, string memory keyword) public {
         require(bytes(keyword).length <= 200, "invalid keyword");
         require(msg.sender == dapps[id].official_account, "invalid account");
         require(!dapps[id].isFrozen, "frozen");
-        string memory old = dapps[id].keyword;
         dapps[id].keyword = keyword;
-        emit DAppUpdateKeyword(id, old, keyword);
+        emit DAppUpdateKeyword(id);
     }
 
     function setLogo(uint256 id, bytes memory logo) public payable {
