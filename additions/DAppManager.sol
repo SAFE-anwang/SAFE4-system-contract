@@ -158,7 +158,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
         emit DAppUpdateOfficialEmail(id, old, email);
     }
 
-    function setOfficialAccouont(uint256 id, address account) public {
+    function setOfficialAccount(uint256 id, address account) public {
         require(account != address(0), "invalid official account");
         require(msg.sender == dapps[id].official_account, "invalid account");
         require(!dapps[id].isFrozen, "frozen");
