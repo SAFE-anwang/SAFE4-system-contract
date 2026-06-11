@@ -72,6 +72,9 @@ contract DAppManager is Initializable, OwnableUpgradeable {
         require(bytes(git_url).length <= 200, "invalid git url");
         require(bytes(official_url).length <= 200, "invalid official url");
         require(bytes(official_email).length <= 50, "invalid official email");
+        require(!existName(name), "existent name");
+        require(!existContractAddr(contract_addr), "existent contract address");
+        require(!existRunUrl(run_url), "existent run url");
 
         uint256 id = ++no;
         ids.push(id);
@@ -99,7 +102,9 @@ contract DAppManager is Initializable, OwnableUpgradeable {
     }
 
     function setName(uint256 id, string memory name) public {
+        require(existID(id), "non-existent id");
         require(bytes(name).length >= 5 && bytes(name).length <= 50, "invalid name");
+        require(!existName(name), "existent name");
         require(msg.sender == dapps[id].official_account, "invalid account");
         require(!dapps[id].isFrozen, "frozen");
         string memory old = dapps[id].name;
@@ -110,7 +115,9 @@ contract DAppManager is Initializable, OwnableUpgradeable {
     }
 
     function setContractAddr(uint256 id, address addr) public {
+        require(existID(id), "non-existent id");
         require(addr != address(0), "invalid contract address");
+        require(!existContractAddr(addr), "existent contract address");
         require(msg.sender == dapps[id].official_account, "invalid account");
         require(!dapps[id].isFrozen, "frozen");
         address old = dapps[id].contract_addr;
@@ -121,7 +128,9 @@ contract DAppManager is Initializable, OwnableUpgradeable {
     }
 
     function setRunUrl(uint256 id, string memory url) public {
+        require(existID(id), "non-existent id");
         require(bytes(url).length >= 15 && bytes(url).length <= 200, "invalid run url");
+        require(!existRunUrl(url), "existent run url");
         require(msg.sender == dapps[id].official_account, "invalid account");
         require(!dapps[id].isFrozen, "frozen");
         string memory old = dapps[id].run_url;
@@ -132,6 +141,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
     }
 
     function setGitUrl(uint256 id, string memory url) public {
+        require(existID(id), "non-existent id");
         require(bytes(url).length >= 20 && bytes(url).length <= 200, "invalid git url");
         require(msg.sender == dapps[id].official_account, "invalid account");
         require(!dapps[id].isFrozen, "frozen");
@@ -141,6 +151,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
     }
 
     function setOfficialUrl(uint256 id, string memory url) public {
+        require(existID(id), "non-existent id");
         require(bytes(url).length >= 15 && bytes(url).length <= 200, "invalid official url");
         require(msg.sender == dapps[id].official_account, "invalid account");
         require(!dapps[id].isFrozen, "frozen");
@@ -150,6 +161,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
     }
 
     function setOfficialEmail(uint256 id, string memory email) public {
+        require(existID(id), "non-existent id");
         require(bytes(email).length >= 5 && bytes(email).length <= 50, "invalid official email");
         require(msg.sender == dapps[id].official_account, "invalid account");
         require(!dapps[id].isFrozen, "frozen");
@@ -159,6 +171,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
     }
 
     function setOfficialAccount(uint256 id, address account) public {
+        require(existID(id), "non-existent id");
         require(account != address(0), "invalid official account");
         require(msg.sender == dapps[id].official_account, "invalid account");
         require(!dapps[id].isFrozen, "frozen");
@@ -177,6 +190,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
     }
 
     function setDescription(uint256 id, string memory description) public {
+        require(existID(id), "non-existent id");
         require(bytes(description).length >= 10 && bytes(description).length <= 1024, "invalid description");
         require(msg.sender == dapps[id].official_account, "invalid account");
         require(!dapps[id].isFrozen, "frozen");
@@ -185,6 +199,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
     }
 
     function setKeyword(uint256 id, string memory keyword) public {
+        require(existID(id), "non-existent id");
         require(bytes(keyword).length <= 200, "invalid keyword");
         require(msg.sender == dapps[id].official_account, "invalid account");
         require(!dapps[id].isFrozen, "frozen");
@@ -193,6 +208,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
     }
 
     function setLogo(uint256 id, bytes memory logo) public payable {
+        require(existID(id), "non-existent id");
         require(logo.length > 0 && logo.length <= 512000, "invalid logo");
         require(msg.sender == dapps[id].official_account, "invalid account");
         require(!dapps[id].isFrozen, "frozen");
@@ -204,7 +220,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
     }
 
     function remove(uint256 id) public {
-        require(dapps[id].id != 0, "non-existent dapp");
+        require(existID(id), "non-existent id");
         require(msg.sender == dapps[id].official_account, "invalid account");
 
         uint256 pos = id2index[id];
@@ -230,6 +246,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
     }
 
     function markFraud(uint256 id, bool flag) public {
+        require(existID(id), "non-existent id");
         if(flag) {
             require(!userMarkedDApps[msg.sender][id], "already mark");
             userMarkedDApps[msg.sender][id] = true;
@@ -243,6 +260,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
     }
 
     function freeze(uint256 id, bool flag) public onlyOwner {
+        require(existID(id), "non-existent id");
         if(flag) {
             require(!dapps[id].isFrozen, "already frozen");
             dapps[id].isFrozen = true;
