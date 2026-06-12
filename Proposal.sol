@@ -131,7 +131,7 @@ contract Proposal is IProposal, System {
         require(exist(_id), "non-existent proposal");
         require(id2addr[_id] == msg.sender, "caller isn't proposal owner");
         require(_payTimes > 0 && _payTimes <= Constant.MAX_PP_PAY_TIMES, "invalid pay times");
-        require(proposals[_id].payAmount / _payTimes >= getPropertyValue("depoist_min_amount"), "new payAmount/payTimes is less than 1SAFE");
+        require(proposals[_id].payAmount / _payTimes >= getPropertyValue("deposit_min_amount"), "new payAmount/payTimes is less than 1SAFE");
         require(voteInfos[_id].length == 0, "voted proposal can't update pay-times");
         proposals[_id].payTimes = _payTimes;
         proposals[_id].updateHeight = block.number;
