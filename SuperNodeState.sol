@@ -26,6 +26,9 @@ contract SuperNodeState is INodeState, System {
         address[] memory sns = getSuperNodeStorage().getTops();
         ISuperNodeStorage.SuperNodeInfo memory info;
         for(uint i; i < _ids.length; i++) {
+            if(_states[i] == Constant.NODE_STATE_DISABLE) {
+                continue;
+            }
             info = getSuperNodeStorage().getInfoByID(_ids[i]);
             if(info.id == 0 || info.state == _states[i]) {
                 continue;
