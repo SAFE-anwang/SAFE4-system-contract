@@ -225,6 +225,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
 
         uint256 pos = id2index[id];
         ids[pos] = ids[ids.length - 1];
+        id2index[ids[pos]] = pos;
         ids.pop();
         delete id2index[id];
 
@@ -235,10 +236,12 @@ contract DAppManager is Initializable, OwnableUpgradeable {
         delete name2id[name];
         delete contractAddr2id[addr];
         delete runUrl2id[url];
+        delete logos[id];
 
         uint256[] storage mineIds = account2ids[msg.sender];
         uint256 index = accountId2index[msg.sender][id];
         mineIds[index] = mineIds[mineIds.length - 1];
+        accountId2index[msg.sender][mineIds[index]] = index;
         mineIds.pop();
         delete accountId2index[msg.sender][id];
 
