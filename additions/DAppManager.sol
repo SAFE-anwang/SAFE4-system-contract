@@ -174,6 +174,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
         require(existID(id), "non-existent id");
         require(account != address(0), "invalid official account");
         require(msg.sender == dapps[id].official_account, "invalid account");
+        require(msg.sender != account, "can't set same account");
         require(!dapps[id].isFrozen, "frozen");
         dapps[id].official_account = account;
 
@@ -183,6 +184,7 @@ contract DAppManager is Initializable, OwnableUpgradeable {
         uint256[] storage mineIds = account2ids[msg.sender];
         uint256 index = accountId2index[msg.sender][id];
         mineIds[index] = mineIds[mineIds.length - 1];
+        accountId2index[msg.sender][mineIds[index]] = index;
         mineIds.pop();
         delete accountId2index[msg.sender][id];
 
