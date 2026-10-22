@@ -7,7 +7,7 @@ import "./utils/RewardUtil.sol";
 contract SystemReward is ISystemReward, System {
     function reward(address _snAddr, uint _snAmount, address _mnAddr, uint _mnAmount, address _ppAddr, uint _ppAmount) public payable override onlyFormalSN {
         require(isFormalSN(_snAddr), "invalid supernode");
-        require(_mnAddr == getMasterNodeStorage().getNext(), "invalid masternode");
+        require(isMN(_mnAddr), "not masternode");
         require(_ppAddr == Constant.PROPOSAL_ADDR, "invalid proposal contract");
         uint blockSpace = getPropertyValue("block_space");
         require(_snAmount >= RewardUtil.getSNReward(block.number, blockSpace), "invalid supernode reward");
